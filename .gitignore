@@ -1,0 +1,39 @@
+# Logs
+logs/
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+build/
+dist/
+*.egg-info/
+venv/
+env/
+
+# Database
+*.db
+*.sqlite
+
+# Docker
+.docker/
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Temporary files
+tmp/
+temp/
