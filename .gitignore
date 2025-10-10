@@ -1,0 +1,21 @@
+# Docker volumes and data
+web/
+app/
+
+# Docker Compose override files
+docker-compose.override.yml
+
+# Environment files
+.env
+.env.local
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
