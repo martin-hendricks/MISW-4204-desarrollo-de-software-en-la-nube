@@ -34,6 +34,10 @@ Thumbs.db
 .idea/
 *.swp
 
+# Video files
+*.mp4
+*.mov
+
 # Temporary files
 tmp/
 temp/
