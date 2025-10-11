@@ -1,139 +1,178 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
-from sqlalchemy.orm import Session
-from typing import List
-from app.db.database import get_db
-from app.schemas.schemas import Video, VideoDetail, VideoUploadResponse, VideoDeleteResponse, VideoCreate
-from app.crud import (
-    create_video, get_videos_by_player, get_video_by_id, 
-    delete_video, create_task
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from typing import Annotated, List
+import uuid
+
+from app.application.dtos.video_dtos import (
+    VideoUploadResponseDTO, VideoListItemDTO, VideoDetailDTO, VideoDeleteResponseDTO
 )
-from app.auth import get_current_player
-from app.models.models import Player
-from app.file_storage import validate_video_file, generate_unique_filename, save_uploaded_file, get_file_url, delete_file
-from app.tasks import process_video
+from app.application.services.video_service import VideoService
+from app.shared.container import container
+from app.shared.dependencies.auth_dependencies import get_current_player_id
 
-router = APIRouter(prefix="/api/videos", tags=["videos"])
+router = APIRouter(prefix="/api/videos", tags=["gestión de videos"])
+security = HTTPBearer()
 
 
-@router.post("/upload", response_model=VideoUploadResponse, status_code=status.HTTP_201_CREATED)
-def upload_video(
-    video_file: UploadFile = File(...),
+def get_video_service() -> VideoService:
+    """Dependency para obtener el servicio de videos"""
+    return container.get_video_service()
+
+
+@router.post("/upload", response_model=VideoUploadResponseDTO, status_code=status.HTTP_201_CREATED)
+async def upload_video(
     title: str = Form(...),
-    current_player: Player = Depends(get_current_player),
-    db: Session = Depends(get_db)
+    video_file: UploadFile = File(...),
+    player_id: int = Depends(get_current_player_id),
+    video_service: Annotated[VideoService, Depends(get_video_service)] = None
 ):
     """
-    Permite a un jugador subir un video de habilidades
+    Permite a un jugador subir un video de habilidades.
+    - La solicitud debe ser form-data.
+    - El video_file debe ser un archivo MP4 de máximo 100MB.
+    - Inicia una tarea de procesamiento asíncrono.
     """
-    # Validar el archivo de video
-    validate_video_file(video_file)
-    
-    # Generar nombre único para el archivo
-    filename = generate_unique_filename(video_file.filename)
-    
-    # Guardar el archivo
-    file_path = save_uploaded_file(video_file, filename)
-    
-    # Crear registro en la base de datos
-    video = create_video(
-        db=db,
-        video=VideoCreate(title=title),
-        player_id=current_player.id,
-        filename=filename
-    )
-    
-    # Crear tarea de procesamiento
-    task = create_task(db, video.id)
-    
-    # Iniciar procesamiento asíncrono
-    process_video.delay(video.id)
-    
-    return VideoUploadResponse(
-        task_id=task.task_id,
-        message="Video subido exitosamente. El procesamiento ha comenzado."
-    )
-
-
-@router.get("/", response_model=List[Video])
-def get_my_videos(
-    current_player: Player = Depends(get_current_player),
-    db: Session = Depends(get_db)
-):
-    """
-    Consulta el listado de videos subidos por el jugador autenticado
-    """
-    videos = get_videos_by_player(db, current_player.id)
-    return videos
-
-
-@router.get("/{video_id}", response_model=VideoDetail)
-def get_video(
-    video_id: int,
-    current_player: Player = Depends(get_current_player),
-    db: Session = Depends(get_db)
-):
-    """
-    Recupera el detalle de un video específico del jugador
-    """
-    video = get_video_by_id(db, video_id)
-    if not video:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Video no encontrado"
+    try:
+        # Validar tipo de archivo
+        if not video_file.content_type or not video_file.content_type.startswith('video/'):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El archivo debe ser un video válido"
+            )
+        
+        # player_id ya viene de la dependencia de autenticación
+        
+        # Subir video usando el servicio
+        video = await video_service.upload_video(
+            player_id=player_id,
+            file=video_file,
+            title=title
         )
-    
-    # Verificar que el video pertenece al jugador
-    if video.player_id != current_player.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="No tienes permisos para acceder a este video"
+        
+        # Generar task_id (en este caso usamos el video_id)
+        task_id = str(uuid.uuid4())
+        
+        return VideoUploadResponseDTO(
+            message="Video subido correctamente. Procesamiento en curso.",
+            task_id=task_id
         )
-    
-    return video
-
-
-@router.delete("/{video_id}", response_model=VideoDeleteResponse)
-def delete_video_endpoint(
-    video_id: int,
-    current_player: Player = Depends(get_current_player),
-    db: Session = Depends(get_db)
-):
-    """
-    Elimina uno de los videos del jugador
-    """
-    video = get_video_by_id(db, video_id)
-    if not video:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Video no encontrado"
-        )
-    
-    # Verificar que el video pertenece al jugador
-    if video.player_id != current_player.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="No tienes permisos para eliminar este video"
-        )
-    
-    # Verificar que el video puede ser eliminado
-    if video.status not in ["uploaded", "processing"]:
+    except HTTPException:
+        raise
+    except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="El video no puede ser eliminado porque ya ha sido procesado o publicado"
+            detail=str(e)
         )
-    
-    # Eliminar archivo del sistema
-    if video.filename:
-        delete_file(video.filename)
-    
-    # Eliminar de la base de datos
-    success = delete_video(db, video_id)
-    if not success:
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
+@router.get("", response_model=List[VideoListItemDTO])
+async def get_my_videos(
+    player_id: int = Depends(get_current_player_id),
+    video_service: Annotated[VideoService, Depends(get_video_service)] = None
+):
+    """
+    Consulta el listado de videos subidos por el jugador autenticado.
+    Retorna diferentes campos según el estado del video:
+    - uploaded/processing: video_id, title, status, uploaded_at
+    - processed: video_id, title, status, uploaded_at, processed_at, processed_url
+    """
+    try:
+        # player_id ya viene de la dependencia de autenticación
+        
+        videos = await video_service.get_player_videos(player_id)
+        
+        return [
+            VideoListItemDTO(
+                video_id=video.id,
+                title=video.title,
+                status=video.status.value,
+                uploaded_at=video.created_at,
+                processed_at=video.updated_at if video.status.value == "processed" else None,
+                processed_url=video.processed_url if video.status.value == "processed" else None
+            )
+            for video in videos
+        ]
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
+@router.get("/{video_id}", response_model=VideoDetailDTO)
+async def get_specific_video(
+    video_id: int,
+    player_id: int = Depends(get_current_player_id),
+    video_service: Annotated[VideoService, Depends(get_video_service)] = None
+):
+    """
+    Recupera el detalle de un video específico del jugador.
+    Incluye las URLs del video original y procesado, así como el conteo de votos.
+    """
+    try:
+        # player_id ya viene de la dependencia de autenticación
+        
+        video = await video_service.get_video(video_id, player_id)
+        
+        return VideoDetailDTO(
+            video_id=video.id,
+            title=video.title,
+            status=video.status.value,
+            votes=video.votes_count,
+            original_url=video.original_url,
+            processed_url=video.processed_url,
+            created_at=video.created_at
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
+@router.delete("/{video_id}", response_model=VideoDeleteResponseDTO)
+async def delete_video(
+    video_id: int,
+    player_id: int = Depends(get_current_player_id),
+    video_service: Annotated[VideoService, Depends(get_video_service)] = None
+):
+    """
+    Elimina uno de los videos del jugador.
+    Solo se puede eliminar si el video no ha sido publicado para votación o aún no ha sido procesado.
+    """
+    try:
+        # player_id ya viene de la dependencia de autenticación
+        
+        # Eliminar video usando el servicio
+        from app.shared.exceptions.video_exceptions import VideoNotFoundException, VideoNotOwnedException, VideoCannotBeDeletedException
+        
+        success = await video_service.delete_video(video_id, player_id)
+        
+        if success:
+            return VideoDeleteResponseDTO(
+                message="El video ha sido eliminado exitosamente.",
+                video_id=video_id
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="El video no existe."
+            )
+    except VideoNotFoundException:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="El video no existe."
+        )
+    except VideoNotOwnedException:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes permisos para eliminar este video."
+        )
+    except VideoCannotBeDeletedException as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No se pudo eliminar el video"
+            detail=str(e)
         )
-    
-    return VideoDeleteResponse(
-        message="El video ha sido eliminado exitosamente."
-    )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+

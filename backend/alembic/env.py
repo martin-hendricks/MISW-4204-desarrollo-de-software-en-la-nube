@@ -8,8 +8,8 @@ import sys
 # Agregar el directorio raíz del proyecto al path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.db.database import Base
-from app.models.models import Player, Video, Vote, Task
+from app.infrastructure.database.database import Base
+from app.infrastructure.database.models import PlayerModel, VideoModel, VoteModel
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
