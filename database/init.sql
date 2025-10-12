@@ -1,6 +1,6 @@
 CREATE TYPE video_status AS ENUM ('uploaded', 'processed', 'failed');
 
-CREATE TABLE jugadores (
+CREATE TABLE players (
     id SERIAL PRIMARY KEY,
     first_name VARCHAR(50) NOT NULL,
     last_name VARCHAR(50) NOT NULL,
@@ -13,7 +13,7 @@ CREATE TABLE jugadores (
 
 CREATE TABLE videos (
     id SERIAL PRIMARY KEY,
-    player_id INTEGER NOT NULL REFERENCES jugadores(id) ON DELETE CASCADE,
+    player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
     title VARCHAR(255) NOT NULL,
     status video_status NOT NULL DEFAULT 'uploaded',
     original_url VARCHAR(512),
@@ -22,9 +22,9 @@ CREATE TABLE videos (
     processed_at TIMESTAMP WITH TIME ZONE
 );
 
-CREATE TABLE votos (
+CREATE TABLE votes (
     id SERIAL PRIMARY KEY,
-    player_id INTEGER NOT NULL REFERENCES jugadores(id) ON DELETE CASCADE,
+    player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
     video_id INTEGER NOT NULL REFERENCES videos(id) ON DELETE CASCADE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT unique_vote UNIQUE (player_id, video_id)
