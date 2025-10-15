@@ -37,7 +37,6 @@ class VideoService:
             id=None,
             player_id=player_id,
             title=title,
-            filename=filename,
             status=VideoStatus.UPLOADED,
             original_url=None,
             processed_url=None,

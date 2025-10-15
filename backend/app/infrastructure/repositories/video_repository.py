@@ -33,7 +33,6 @@ class VideoRepository(VideoRepositoryInterface):
             id=model.id,
             player_id=model.player_id,
             title=model.title,
-            filename=model.filename,
             status=status_map.get(model.status, VideoStatus.UPLOADED),
             original_url=model.original_url,
             processed_url=model.processed_url,
@@ -54,7 +53,6 @@ class VideoRepository(VideoRepositoryInterface):
         model_data = {
             "player_id": video.player_id,
             "title": video.title,
-            "filename": video.filename,
             "status": status_map.get(video.status, VideoStatusEnum.UPLOADED),
             "original_url": video.original_url,
             "processed_url": video.processed_url,

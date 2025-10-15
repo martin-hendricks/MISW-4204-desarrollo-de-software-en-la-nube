@@ -19,7 +19,6 @@ class Video:
     id: Optional[int]
     player_id: int
     title: str
-    filename: str
     status: VideoStatus
     original_url: Optional[str] = None
     processed_url: Optional[str] = None
@@ -30,9 +29,7 @@ class Video:
         """Validaciones después de la inicialización"""
         if not self.title or len(self.title.strip()) == 0:
             raise ValueError("El título del video no puede estar vacío")
-        
-        if not self.filename or len(self.filename.strip()) == 0:
-            raise ValueError("El nombre del archivo no puede estar vacío")
+      
         
         if self.player_id <= 0:
             raise ValueError("El ID del jugador debe ser válido")
