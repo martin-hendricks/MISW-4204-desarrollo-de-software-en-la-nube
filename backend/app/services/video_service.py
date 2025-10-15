@@ -29,32 +29,44 @@ class VideoService:
         # Validar archivo
         await self._validate_video_file(file)
         
-        # Generar nombre único
-        filename = await self._generate_unique_filename(file.filename)
+        # Obtener extensión del archivo
+        file_extension = file.filename.split('.')[-1] if '.' in file.filename else 'mp4'
         
-        # Guardar archivo en ubicación original
-        file_path = await self._file_storage.save_file(file, filename, "original")
-        
-        # Crear entidad de dominio con todos los campos inicializados
+        # Crear entidad de dominio temporal (sin filename ni URLs aún)
         video = Video(
             id=None,
             player_id=player_id,
             title=title,
             filename=filename,
             status=VideoStatus.UPLOADED,
-            original_url=file_path,  # URL del archivo original
+            original_url=None,
             processed_url=None,
             votes_count=0,
             created_at=datetime.now()
         )
         
-        # Guardar en repositorio
+        # Guardar en repositorio primero para obtener el ID
         created_video = await self._video_repository.create(video)
         
-        # Iniciar procesamiento asíncrono
-        await self._start_video_processing(created_video)
+        # Generar filename usando el ID de la BD
+        filename = f"{created_video.id}.{file_extension}"
         
-        return created_video
+        # Generar la URL del archivo original
+        original_url = f"/original/{filename}"
+        
+        # Actualizar el video con el filename y URL correctos
+        created_video.original_url = original_url
+        
+        # Guardar archivo en ubicación original con el filename correcto
+        await self._file_storage.save_file(file, filename, "original")
+        
+        # Actualizar el registro en la BD con la información completa
+        updated_video = await self._video_repository.update(created_video)
+        
+        # Iniciar procesamiento asíncrono
+        await self._start_video_processing(updated_video)
+        
+        return updated_video
     
     async def get_player_videos(self, player_id: int) -> List[Video]:
         """Obtiene todos los videos de un jugador"""
@@ -124,11 +136,7 @@ class VideoService:
         if f'.{file_extension}' not in allowed_extensions:
             raise ValueError(f"Tipo de archivo no permitido. Extensiones permitidas: {', '.join(allowed_extensions)}")
     
-    async def _generate_unique_filename(self, original_filename: str) -> str:
-        """Genera un nombre único para el archivo"""
-        import uuid
-        file_extension = original_filename.split('.')[-1] if '.' in original_filename else 'mp4'
-        return f"{uuid.uuid4()}.{file_extension}"
+    # Método removido - ya no se usa filename único con UUID
     
     async def _start_video_processing(self, video: Video) -> None:
         """Inicia el procesamiento asíncrono del video"""
