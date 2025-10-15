@@ -38,8 +38,7 @@ class VideoRepository(VideoRepositoryInterface):
             original_url=model.original_url,
             processed_url=model.processed_url,
             votes_count=model.votes_count,
-            created_at=model.created_at,
-            updated_at=model.updated_at
+            created_at=model.created_at
         )
     
     def _to_model(self, video: Video) -> VideoModel:
@@ -71,12 +70,9 @@ class VideoRepository(VideoRepositoryInterface):
             from datetime import datetime
             now = datetime.now()
             model_data["created_at"] = now
-            model_data["updated_at"] = now
         else:  # Actualización
             if video.created_at is not None:
                 model_data["created_at"] = video.created_at
-            if video.updated_at is not None:
-                model_data["updated_at"] = video.updated_at
         
         return VideoModel(**model_data)
     
@@ -144,7 +140,6 @@ class VideoRepository(VideoRepositoryInterface):
                 model.original_url = video.original_url
                 model.processed_url = video.processed_url
                 model.votes_count = video.votes_count
-                model.updated_at = datetime.now()
                 db.commit()
                 db.refresh(model)
                 return self._to_domain(model)
@@ -183,7 +178,6 @@ class VideoRepository(VideoRepositoryInterface):
             
             # Incrementar contador de votos
             video_model.votes_count += 1
-            video_model.updated_at = datetime.now()
             
             db.commit()
             return True

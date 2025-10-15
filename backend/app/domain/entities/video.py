@@ -25,7 +25,6 @@ class Video:
     processed_url: Optional[str] = None
     votes_count: int = 0
     created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
     
     def __post_init__(self):
         """Validaciones después de la inicialización"""

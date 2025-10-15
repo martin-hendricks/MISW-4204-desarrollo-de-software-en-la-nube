@@ -31,9 +31,7 @@ class PlayerRepository(PlayerRepositoryInterface):
             password=Password(value="dummy", hashed_value=model.password_hash),
             city=model.city,
             country=model.country,
-            is_active=model.is_active,
-            created_at=model.created_at,
-            updated_at=model.updated_at
+            created_at=model.created_at
         )
     
     def _to_model(self, player: Player) -> PlayerModel:
@@ -44,8 +42,7 @@ class PlayerRepository(PlayerRepositoryInterface):
             "email": player.email.value,
             "password_hash": player.password.hashed_value,
             "city": player.city,
-            "country": player.country,
-            "is_active": player.is_active
+            "country": player.country
         }
         
         # Solo incluir id si existe (para updates)
@@ -57,12 +54,10 @@ class PlayerRepository(PlayerRepositoryInterface):
             from datetime import datetime
             now = datetime.now()
             model_data["created_at"] = now
-            model_data["updated_at"] = now
         else:  # Actualización
             if player.created_at is not None:
                 model_data["created_at"] = player.created_at
-            if player.updated_at is not None:
-                model_data["updated_at"] = player.updated_at
+     
         
         return PlayerModel(**model_data)
     
@@ -110,7 +105,6 @@ class PlayerRepository(PlayerRepositoryInterface):
                 model.city = player.city
                 model.country = player.country
                 model.is_active = player.is_active
-                model.updated_at = datetime.now()
                 db.commit()
                 db.refresh(model)
                 return self._to_domain(model)

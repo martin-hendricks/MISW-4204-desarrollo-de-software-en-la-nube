@@ -8,7 +8,7 @@ from app.services.player_service import PlayerService
 from app.shared.container import container
 from app.shared.dependencies.auth_dependencies import get_current_player_id
 
-router = APIRouter(prefix="/api/public", tags=["endpoints públicos"])
+router = APIRouter(prefix="/public", tags=["endpoints públicos"])
 security = HTTPBearer()
 
 
@@ -39,7 +39,7 @@ async def list_videos_for_voting(
                 title=video.title,
                 status=video.status.value,
                 uploaded_at=video.created_at,
-                processed_at=video.updated_at,
+                processed_at=video.created_at,
                 processed_url=video.processed_url
             )
             for video in videos

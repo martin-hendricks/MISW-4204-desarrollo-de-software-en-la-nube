@@ -10,7 +10,7 @@ from app.services.video_service import VideoService
 from app.shared.container import container
 from app.shared.dependencies.auth_dependencies import get_current_player_id
 
-router = APIRouter(prefix="/api/videos", tags=["gestión de videos"])
+router = APIRouter(prefix="/videos", tags=["gestión de videos"])
 security = HTTPBearer()
 
 
@@ -89,7 +89,7 @@ async def get_my_videos(
                 title=video.title,
                 status=video.status.value,
                 uploaded_at=video.created_at,
-                processed_at=video.updated_at if video.status.value == "processed" else None,
+                processed_at=video.created_at if video.status.value == "processed" else None,
                 processed_url=video.processed_url if video.status.value == "processed" else None
             )
             for video in videos

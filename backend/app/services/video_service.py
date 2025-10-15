@@ -45,8 +45,7 @@ class VideoService:
             original_url=file_path,  # URL del archivo original
             processed_url=None,
             votes_count=0,
-            created_at=datetime.now(),
-            updated_at=datetime.now()
+            created_at=datetime.now()
         )
         
         # Guardar en repositorio

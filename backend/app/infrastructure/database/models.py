@@ -18,9 +18,7 @@ class PlayerModel(Base):
     password_hash = Column(String(255), nullable=False)
     city = Column(String(100), nullable=False)
     country = Column(String(100), nullable=False)
-    is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
     
     # Relaciones
     videos = relationship("VideoModel", back_populates="player", cascade="all, delete-orphan")
@@ -42,13 +40,11 @@ class VideoModel(Base):
     id = Column(Integer, primary_key=True, index=True)
     player_id = Column(Integer, ForeignKey("players.id"), nullable=False, index=True)
     title = Column(String(200), nullable=False)
-    filename = Column(String(255), nullable=False)
     status = Column(Enum(VideoStatusEnum), default=VideoStatusEnum.UPLOADED, nullable=False)
     original_url = Column(String(500))
     processed_url = Column(String(500))
     votes_count = Column(Integer, default=0, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
     
     # Relaciones
     player = relationship("PlayerModel", back_populates="videos")

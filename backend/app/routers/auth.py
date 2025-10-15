@@ -11,7 +11,7 @@ from app.shared.exceptions.player_exceptions import (
     PlayerAlreadyExistsException, PlayerNotFoundException
 )
 
-router = APIRouter(prefix="/api/auth", tags=["autenticación"])
+router = APIRouter(prefix="/auth", tags=["autenticación"])
 security = HTTPBearer()
 
 
