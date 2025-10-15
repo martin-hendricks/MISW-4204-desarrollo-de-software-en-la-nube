@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPBearer
-from app.application.services.player_service import PlayerService
-from app.application.dtos.player_dtos import (
+from app.services.player_service import PlayerService
+from app.dtos.player_dtos import (
     PlayerCreateDTO, PlayerLoginDTO, PlayerResponseDTO, 
     TokenResponseDTO
 )

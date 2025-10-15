@@ -3,10 +3,10 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Annotated, List
 import uuid
 
-from app.application.dtos.video_dtos import (
+from app.dtos.video_dtos import (
     VideoUploadResponseDTO, VideoListItemDTO, VideoDetailDTO, VideoDeleteResponseDTO
 )
-from app.application.services.video_service import VideoService
+from app.services.video_service import VideoService
 from app.shared.container import container
 from app.shared.dependencies.auth_dependencies import get_current_player_id
 

@@ -5,8 +5,8 @@ from app.shared.interfaces.file_storage import FileStorageInterface
 from app.shared.interfaces.authentication import AuthenticationInterface
 from app.domain.repositories.player_repository import PlayerRepositoryInterface
 from app.domain.repositories.video_repository import VideoRepositoryInterface
-from app.application.services.player_service import PlayerService
-from app.application.services.video_service import VideoService
+from app.services.player_service import PlayerService
+from app.services.video_service import VideoService
 
 
 class DIContainer:

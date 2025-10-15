@@ -2,9 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Annotated, List, Optional
 
-from app.application.dtos.video_dtos import VideoListItemDTO, VoteResponseDTO, RankingItemDTO
-from app.application.services.video_service import VideoService
-from app.application.services.player_service import PlayerService
+from app.dtos.video_dtos import VideoListItemDTO, VoteResponseDTO, RankingItemDTO
+from app.services.video_service import VideoService
+from app.services.player_service import PlayerService
 from app.shared.container import container
 from app.shared.dependencies.auth_dependencies import get_current_player_id
 
