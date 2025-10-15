@@ -32,8 +32,8 @@ class VideoService:
         # Generar nombre único
         filename = await self._generate_unique_filename(file.filename)
         
-        # Guardar archivo
-        file_path = await self._file_storage.save_file(file, filename)
+        # Guardar archivo en ubicación original
+        file_path = await self._file_storage.save_file(file, filename, "original")
         
         # Crear entidad de dominio con todos los campos inicializados
         video = Video(
@@ -146,3 +146,17 @@ class VideoService:
         if video:
             video.mark_as_processed(processed_url)
             await self._video_repository.update(video)
+    
+    async def get_original_video(self, video_id: int, player_id: int) -> bytes:
+        """Obtiene el contenido del video original"""
+        video = await self.get_video(video_id, player_id)
+        return await self._file_storage.get_file_content(video.filename, "original")
+    
+    async def get_processed_video(self, video_id: int, player_id: int) -> bytes:
+        """Obtiene el contenido del video procesado"""
+        video = await self.get_video(video_id, player_id)
+        
+        if not video.processed_url:
+            raise ValueError("El video procesado no está disponible")
+        
+        return await self._file_storage.get_file_content(video.filename, "processed")
