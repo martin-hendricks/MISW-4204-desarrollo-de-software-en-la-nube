@@ -16,7 +16,7 @@ class Settings:
     # Base de datos
     DATABASE_URL: str = os.getenv(
         "DATABASE_URL", 
-        "postgresql://postgres:password@localhost:5432/anb_rising_stars"
+        "postgresql://user:password@localhost:5432/fileprocessing"
     )
     
     # Redis

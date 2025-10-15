@@ -6,7 +6,7 @@ import os
 # Configuración de la base de datos
 DATABASE_URL = os.getenv(
     "DATABASE_URL", 
-    "postgresql://postgres:password@localhost:5432/anb_rising_stars"
+    "postgresql://user:password@localhost:5432/fileprocessing"
 )
 
 # Crear el motor de la base de datos

@@ -90,7 +90,7 @@ backend/
 
 4. **Configurar variables de entorno**
    ```bash
-   export DATABASE_URL="postgresql://postgres:password@localhost:5432/anb_rising_stars"
+   export DATABASE_URL="postgresql://user:password@localhost:5432/fileprocessing"
    export REDIS_URL="redis://localhost:6379/0"
    export SECRET_KEY="your-secret-key-here"
    export FILE_STORAGE_TYPE="local"  # o "s3"
@@ -186,7 +186,7 @@ video_service = VideoService(
 
 | Variable | Descripción | Valor por Defecto |
 |----------|-------------|-------------------|
-| `DATABASE_URL` | URL de conexión a PostgreSQL | `postgresql://postgres:password@localhost:5432/anb_rising_stars` |
+| `DATABASE_URL` | URL de conexión a PostgreSQL | `postgresql://user:password@localhost:5432/fileprocessing` |
 | `REDIS_URL` | URL de conexión a Redis | `redis://localhost:6379/0` |
 | `SECRET_KEY` | Clave secreta para JWT | `your-secret-key-here` |
 | `FILE_STORAGE_TYPE` | Tipo de almacenamiento | `local` |
