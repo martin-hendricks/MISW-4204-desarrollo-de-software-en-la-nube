@@ -1,7 +1,9 @@
 from typing import List, Optional
 from fastapi import UploadFile
 from app.domain.entities.video import Video, VideoStatus
+from app.domain.entities.vote import Vote
 from app.domain.repositories.video_repository import VideoRepositoryInterface
+from app.domain.repositories.vote_repository import VoteRepositoryInterface
 from app.shared.interfaces.file_storage import FileStorageInterface
 from app.shared.exceptions.video_exceptions import VideoNotFoundException, VideoNotOwnedException, VideoCannotBeDeletedException
 
@@ -12,9 +14,11 @@ class VideoService:
     def __init__(
         self,
         video_repository: VideoRepositoryInterface,
+        vote_repository: VoteRepositoryInterface,
         file_storage: FileStorageInterface
     ):
         self._video_repository = video_repository
+        self._vote_repository = vote_repository
         self._file_storage = file_storage
     
     async def upload_video(
@@ -40,8 +44,7 @@ class VideoService:
             status=VideoStatus.UPLOADED,
             original_url=None,
             processed_url=None,
-            votes_count=0,
-            created_at=datetime.now()
+            uploaded_at=datetime.now()
         )
         
         # Guardar en repositorio primero para obtener el ID
@@ -99,7 +102,7 @@ class VideoService:
         """Obtiene todos los videos públicos para votación"""
         return await self._video_repository.get_public_videos()
     
-    async def vote_for_video(self, video_id: int, voter_id: int) -> bool:
+    async def vote_for_video(self, video_id: int, player_id: int) -> bool:
         """Vota por un video"""
         video = await self._video_repository.get_by_id(video_id)
         if not video:
@@ -109,19 +112,41 @@ class VideoService:
             raise ValueError("El video no está disponible para votación")
         
         # Verificar que el votante no sea el propietario del video
-        if video.player_id == voter_id:
+        if video.player_id == player_id:
             raise ValueError("No puedes votar por tu propio video")
         
         # Verificar si el usuario ya votó por este video
-        if await self._video_repository.has_user_voted(video_id, voter_id):
+        if await self._vote_repository.has_user_voted(video_id, player_id):
             raise ValueError("Ya has votado por este video")
         
-        # Incrementar votos directamente en el repositorio
-        success = await self._video_repository.increment_votes(video_id, voter_id)
-        if not success:
-            raise VideoNotFoundException(f"Video con ID {video_id} no encontrado")
+        # Crear el voto usando el VoteRepository
+        vote = Vote(
+            id=None,
+            video_id=video_id,
+            player_id=player_id
+        )
         
+        await self._vote_repository.create(vote)
         return True
+    
+    async def get_video_votes_count(self, video_id: int) -> int:
+        """Obtiene el número de votos de un video"""
+        return await self._vote_repository.count_votes_for_video(video_id)
+    
+    async def get_videos_with_votes(self) -> List[dict]:
+        """Obtiene videos públicos con su conteo de votos"""
+        videos = await self._video_repository.get_public_videos()
+        video_ids = [video.id for video in videos]
+        vote_counts = await self._vote_repository.get_votes_by_videos(video_ids)
+        
+        result = []
+        for video in videos:
+            result.append({
+                "video": video,
+                "votes_count": vote_counts.get(video.id, 0)
+            })
+        
+        return result
     
     async def _validate_video_file(self, file: UploadFile) -> None:
         """Valida el archivo de video"""

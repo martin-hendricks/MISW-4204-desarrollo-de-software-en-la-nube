@@ -36,12 +36,3 @@ class VideoRepositoryInterface(ABC):
         """Elimina un video"""
         pass
     
-    @abstractmethod
-    async def increment_votes(self, video_id: int, voter_id: int) -> bool:
-        """Incrementa el contador de votos de un video y registra el voto"""
-        pass
-    
-    @abstractmethod
-    async def has_user_voted(self, video_id: int, voter_id: int) -> bool:
-        """Verifica si un usuario ya votó por un video"""
-        pass

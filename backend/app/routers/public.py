@@ -38,8 +38,8 @@ async def list_videos_for_voting(
                 video_id=video.id,
                 title=video.title,
                 status=video.status.value,
-                uploaded_at=video.created_at,
-                processed_at=video.created_at,
+                uploaded_at=video.uploaded_at,
+                processed_at=video.uploaded_at,
                 processed_url=video.processed_url
             )
             for video in videos
@@ -51,7 +51,7 @@ async def list_videos_for_voting(
 @router.post("/videos/{video_id}/vote", response_model=VoteResponseDTO)
 async def vote_for_video(
     video_id: int,
-    voter_id: int = Depends(get_current_player_id),
+    player_id: int = Depends(get_current_player_id),
     video_service: Annotated[VideoService, Depends(get_video_service)] = None
 ):
     """
@@ -60,9 +60,9 @@ async def vote_for_video(
     - Un usuario solo puede votar una vez por el mismo video.
     """
     try:
-        # voter_id ya viene de la dependencia de autenticación
+        # player_id ya viene de la dependencia de autenticación
         
-        await video_service.vote_for_video(video_id, voter_id)
+        await video_service.vote_for_video(video_id, player_id)
         return VoteResponseDTO(message="Voto registrado exitosamente.")
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -92,14 +92,16 @@ async def get_rankings(
             )
         
         # Obtener todos los videos con sus votos
-        all_videos = await video_service.get_public_videos()
+        videos_with_votes = await video_service.get_videos_with_votes()
         
         # Agrupar por jugador y sumar votos
         player_votes = {}
-        for video in all_videos:
+        for video_data in videos_with_votes:
+            video = video_data["video"]
+            votes_count = video_data["votes_count"]
             if video.player_id not in player_votes:
                 player_votes[video.player_id] = 0
-            player_votes[video.player_id] += video.votes_count
+            player_votes[video.player_id] += votes_count
         
         # Obtener información de los jugadores
         rankings = []

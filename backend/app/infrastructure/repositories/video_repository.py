@@ -36,8 +36,7 @@ class VideoRepository(VideoRepositoryInterface):
             status=status_map.get(model.status, VideoStatus.UPLOADED),
             original_url=model.original_url,
             processed_url=model.processed_url,
-            votes_count=model.votes_count,
-            created_at=model.created_at
+            uploaded_at=model.uploaded_at
         )
     
     def _to_model(self, video: Video) -> VideoModel:
@@ -55,8 +54,7 @@ class VideoRepository(VideoRepositoryInterface):
             "title": video.title,
             "status": status_map.get(video.status, VideoStatusEnum.UPLOADED),
             "original_url": video.original_url,
-            "processed_url": video.processed_url,
-            "votes_count": video.votes_count
+            "processed_url": video.processed_url
         }
         
         # Solo incluir id si existe (para updates)
@@ -67,10 +65,10 @@ class VideoRepository(VideoRepositoryInterface):
         if video.id is None:  # Nuevo registro
             from datetime import datetime
             now = datetime.now()
-            model_data["created_at"] = now
+            model_data["uploaded_at"] = now
         else:  # Actualización
-            if video.created_at is not None:
-                model_data["created_at"] = video.created_at
+            if video.uploaded_at is not None:
+                model_data["uploaded_at"] = video.uploaded_at
         
         return VideoModel(**model_data)
     
@@ -112,7 +110,7 @@ class VideoRepository(VideoRepositoryInterface):
         db = self._get_db()
         try:
             models = db.query(VideoModel).filter(
-                VideoModel.status == VideoStatusEnum.PROCESSED
+                VideoModel.status == 'processed'
             ).all()
             return [self._to_domain(model) for model in models]
         finally:
@@ -137,7 +135,6 @@ class VideoRepository(VideoRepositoryInterface):
                 model.status = status_map.get(video.status, VideoStatusEnum.UPLOADED)
                 model.original_url = video.original_url
                 model.processed_url = video.processed_url
-                model.votes_count = video.votes_count
                 db.commit()
                 db.refresh(model)
                 return self._to_domain(model)
@@ -160,42 +157,3 @@ class VideoRepository(VideoRepositoryInterface):
             if not self._db:
                 db.close()
     
-    async def increment_votes(self, video_id: int, voter_id: int) -> bool:
-        """Incrementa el contador de votos de un video y registra el voto"""
-        db = self._get_db()
-        try:
-            # Verificar que el video existe
-            video_model = db.query(VideoModel).filter(VideoModel.id == video_id).first()
-            if not video_model:
-                return False
-            
-            # Crear el registro de voto
-            from app.infrastructure.database.models import VoteModel
-            vote = VoteModel(video_id=video_id, voter_id=voter_id)
-            db.add(vote)
-            
-            # Incrementar contador de votos
-            video_model.votes_count += 1
-            
-            db.commit()
-            return True
-        except Exception as e:
-            db.rollback()
-            raise e
-        finally:
-            if not self._db:
-                db.close()
-    
-    async def has_user_voted(self, video_id: int, voter_id: int) -> bool:
-        """Verifica si un usuario ya votó por un video"""
-        db = self._get_db()
-        try:
-            from app.infrastructure.database.models import VoteModel
-            vote = db.query(VoteModel).filter(
-                VoteModel.video_id == video_id,
-                VoteModel.voter_id == voter_id
-            ).first()
-            return vote is not None
-        finally:
-            if not self._db:
-                db.close()

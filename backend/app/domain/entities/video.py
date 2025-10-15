@@ -22,8 +22,7 @@ class Video:
     status: VideoStatus
     original_url: Optional[str] = None
     processed_url: Optional[str] = None
-    votes_count: int = 0
-    created_at: Optional[datetime] = None
+    uploaded_at: Optional[datetime] = None
     
     def __post_init__(self):
         """Validaciones después de la inicialización"""
@@ -51,16 +50,6 @@ class Video:
         """Marca el video como fallido"""
         self.status = VideoStatus.FAILED
     
-    def add_vote(self) -> None:
-        """Añade un voto al video"""
-        if self.status != VideoStatus.PROCESSED:
-            raise ValueError("Solo se pueden votar videos que estén procesados")
-        self.votes_count += 1
-    
-    def remove_vote(self) -> None:
-        """Remueve un voto del video"""
-        if self.votes_count > 0:
-            self.votes_count -= 1
     
     def can_be_deleted(self) -> bool:
         """Verifica si el video puede ser eliminado"""

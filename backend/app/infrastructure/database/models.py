@@ -22,7 +22,7 @@ class PlayerModel(Base):
     
     # Relaciones
     videos = relationship("VideoModel", back_populates="player", cascade="all, delete-orphan")
-    votes = relationship("VoteModel", back_populates="voter", cascade="all, delete-orphan")
+    votes = relationship("VoteModel", back_populates="player", cascade="all, delete-orphan")
 
 
 class VideoStatusEnum(str, enum.Enum):
@@ -40,11 +40,10 @@ class VideoModel(Base):
     id = Column(Integer, primary_key=True, index=True)
     player_id = Column(Integer, ForeignKey("players.id"), nullable=False, index=True)
     title = Column(String(200), nullable=False)
-    status = Column(Enum(VideoStatusEnum), default=VideoStatusEnum.UPLOADED, nullable=False)
+    status = Column(Enum(VideoStatusEnum, name='video_status', create_type=False, values_callable=lambda x: [e.value for e in x]), default=VideoStatusEnum.UPLOADED, nullable=False)
     original_url = Column(String(500))
     processed_url = Column(String(500))
-    votes_count = Column(Integer, default=0, nullable=False)
-    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    uploaded_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     
     # Relaciones
     player = relationship("PlayerModel", back_populates="videos")
@@ -57,12 +56,12 @@ class VoteModel(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     video_id = Column(Integer, ForeignKey("videos.id"), nullable=False, index=True)
-    voter_id = Column(Integer, ForeignKey("players.id"), nullable=False, index=True)
+    player_id = Column(Integer, ForeignKey("players.id"), nullable=False, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     
     # Relaciones
     video = relationship("VideoModel", back_populates="votes")
-    voter = relationship("PlayerModel", back_populates="votes")
+    player = relationship("PlayerModel", back_populates="votes")
     
     # Constraint para evitar votos duplicados
     __table_args__ = (

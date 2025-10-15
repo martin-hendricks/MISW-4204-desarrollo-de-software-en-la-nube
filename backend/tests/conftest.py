@@ -32,7 +32,6 @@ class Video(Base):
     status = Column(String(20), default="uploaded")
     original_url = Column(String(500))
     processed_url = Column(String(500))
-    votes_count = Column(Integer, default=0)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 # Base de datos de prueba
@@ -112,7 +111,6 @@ async def test_video(db_session, test_player):
         status="processed",
         original_url="/uploads/test_video.mp4",
         processed_url="/uploads/processed_test_video.mp4",
-        votes_count=0
     )
     db_session.add(video)
     db_session.commit()

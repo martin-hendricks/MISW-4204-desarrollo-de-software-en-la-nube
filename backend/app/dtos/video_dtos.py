@@ -29,10 +29,10 @@ class VideoDetailDTO(BaseModel):
     video_id: int
     title: str
     status: str
-    votes: int
+    votes: Optional[int] = 0
     original_url: Optional[str] = None
     processed_url: Optional[str] = None
-    created_at: Optional[datetime] = None
+    uploaded_at: Optional[datetime] = None
 
 
 class VideoDeleteResponseDTO(BaseModel):

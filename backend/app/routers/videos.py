@@ -88,8 +88,8 @@ async def get_my_videos(
                 video_id=video.id,
                 title=video.title,
                 status=video.status.value,
-                uploaded_at=video.created_at,
-                processed_at=video.created_at if video.status.value == "processed" else None,
+                uploaded_at=video.uploaded_at,
+                processed_at=video.uploaded_at if video.status.value == "processed" else None,
                 processed_url=video.processed_url if video.status.value == "processed" else None
             )
             for video in videos
@@ -113,14 +113,17 @@ async def get_specific_video(
         
         video = await video_service.get_video(video_id, player_id)
         
+        # Obtener el conteo de votos dinámicamente
+        votes_count = await video_service.get_video_votes_count(video_id)
+        
         return VideoDetailDTO(
             video_id=video.id,
             title=video.title,
             status=video.status.value,
-            votes=video.votes_count,
+            votes=votes_count,
             original_url=video.original_url,
             processed_url=video.processed_url,
-            created_at=video.created_at
+            uploaded_at=video.uploaded_at
         )
     except HTTPException:
         raise

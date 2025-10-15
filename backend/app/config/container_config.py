@@ -5,6 +5,7 @@ from app.shared.interfaces.file_storage import FileStorageInterface
 from app.shared.interfaces.authentication import AuthenticationInterface
 from app.domain.repositories.player_repository import PlayerRepositoryInterface
 from app.domain.repositories.video_repository import VideoRepositoryInterface
+from app.domain.repositories.vote_repository import VoteRepositoryInterface
 from app.config.settings import settings, FileStorageType
 
 
@@ -27,9 +28,11 @@ def configure_container():
     # Configurar repositorios
     from app.infrastructure.repositories.player_repository import PlayerRepository
     from app.infrastructure.repositories.video_repository import VideoRepository
+    from app.infrastructure.repositories.vote_repository import VoteRepository
     
     container.register_singleton(PlayerRepositoryInterface, PlayerRepository)
     container.register_singleton(VideoRepositoryInterface, VideoRepository)
+    container.register_singleton(VoteRepositoryInterface, VoteRepository)
 
 
 # Configurar el contenedor al importar el módulo
