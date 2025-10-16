@@ -19,7 +19,7 @@ def get_video_service() -> VideoService:
     return container.get_video_service()
 
 
-@router.post("/upload", response_model=VideoUploadResponseDTO, status_code=status.HTTP_201_CREATED)
+@router.post("/upload", response_model=VideoUploadResponseDTO, status_code=status.HTTP_202_ACCEPTED)
 async def upload_video(
     title: str = Form(...),
     video_file: UploadFile = File(...),

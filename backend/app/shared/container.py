@@ -7,7 +7,8 @@ from app.domain.repositories.player_repository import PlayerRepositoryInterface
 from app.domain.repositories.video_repository import VideoRepositoryInterface
 from app.domain.repositories.vote_repository import VoteRepositoryInterface
 from app.services.player_service import PlayerService
-from app.services.video_service import VideoService
+import os
+from app.services.video_service import VideoService, MockVideoService
 
 
 class DIContainer:
@@ -49,8 +50,15 @@ class DIContainer:
         )
     
     def get_video_service(self) -> VideoService:
-        """Obtiene el servicio de videos"""
-        return VideoService(
+        """Obtiene el servicio de videos, usando el mock si está en modo test."""
+        
+        # Usa MockVideoService si la variable de entorno TEST_MODE es 'true'
+        if os.getenv("TEST_MODE") == "true":
+            ServiceClass = MockVideoService
+        else:
+            ServiceClass = VideoService
+            
+        return ServiceClass(
             video_repository=self.get(VideoRepositoryInterface),
             vote_repository=self.get(VoteRepositoryInterface),
             file_storage=self.get(FileStorageInterface)
