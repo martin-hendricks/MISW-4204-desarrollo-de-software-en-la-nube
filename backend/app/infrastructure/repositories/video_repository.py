@@ -24,7 +24,6 @@ class VideoRepository(VideoRepositoryInterface):
         # Convertir el enum de SQLAlchemy al enum de dominio
         status_map = {
             VideoStatusEnum.UPLOADED: VideoStatus.UPLOADED,
-            VideoStatusEnum.PROCESSING: VideoStatus.PROCESSING,
         }
         
         return Video(
