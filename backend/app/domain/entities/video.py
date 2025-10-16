@@ -21,6 +21,7 @@ class Video:
     original_url: Optional[str] = None
     processed_url: Optional[str] = None
     uploaded_at: Optional[datetime] = None
+    processed_at: Optional[datetime] = None
     
     def __post_init__(self):
         """Validaciones después de la inicialización"""
@@ -34,8 +35,10 @@ class Video:
     
     def mark_as_processed(self, processed_url: str) -> None:
         """Marca el video como procesado"""
+        from datetime import datetime
         self.status = VideoStatus.PROCESSED
         self.processed_url = processed_url
+        self.processed_at = datetime.now()
     
     
     

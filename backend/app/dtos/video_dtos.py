@@ -33,6 +33,7 @@ class VideoDetailDTO(BaseModel):
     original_url: Optional[str] = None
     processed_url: Optional[str] = None
     uploaded_at: Optional[datetime] = None
+    processed_at: Optional[datetime] = None
 
 
 class VideoDeleteResponseDTO(BaseModel):

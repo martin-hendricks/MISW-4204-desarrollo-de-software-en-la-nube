@@ -9,6 +9,9 @@ from app.dtos.video_dtos import (
 from app.services.video_service import VideoService
 from app.shared.container import container
 from app.shared.dependencies.auth_dependencies import get_current_player_id
+from app.shared.exceptions.video_exceptions import (
+    VideoNotFoundException, VideoNotOwnedException, VideoCannotBeDeletedException
+)
 
 router = APIRouter(prefix="/videos", tags=["gestión de videos"])
 security = HTTPBearer()
@@ -89,7 +92,7 @@ async def get_my_videos(
                 title=video.title,
                 status=video.status.value,
                 uploaded_at=video.uploaded_at,
-                processed_at=video.uploaded_at if video.status.value == "processed" else None,
+                processed_at=video.processed_at if video.status.value == "processed" else None,
                 processed_url=video.processed_url if video.status.value == "processed" else None
             )
             for video in videos
@@ -123,8 +126,13 @@ async def get_specific_video(
             votes=votes_count,
             original_url=video.original_url,
             processed_url=video.processed_url,
-            uploaded_at=video.uploaded_at
+            uploaded_at=video.uploaded_at,
+            processed_at=video.processed_at
         )
+    except VideoNotFoundException as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except VideoNotOwnedException as e:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
     except HTTPException:
         raise
     except Exception as e:
@@ -145,8 +153,6 @@ async def delete_video(
         # player_id ya viene de la dependencia de autenticación
         
         # Eliminar video usando el servicio
-        from app.shared.exceptions.video_exceptions import VideoNotFoundException, VideoNotOwnedException, VideoCannotBeDeletedException
-        
         success = await video_service.delete_video(video_id, player_id)
         
         if success:
