@@ -3,6 +3,7 @@
 from typing import Dict, Any, Type
 from app.shared.interfaces.file_storage import FileStorageInterface
 from app.shared.interfaces.authentication import AuthenticationInterface
+from app.shared.interfaces.task_queue import TaskQueueInterface
 from app.domain.repositories.player_repository import PlayerRepositoryInterface
 from app.domain.repositories.video_repository import VideoRepositoryInterface
 from app.domain.repositories.vote_repository import VoteRepositoryInterface
@@ -53,7 +54,8 @@ class DIContainer:
         return VideoService(
             video_repository=self.get(VideoRepositoryInterface),
             vote_repository=self.get(VoteRepositoryInterface),
-            file_storage=self.get(FileStorageInterface)
+            file_storage=self.get(FileStorageInterface),
+            task_queue=self.get(TaskQueueInterface)
         )
 
 
