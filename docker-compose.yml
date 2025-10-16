@@ -25,10 +25,12 @@ services:
       - UPLOAD_DIR=/app/uploads
     volumes:
       - video_storage:/app/uploads  # Volumen compartido con worker
+
     depends_on:
       - database
       - redis
       - minio
+
     networks:
       - app-network
     restart: unless-stopped
