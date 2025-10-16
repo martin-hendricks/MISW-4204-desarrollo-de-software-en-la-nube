@@ -6,17 +6,23 @@ El worker solo puede leer/actualizar los campos que existen en la base de datos
 """
 from sqlalchemy import Column, Integer, String, DateTime, Enum
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.sql import func
 from datetime import datetime
 import enum
 
 Base = declarative_base()
 
 
-class VideoStatus(enum.Enum):
-    """Estados posibles de un video según init.sql"""
+class VideoStatus(str, enum.Enum):
+    """Estados posibles de un video según init.sql
+    
+    IMPORTANTE: Solo 'uploaded' y 'processed' existen en PostgreSQL.
+    'failed' NO existe en el ENUM actual de la BD.
+    """
     uploaded = "uploaded"
     processed = "processed"
-    failed = "failed"
+    # NOTA: 'failed' NO existe en init.sql, comentado para evitar intentar usarlo
+    # failed = "failed"
 
 
 class Video(Base):
@@ -47,9 +53,13 @@ class Video(Base):
     player_id = Column(Integer, nullable=False)  # Era user_id, ahora player_id
     title = Column(String(255), nullable=False)
     
-    # Estado (ENUM en PostgreSQL: 'uploaded', 'processed', 'failed')
-    # Nota: SQLAlchemy lo maneja como String, pero PostgreSQL valida el ENUM
-    status = Column(String(50), default="uploaded", nullable=False)
+    # Estado (ENUM en PostgreSQL: 'uploaded', 'processed')
+    # IMPORTANTE: Usar Enum de SQLAlchemy para mapear correctamente el tipo ENUM de PostgreSQL
+    status = Column(
+        Enum(VideoStatus, name='video_status', create_type=False, values_callable=lambda x: [e.value for e in x]),
+        default=VideoStatus.uploaded,
+        nullable=False
+    )
     
     # URLs públicas (lo que ve el usuario final)
     original_url = Column(String(512), nullable=True)

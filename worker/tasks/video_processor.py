@@ -162,8 +162,8 @@ def process_video(self, video_id: int) -> Dict:
             }
 
         # Actualizar registro en BD
-        video.status = VideoStatus.processed.value
-        video.processed_at = datetime.now()
+        video.status = VideoStatus.processed  # SQLAlchemy maneja el enum automáticamente
+        video.processed_at = datetime.utcnow()
         
         # Generar URL pública para el video procesado
         # El backend puede servir el archivo desde /app/uploads/processed/{video_id}_processed.mp4
@@ -213,19 +213,12 @@ def process_video(self, video_id: int) -> Dict:
         logger.error("   Razón: Tiempo límite de procesamiento excedido")
 
         # NOTA: El ENUM video_status en init.sql solo tiene 'uploaded' y 'processed'
-        # No podemos marcar como 'failed' sin actualizar el schema de BD
+        # NO existe 'failed', por lo tanto NO actualizamos la BD
         # El video permanecerá en estado 'uploaded' cuando falle
         if self.request.retries >= self.max_retries:
-            try:
-                db = get_db_session()
-                video = db.query(Video).filter(Video.id == video_id).first()
-                if video:
-                    video.status = VideoStatus.failed.value
-                    db.commit()
-                    logger.info(f"💀 Video {video_id} marcado como 'failed' en BD")
-                db.close()
-            except Exception as db_error:
-                logger.error(f"❌ Error actualizando BD: {db_error}")
+            logger.warning(f"💀 Video {video_id} falló definitivamente")
+            logger.warning(f"   El video permanece en estado 'uploaded' en la BD")
+            logger.warning(f"   Para agregar estado 'failed': ALTER TYPE video_status ADD VALUE 'failed';")
         raise
 
     except VideoProcessingError as e:
@@ -233,18 +226,12 @@ def process_video(self, video_id: int) -> Dict:
         logger.error(f"   Intento: {self.request.retries + 1}/{self.max_retries + 1}")
 
         # NOTA: El ENUM video_status en init.sql solo tiene 'uploaded' y 'processed'
-        # No podemos marcar como 'failed' sin actualizar el schema de BD
+        # NO existe 'failed', por lo tanto NO actualizamos la BD
+        # El video permanecerá en estado 'uploaded' cuando falle
         if self.request.retries >= self.max_retries:
-            try:
-                db = get_db_session()
-                video = db.query(Video).filter(Video.id == video_id).first()
-                if video:
-                    video.status = VideoStatus.failed.value
-                    db.commit()
-                    logger.info(f"💀 Video {video_id} marcado como 'failed' en BD")
-                db.close()
-            except Exception as db_error:
-                logger.error(f"❌ Error actualizando BD: {db_error}")
+            logger.warning(f"💀 Video {video_id} falló definitivamente")
+            logger.warning(f"   El video permanece en estado 'uploaded' en la BD")
+            logger.warning(f"   Para agregar estado 'failed': ALTER TYPE video_status ADD VALUE 'failed';")
         raise
 
     except Exception as e:
@@ -252,18 +239,12 @@ def process_video(self, video_id: int) -> Dict:
         logger.error(f"   Intento: {self.request.retries + 1}/{self.max_retries + 1}")
 
         # NOTA: El ENUM video_status en init.sql solo tiene 'uploaded' y 'processed'
-        # No podemos marcar como 'failed' sin actualizar el schema de BD
+        # NO existe 'failed', por lo tanto NO actualizamos la BD
+        # El video permanecerá en estado 'uploaded' cuando falle
         if self.request.retries >= self.max_retries:
-            try:
-                db = get_db_session()
-                video = db.query(Video).filter(Video.id == video_id).first()
-                if video:
-                    video.status = VideoStatus.failed.value
-                    db.commit()
-                    logger.info(f"💀 Video {video_id} marcado como 'failed' en BD")
-                db.close()
-            except Exception as db_error:
-                logger.error(f"❌ Error actualizando BD: {db_error}")
+            logger.warning(f"💀 Video {video_id} falló definitivamente")
+            logger.warning(f"   El video permanece en estado 'uploaded' en la BD")
+            logger.warning(f"   Para agregar estado 'failed': ALTER TYPE video_status ADD VALUE 'failed';")
         raise
 
     finally:
