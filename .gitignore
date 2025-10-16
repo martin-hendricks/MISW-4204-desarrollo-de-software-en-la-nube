@@ -34,9 +34,14 @@ Thumbs.db
 .idea/
 *.swp
 
-# Video files
-*.mp4
-*.mov
+# Video files (uploads de usuarios)
+# Ignorar videos en directorios de uploads
+**/uploads/**/*.mp4
+**/uploads/**/*.mov
+
+# PERO permitir assets del worker (intro, outro, etc)
+!worker/assets/*.mp4
+!worker/assets/*.mov
 
 # Temporary files
 tmp/

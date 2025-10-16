@@ -14,8 +14,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copiar código de la aplicación
 COPY . .
 
-# Crear directorios para videos
-RUN mkdir -p /app/uploads/original /app/uploads/processed /app/uploads/temp
+# Crear directorios para videos y assets
+RUN mkdir -p /app/uploads/original /app/uploads/processed /app/uploads/temp /app/assets
 
 # Exponer puerto para Health API
 EXPOSE 8001

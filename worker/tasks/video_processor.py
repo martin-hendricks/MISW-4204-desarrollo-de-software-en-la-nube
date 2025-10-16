@@ -130,17 +130,25 @@ def process_video(self, video_id: int) -> Dict:
             config.OUTRO_VIDEO_PATH
         ):
             logger.info("🎬 Agregando cortinillas...")
-            final_path = os.path.join(config.PROCESSED_DIR, f"{video_id}_final.mp4")
+            # Crear archivo temporal para video con cortinillas
+            temp_with_intros = os.path.join(config.TEMP_DIR, f"{video_id}_with_intros.mp4")
 
             video_processor.add_intro_outro(
-                video_path=processed_path, output_path=final_path
+                video_path=processed_path, output_path=temp_with_intros
             )
 
-            # Usar el video final
-            if os.path.exists(final_path):
-                processed_path = final_path
-                temp_files.append(final_path)
-                logger.info(f"✅ Cortinillas agregadas: {final_path}")
+            # Reemplazar el archivo procesado con el que tiene cortinillas
+            if os.path.exists(temp_with_intros):
+                # Eliminar el archivo sin cortinillas
+                if os.path.exists(processed_path):
+                    os.remove(processed_path)
+                    logger.info(f"🗑️  Eliminado archivo sin cortinillas: {processed_path}")
+                
+                # Mover el archivo con cortinillas al nombre final
+                os.rename(temp_with_intros, processed_path)
+                logger.info(f"✅ Cortinillas agregadas y archivo final: {processed_path}")
+            else:
+                logger.warning("⚠️ No se pudo agregar cortinillas, usando video sin cortinillas")
 
         # ===== 5. ACTUALIZAR BASE DE DATOS CON RESULTADO =====
         # SOLO AHORA consultamos la BD para actualizar el resultado

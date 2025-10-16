@@ -55,12 +55,19 @@ htmlcov/
 .DS_Store
 Thumbs.db
 
-# Uploads (no versionar videos)
+# Uploads (no versionar videos subidos por usuarios)
 uploads/
+
+# Videos en general (excepto assets)
 *.mp4
 *.avi
 *.mov
 *.mkv
+
+# PERO permitir assets del worker
+!assets/*.mp4
+!assets/*.mov
+!assets/*.png
 
 # Temporary files
 temp/
