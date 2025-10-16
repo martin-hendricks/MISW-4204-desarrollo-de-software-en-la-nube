@@ -13,7 +13,7 @@ class VideoListItemDTO(BaseModel):
     """DTO para item de lista de videos"""
     video_id: int
     title: str
-    status: str  # uploaded, processing, processed, failed
+    status: str  # uploaded, processed
     uploaded_at: datetime
     
     # Campos opcionales que solo están presentes si el video está procesado

@@ -28,9 +28,7 @@ class PlayerModel(Base):
 class VideoStatusEnum(str, enum.Enum):
     """Enum para estados de video"""
     UPLOADED = "uploaded"
-    PROCESSING = "processing"
     PROCESSED = "processed"
-    FAILED = "failed"
 
 
 class VideoModel(Base):

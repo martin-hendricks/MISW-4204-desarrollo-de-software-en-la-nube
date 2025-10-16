@@ -317,9 +317,7 @@ El token se obtiene del endpoint `/api/auth/login` y debe incluirse en todas las
 ## 📊 Estados de Video
 
 - `uploaded`: Video subido, pendiente de procesamiento
-- `processing`: Video en procesamiento
 - `processed`: Video procesado y disponible para votación
-- `failed`: Error en el procesamiento
 
 ---
 

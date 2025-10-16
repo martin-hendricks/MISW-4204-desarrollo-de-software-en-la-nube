@@ -75,7 +75,7 @@ async def get_my_videos(
     """
     Consulta el listado de videos subidos por el jugador autenticado.
     Retorna diferentes campos según el estado del video:
-    - uploaded/processing: video_id, title, status, uploaded_at
+    - uploaded/processed: video_id, title, status, uploaded_at
     - processed: video_id, title, status, uploaded_at, processed_at, processed_url
     """
     try:

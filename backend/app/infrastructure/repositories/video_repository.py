@@ -25,8 +25,6 @@ class VideoRepository(VideoRepositoryInterface):
         status_map = {
             VideoStatusEnum.UPLOADED: VideoStatus.UPLOADED,
             VideoStatusEnum.PROCESSING: VideoStatus.PROCESSING,
-            VideoStatusEnum.PROCESSED: VideoStatus.PROCESSED,
-            VideoStatusEnum.FAILED: VideoStatus.FAILED
         }
         
         return Video(
@@ -44,9 +42,7 @@ class VideoRepository(VideoRepositoryInterface):
         # Convertir el enum de dominio al enum de SQLAlchemy
         status_map = {
             VideoStatus.UPLOADED: VideoStatusEnum.UPLOADED,
-            VideoStatus.PROCESSING: VideoStatusEnum.PROCESSING,
             VideoStatus.PROCESSED: VideoStatusEnum.PROCESSED,
-            VideoStatus.FAILED: VideoStatusEnum.FAILED
         }
         
         model_data = {
@@ -126,9 +122,7 @@ class VideoRepository(VideoRepositoryInterface):
                 # Convertir el enum de dominio al enum de SQLAlchemy
                 status_map = {
                     VideoStatus.UPLOADED: VideoStatusEnum.UPLOADED,
-                    VideoStatus.PROCESSING: VideoStatusEnum.PROCESSING,
                     VideoStatus.PROCESSED: VideoStatusEnum.PROCESSED,
-                    VideoStatus.FAILED: VideoStatusEnum.FAILED
                 }
                 
                 model.title = video.title

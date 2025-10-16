@@ -163,11 +163,7 @@ class VideoService:
     # Método removido - ya no se usa filename único con UUID
     
     async def _start_video_processing(self, video: Video) -> None:
-        """Inicia el procesamiento asíncrono del video"""
-        # Aquí se integraría con Celery o el sistema de tareas asíncronas
-        video.start_processing()
-        await self._video_repository.update(video)
-        
+        """Marca un video como procesado"""
         # En una implementación real, aquí se enviaría la tarea a la cola
         # await self._task_queue.enqueue('process_video', video.id)
     
