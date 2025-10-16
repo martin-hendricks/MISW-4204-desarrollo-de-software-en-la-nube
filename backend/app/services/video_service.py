@@ -186,4 +186,17 @@ class VideoService:
         if not video.processed_url:
             raise ValueError("El video procesado no está disponible")
         
+
         return await self._file_storage.get_file_content(video_id, "processed")
+
+
+class MockVideoService(VideoService):
+    """Implementación mock del servicio de videos para pruebas de carga"""
+    
+    async def _start_video_processing(self, video: Video) -> None:
+        """Sobrescribe el método para no hacer nada y retornar instantáneamente."""
+        # En modo mock, no se inicia el procesamiento asíncrono.
+        # Simplemente se loguea o no se hace nada.
+        print(f"[Mock Mode] Video processing skipped for video_id: {video.id}")
+        return
+
