@@ -93,7 +93,7 @@ class VideoService:
             raise VideoCannotBeDeletedException("El video no puede ser eliminado en su estado actual")
         
         # Eliminar archivo del almacenamiento
-        await self._file_storage.delete_file(video.filename)
+        await self._file_storage.delete_file(video_id)
         
         # Eliminar de la base de datos
         return await self._video_repository.delete(video_id)
@@ -177,7 +177,7 @@ class VideoService:
     async def get_original_video(self, video_id: int, player_id: int) -> bytes:
         """Obtiene el contenido del video original"""
         video = await self.get_video(video_id, player_id)
-        return await self._file_storage.get_file_content(video.filename, "original")
+        return await self._file_storage.get_file_content(video_id, "original")
     
     async def get_processed_video(self, video_id: int, player_id: int) -> bytes:
         """Obtiene el contenido del video procesado"""
@@ -186,7 +186,8 @@ class VideoService:
         if not video.processed_url:
             raise ValueError("El video procesado no está disponible")
         
-        return await self._file_storage.get_file_content(video.filename, "processed")
+
+        return await self._file_storage.get_file_content(video_id, "processed")
 
 
 class MockVideoService(VideoService):
@@ -198,3 +199,4 @@ class MockVideoService(VideoService):
         # Simplemente se loguea o no se hace nada.
         print(f"[Mock Mode] Video processing skipped for video_id: {video.id}")
         return
+
