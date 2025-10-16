@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   prometheus:
     image: prom/prometheus:latest
@@ -37,7 +35,7 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     # Keep the container running to execute tests on demand
-    command: "tail -f /dev/null"
+    entrypoint: tail -f /dev/null
 
 volumes:
   grafana-storage: {}

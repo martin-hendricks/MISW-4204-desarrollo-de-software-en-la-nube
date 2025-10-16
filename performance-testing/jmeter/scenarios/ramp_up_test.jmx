@@ -26,7 +26,7 @@
           </collectionProp>
         </HeaderManager>
         <hashTree/>
-        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="POST /videos/upload" enabled="true">
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="POST /api/videos/upload" enabled="true">
           <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" enabled="true">
             <collectionProp name="Arguments.arguments">
               <elementProp name="title" elementType="HTTPArgument">
@@ -41,7 +41,7 @@
           <stringProp name="HTTPSampler.domain">host.docker.internal</stringProp>
           <stringProp name="HTTPSampler.port">80</stringProp>
           <stringProp name="HTTPSampler.protocol">http</stringProp>
-          <stringProp name="HTTPSampler.path">/videos/upload</stringProp>
+          <stringProp name="HTTPSampler.path">/api/videos/upload</stringProp>
           <stringProp name="HTTPSampler.method">POST</stringProp>
           <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
           <boolProp name="HTTPSampler.auto_redirects">false</boolProp>
@@ -49,8 +49,8 @@
           <boolProp name="HTTPSampler.DO_MULTIPART_POST">true</boolProp>
           <elementProp name="HTTPsampler.Files" elementType="HTTPFileArgs">
             <collectionProp name="HTTPFileArgs.files">
-              <elementProp name="/scripts/dummy_file.txt" elementType="HTTPFileArg">
-                <stringProp name="File.path">/scripts/dummy_file.txt</stringProp>
+              <elementProp name="/scripts/dummy_file.mp4" elementType="HTTPFileArg">
+                <stringProp name="File.path">/scripts/dummy_file.mp4</stringProp>
                 <stringProp name="File.paramname">video_file</stringProp>
                 <stringProp name="File.mimetype">video/mp4</stringProp>
               </elementProp>

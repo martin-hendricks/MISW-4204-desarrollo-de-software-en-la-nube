@@ -48,7 +48,7 @@ Una vez que ambos entornos estén corriendo, puedes ejecutar los diferentes esce
 *   **Propósito:** Validar que todo el sistema responde correctamente con una carga mínima.
 *   **Comando:**
     ```sh
-    docker exec jmeter /bin/bash -c "/jmeter/bin/jmeter -n -t /scripts/smoke_test.jmx -l /scripts/smoke_results.jtl"
+    docker exec jmeter /bin/bash -c "jmeter -n -t /scripts/smoke_test.jmx -l /scripts/smoke_results.jtl"
     ```
 
 #### 2. Prueba de Escalamiento (Ramp-up)
@@ -57,10 +57,10 @@ Una vez que ambos entornos estén corriendo, puedes ejecutar los diferentes esce
 *   **Comandos de ejemplo:**
     ```sh
     # Prueba con 100 usuarios
-    docker exec jmeter /bin/bash -c "/jmeter/bin/jmeter -n -t /scripts/ramp_up_test.jmx -l /scripts/ramp_up_100_users_results.jtl -Jusers=100"
+    docker exec jmeter /bin/bash -c "jmeter -n -t /scripts/ramp_up_test.jmx -l /scripts/ramp_up_100_users_results.jtl -Jusers=100"
 
     # Prueba con 200 usuarios
-    docker exec jmeter /bin/bash -c "/jmeter/bin/jmeter -n -t /scripts/ramp_up_test.jmx -l /scripts/ramp_up_200_users_results.jtl -Jusers=200"
+    docker exec jmeter /bin/bash -c "jmeter -n -t /scripts/ramp_up_test.jmx -l /scripts/ramp_up_200_users_results.jtl -Jusers=200"
     ```
 
 #### 3. Prueba Sostenida (Sustained)
@@ -69,7 +69,7 @@ Una vez que ambos entornos estén corriendo, puedes ejecutar los diferentes esce
 *   **Comando de ejemplo:**
     ```sh
     # Prueba con 80 usuarios (si 100 fue la capacidad máxima)
-    docker exec jmeter /bin/bash -c "/jmeter/bin/jmeter -n -t /scripts/sustained_test.jmx -l /scripts/sustained_80_users_results.jtl -Jusers=80"
+    docker exec jmeter /bin/bash -c "jmeter -n -t /scripts/sustained_test.jmx -l /scripts/sustained_80_users_results.jtl -Jusers=80"
     ```
 
 ---

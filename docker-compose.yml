@@ -19,6 +19,7 @@ services:
     ports:
       - "8000:8000"
     environment:
+      - TEST_MODE=false
       - DATABASE_URL=postgresql://user:password@database:5432/fileprocessing
       - REDIS_URL=redis://redis:6379/0
       - MINIO_URL=http://minio:9000
