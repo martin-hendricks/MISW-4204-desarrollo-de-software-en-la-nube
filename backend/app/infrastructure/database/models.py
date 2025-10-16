@@ -28,9 +28,7 @@ class PlayerModel(Base):
 class VideoStatusEnum(str, enum.Enum):
     """Enum para estados de video"""
     UPLOADED = "uploaded"
-    PROCESSING = "processing"
     PROCESSED = "processed"
-    FAILED = "failed"
 
 
 class VideoModel(Base):
@@ -44,6 +42,7 @@ class VideoModel(Base):
     original_url = Column(String(500))
     processed_url = Column(String(500))
     uploaded_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    processed_at = Column(DateTime(timezone=True), nullable=True)
     
     # Relaciones
     player = relationship("PlayerModel", back_populates="videos")

@@ -1,4 +1,4 @@
-CREATE TYPE video_status AS ENUM ('uploaded', 'processed', 'failed');
+CREATE TYPE video_status AS ENUM ('uploaded', 'processed');
 
 CREATE TABLE players (
     id SERIAL PRIMARY KEY,

@@ -13,7 +13,7 @@ class VideoListItemDTO(BaseModel):
     """DTO para item de lista de videos"""
     video_id: int
     title: str
-    status: str  # uploaded, processing, processed, failed
+    status: str  # uploaded, processed
     uploaded_at: datetime
     
     # Campos opcionales que solo están presentes si el video está procesado
@@ -33,6 +33,7 @@ class VideoDetailDTO(BaseModel):
     original_url: Optional[str] = None
     processed_url: Optional[str] = None
     uploaded_at: Optional[datetime] = None
+    processed_at: Optional[datetime] = None
 
 
 class VideoDeleteResponseDTO(BaseModel):

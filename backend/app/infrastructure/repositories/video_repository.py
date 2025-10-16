@@ -24,9 +24,6 @@ class VideoRepository(VideoRepositoryInterface):
         # Convertir el enum de SQLAlchemy al enum de dominio
         status_map = {
             VideoStatusEnum.UPLOADED: VideoStatus.UPLOADED,
-            VideoStatusEnum.PROCESSING: VideoStatus.PROCESSING,
-            VideoStatusEnum.PROCESSED: VideoStatus.PROCESSED,
-            VideoStatusEnum.FAILED: VideoStatus.FAILED
         }
         
         return Video(
@@ -36,7 +33,8 @@ class VideoRepository(VideoRepositoryInterface):
             status=status_map.get(model.status, VideoStatus.UPLOADED),
             original_url=model.original_url,
             processed_url=model.processed_url,
-            uploaded_at=model.uploaded_at
+            uploaded_at=model.uploaded_at,
+            processed_at=model.processed_at
         )
     
     def _to_model(self, video: Video) -> VideoModel:
@@ -44,9 +42,7 @@ class VideoRepository(VideoRepositoryInterface):
         # Convertir el enum de dominio al enum de SQLAlchemy
         status_map = {
             VideoStatus.UPLOADED: VideoStatusEnum.UPLOADED,
-            VideoStatus.PROCESSING: VideoStatusEnum.PROCESSING,
             VideoStatus.PROCESSED: VideoStatusEnum.PROCESSED,
-            VideoStatus.FAILED: VideoStatusEnum.FAILED
         }
         
         model_data = {
@@ -54,7 +50,8 @@ class VideoRepository(VideoRepositoryInterface):
             "title": video.title,
             "status": status_map.get(video.status, VideoStatusEnum.UPLOADED),
             "original_url": video.original_url,
-            "processed_url": video.processed_url
+            "processed_url": video.processed_url,
+            "processed_at": video.processed_at
         }
         
         # Solo incluir id si existe (para updates)
@@ -126,15 +123,14 @@ class VideoRepository(VideoRepositoryInterface):
                 # Convertir el enum de dominio al enum de SQLAlchemy
                 status_map = {
                     VideoStatus.UPLOADED: VideoStatusEnum.UPLOADED,
-                    VideoStatus.PROCESSING: VideoStatusEnum.PROCESSING,
                     VideoStatus.PROCESSED: VideoStatusEnum.PROCESSED,
-                    VideoStatus.FAILED: VideoStatusEnum.FAILED
                 }
                 
                 model.title = video.title
                 model.status = status_map.get(video.status, VideoStatusEnum.UPLOADED)
                 model.original_url = video.original_url
                 model.processed_url = video.processed_url
+                model.processed_at = video.processed_at
                 db.commit()
                 db.refresh(model)
                 return self._to_domain(model)
