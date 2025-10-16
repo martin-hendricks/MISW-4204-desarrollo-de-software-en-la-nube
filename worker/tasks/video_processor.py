@@ -11,7 +11,7 @@ from celery import Task
 from celery.exceptions import SoftTimeLimitExceeded
 from celery_app import app
 from config import config
-from models import Video
+from models import Video, VideoStatus
 from utils.video_processing import VideoProcessingError, video_processor
 
 from database import get_db_session
@@ -157,7 +157,7 @@ def process_video(self, video_id: int) -> Dict:
             }
 
         # Actualizar registro en BD
-        video.status = "processed"
+        video.status = VideoStatus.PROCESSED  # Usar el enum en lugar de string
         video.processed_at = datetime.now()
 
         # Generar URL pública para el video procesado
@@ -198,54 +198,34 @@ def process_video(self, video_id: int) -> Dict:
         logger.error(f"⏱️ Tiempo límite excedido para video {video_id}")
         logger.error("   Razón: Tiempo límite de procesamiento excedido")
 
-        # Solo si es el último intento, marcar como failed en BD
+        # NOTA: El ENUM video_status en init.sql solo tiene 'uploaded' y 'processed'
+        # No podemos marcar como 'failed' sin actualizar el schema de BD
+        # El video permanecerá en estado 'uploaded' cuando falle
         if self.request.retries >= self.max_retries:
-            try:
-                db = get_db_session()
-                video = db.query(Video).filter(Video.id == video_id).first()
-                if video:
-                    video.status = "failed"
-                    db.commit()
-                    logger.info(f"💀 Video {video_id} marcado como 'failed' en BD")
-                db.close()
-            except Exception as db_error:
-                logger.error(f"❌ Error actualizando BD: {db_error}")
+            logger.warning(f"💀 Video {video_id} falló definitivamente (permanece en estado 'uploaded')")
+            logger.warning("   Para marcar como 'failed', actualizar ENUM video_status en PostgreSQL")
         raise
 
     except VideoProcessingError as e:
         logger.error(f"❌ Error de procesamiento: {e}")
         logger.error(f"   Intento: {self.request.retries + 1}/{self.max_retries + 1}")
 
-        # Solo si es el último intento, marcar como failed en BD
+        # NOTA: El ENUM video_status en init.sql solo tiene 'uploaded' y 'processed'
+        # No podemos marcar como 'failed' sin actualizar el schema de BD
         if self.request.retries >= self.max_retries:
-            try:
-                db = get_db_session()
-                video = db.query(Video).filter(Video.id == video_id).first()
-                if video:
-                    video.status = "failed"
-                    db.commit()
-                    logger.info(f"💀 Video {video_id} marcado como 'failed' en BD")
-                db.close()
-            except Exception as db_error:
-                logger.error(f"❌ Error actualizando BD: {db_error}")
+            logger.warning(f"💀 Video {video_id} falló definitivamente (permanece en estado 'uploaded')")
+            logger.warning("   Para marcar como 'failed', actualizar ENUM video_status en PostgreSQL")
         raise
 
     except Exception as e:
         logger.error(f"❌ Error inesperado procesando video {video_id}: {e}")
         logger.error(f"   Intento: {self.request.retries + 1}/{self.max_retries + 1}")
 
-        # Solo si es el último intento, marcar como failed en BD
+        # NOTA: El ENUM video_status en init.sql solo tiene 'uploaded' y 'processed'
+        # No podemos marcar como 'failed' sin actualizar el schema de BD
         if self.request.retries >= self.max_retries:
-            try:
-                db = get_db_session()
-                video = db.query(Video).filter(Video.id == video_id).first()
-                if video:
-                    video.status = "failed"
-                    db.commit()
-                    logger.info(f"💀 Video {video_id} marcado como 'failed' en BD")
-                db.close()
-            except Exception as db_error:
-                logger.error(f"❌ Error actualizando BD: {db_error}")
+            logger.warning(f"💀 Video {video_id} falló definitivamente (permanece en estado 'uploaded')")
+            logger.warning("   Para marcar como 'failed', actualizar ENUM video_status en PostgreSQL")
         raise
 
     finally:
@@ -282,29 +262,39 @@ def handle_failed_video(video_id: int, error_message: str, original_task_id: str
 
     db = None
     try:
+        # NOTA: El ENUM video_status en init.sql solo tiene 'uploaded' y 'processed'
+        # No existe 'failed', por lo que no podemos actualizar el status en BD
+        # El video permanecerá en estado 'uploaded'
+        
+        logger.warning(f"⚠️ Video {video_id} falló definitivamente")
+        logger.warning(
+            f"   Razón: Falló después de {config.CELERY_TASK_MAX_RETRIES} reintentos"
+        )
+        logger.warning(f"   Error: {error_message}")
+        logger.warning("   Video permanece en estado 'uploaded' (no existe estado 'failed' en BD)")
+        
+        # TODO: Para implementar estado 'failed', actualizar init.sql:
+        # ALTER TYPE video_status ADD VALUE 'failed';
+        
+        # Mantener para referencia futura cuando se agregue 'failed' al ENUM
+        """
         db = get_db_session()
         video = db.query(Video).filter(Video.id == video_id).first()
 
         if video:
-            # Solo podemos marcar como failed (init.sql no tiene error_message)
-            video.status = "failed"
+            video.status = VideoStatus.FAILED
             db.commit()
-
             logger.info(f"✅ Video {video_id} marcado como 'failed' en base de datos")
-            logger.info(
-                f"   Razón: Falló después de {config.CELERY_TASK_MAX_RETRIES} reintentos"
-            )
-            logger.info(f"   Error (solo en logs): {error_message}")
-
-            # Aquí podrías:
-            # - Enviar email al usuario con el error
+        db.close()
+        """
+        
+        # Aquí podrías en el futuro:
+        # - Enviar email al usuario con el error
+        # - Registrar en sistema de monitoreo
+        # - Crear ticket de soporte
 
     except Exception as e:
         logger.error(f"❌ Error en DLQ para video {video_id}: {e}")
-
-    finally:
-        if db:
-            db.close()
 
 
 @app.task(name="tasks.video_processor.cleanup_temp_files")
