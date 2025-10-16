@@ -28,7 +28,6 @@ class Video(Base):
     id = Column(Integer, primary_key=True, index=True)
     player_id = Column(Integer, ForeignKey("players.id"), nullable=False)
     title = Column(String(200), nullable=False)
-    filename = Column(String(255), nullable=False)
     status = Column(String(20), default="uploaded")
     original_url = Column(String(500))
     processed_url = Column(String(500))
@@ -107,7 +106,6 @@ async def test_video(db_session, test_player):
     video = Video(
         player_id=test_player.id,
         title="Test Video",
-        filename="test_video.mp4",
         status="processed",
         original_url="/uploads/test_video.mp4",
         processed_url="/uploads/processed_test_video.mp4",

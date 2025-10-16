@@ -1,5 +1,5 @@
 import os
-import uuid
+import glob
 from typing import Optional, Literal
 from fastapi import UploadFile
 from app.shared.interfaces.file_storage import FileStorageInterface, LocationType
@@ -8,8 +8,9 @@ from app.shared.interfaces.file_storage import FileStorageInterface, LocationTyp
 class LocalFileStorage(FileStorageInterface):
     """Implementación local del almacenamiento de archivos"""
     
-    def __init__(self, upload_dir: str = "uploads"):
-        self.upload_dir = upload_dir
+    def __init__(self, upload_dir: str = None):
+        # Usar variable de entorno o ruta por defecto
+        self.upload_dir = upload_dir or os.getenv("UPLOAD_DIR", "/app/uploads")
         self._ensure_upload_directories()
     
     def _ensure_upload_directories(self):
@@ -34,10 +35,13 @@ class LocalFileStorage(FileStorageInterface):
     
     async def delete_file(self, filename: str, location: LocationType = "original") -> bool:
         """Elimina un archivo del sistema local"""
-        file_path = self._get_file_path(filename, location)
+        directory = os.path.join(self.upload_dir, location)
+        pattern_path = os.path.join(directory, f"{filename}.*")
         try:
-            if os.path.exists(file_path):
-                os.remove(file_path)
+            files_found = glob.glob(pattern_path)
+            if files_found:
+                for file_path in files_found:
+                    os.remove(file_path)
                 return True
             return False
         except OSError:
@@ -45,7 +49,7 @@ class LocalFileStorage(FileStorageInterface):
     
     async def get_file_url(self, filename: str, location: LocationType = "original") -> str:
         """Genera la URL para acceder al archivo"""
-        return f"/uploads/{location}/{filename}"
+        return f"/app/uploads/{location}/{filename}"
     
     async def file_exists(self, filename: str, location: LocationType = "original") -> bool:
         """Verifica si un archivo existe"""
@@ -62,9 +66,23 @@ class LocalFileStorage(FileStorageInterface):
     
     async def get_file_content(self, filename: str, location: LocationType = "original") -> bytes:
         """Obtiene el contenido del archivo como bytes"""
-        file_path = self._get_file_path(filename, location)
+        directory = os.path.join(self.upload_dir, location)
         try:
-            with open(file_path, "rb") as file:
-                return file.read()
+            if os.path.exists(directory):
+                files = os.listdir(directory)
+                matching_files = [f for f in files if f.startswith(f"{filename}.")]
+                
+                if matching_files:
+                    # Tomar el primer archivo que coincida
+                    actual_filename = matching_files[0]
+                    file_path = os.path.join(directory, actual_filename)
+                    
+                    with open(file_path, "rb") as file:
+                        return file.read()
+                else:
+                    raise FileNotFoundError(f"Archivo no encontrado: {filename} en ubicación {location}")
+            else:
+                raise FileNotFoundError(f"Directorio no encontrado: {location}")
         except OSError as e:
-            raise FileNotFoundError(f"Archivo no encontrado: {filename} en ubicación {location}")
+            raise FileNotFoundError(f"Error al leer archivo: {filename} en ubicación {location}")
+    
