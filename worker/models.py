@@ -56,7 +56,7 @@ class Video(Base):
     processed_url = Column(String(512), nullable=True)
     
     # Timestamps
-    uploaded_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    uploaded_at = Column(DateTime, default=datetime.now(), nullable=False)
     processed_at = Column(DateTime, nullable=True)
     
     def __repr__(self):

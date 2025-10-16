@@ -21,7 +21,7 @@ class TestProcessVideoTask:
         video.status = "uploaded"
         video.original_path = "/app/uploads/original/123.mp4"
         video.processed_path = None
-        video.uploaded_at = datetime.utcnow()
+        video.uploaded_at = datetime.now()
         return video
     
     @pytest.fixture

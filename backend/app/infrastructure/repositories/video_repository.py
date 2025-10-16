@@ -21,16 +21,20 @@ class VideoRepository(VideoRepositoryInterface):
     
     def _to_domain(self, model: VideoModel) -> Video:
         """Convierte un modelo SQLAlchemy a entidad de dominio"""
-        # Convertir el enum de SQLAlchemy al enum de dominio
+        # Convertir el string de la BD al enum de dominio
         status_map = {
-            VideoStatusEnum.UPLOADED: VideoStatus.UPLOADED,
+            "uploaded": VideoStatus.UPLOADED,
+            "processed": VideoStatus.PROCESSED,
         }
+        
+        # Debug: imprimir el status que viene de la BD
+        mapped_status = status_map.get(model.status, VideoStatus.UPLOADED)
         
         return Video(
             id=model.id,
             player_id=model.player_id,
             title=model.title,
-            status=status_map.get(model.status, VideoStatus.UPLOADED),
+            status=mapped_status,
             original_url=model.original_url,
             processed_url=model.processed_url,
             uploaded_at=model.uploaded_at,
@@ -39,16 +43,16 @@ class VideoRepository(VideoRepositoryInterface):
     
     def _to_model(self, video: Video) -> VideoModel:
         """Convierte una entidad de dominio a modelo SQLAlchemy"""
-        # Convertir el enum de dominio al enum de SQLAlchemy
+        # Convertir el enum de dominio al string para la BD
         status_map = {
-            VideoStatus.UPLOADED: VideoStatusEnum.UPLOADED,
-            VideoStatus.PROCESSED: VideoStatusEnum.PROCESSED,
+            VideoStatus.UPLOADED: "uploaded",
+            VideoStatus.PROCESSED: "processed",
         }
         
         model_data = {
             "player_id": video.player_id,
             "title": video.title,
-            "status": status_map.get(video.status, VideoStatusEnum.UPLOADED),
+            "status": status_map.get(video.status, "uploaded"),
             "original_url": video.original_url,
             "processed_url": video.processed_url,
             "processed_at": video.processed_at

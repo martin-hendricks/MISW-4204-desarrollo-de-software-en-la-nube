@@ -2,7 +2,7 @@
 Conexión a PostgreSQL
 NOTA: El backend crea las tablas, el worker solo se conecta
 """
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.pool import QueuePool
 from config import config
@@ -47,7 +47,7 @@ def test_db_connection() -> bool:
     """
     try:
         db = SessionLocal()
-        db.execute("SELECT 1")
+        db.execute(text("SELECT 1"))
         db.close()
         logger.info("✅ Conexión a PostgreSQL exitosa")
         return True

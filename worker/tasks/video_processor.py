@@ -3,14 +3,13 @@ Tarea principal de procesamiento de videos ANB Rising Stars
 """
 import os
 import logging
-from datetime import datetime
 from typing import Dict
 from celery import Task
 from celery.exceptions import SoftTimeLimitExceeded
-
 from celery_app import app
 from database import get_db_session
-from models import Video
+from datetime import datetime
+from models import Video, VideoStatus
 from utils.video_processing import video_processor, VideoProcessingError
 from config import config
 
@@ -154,8 +153,8 @@ def process_video(self, video_id: int) -> Dict:
             }
         
         # Actualizar registro en BD
-        video.status = "processed"
-        video.processed_at = datetime.utcnow()
+        video.status = VideoStatus.processed.value
+        video.processed_at = datetime.now()
         
         # Generar URL pública para el video procesado
         # El backend puede servir el archivo desde /app/uploads/processed/{video_id}_processed.mp4
@@ -178,7 +177,16 @@ def process_video(self, video_id: int) -> Dict:
         logger.info(f"   Path procesado: {processed_path}")
         logger.info(f"   Duración: {duration}s")
         logger.info(f"   URL pública: {video.processed_url}")
-        logger.info(f"   Tiempo total: ~{(datetime.utcnow() - video.uploaded_at).seconds}s")
+        # Calcular tiempo total de procesamiento (manejar timezone)
+        from datetime import timezone
+        now_utc = datetime.now(timezone.utc)
+        if video.uploaded_at.tzinfo is None:
+            # Si uploaded_at es naive, asumir UTC
+            uploaded_utc = video.uploaded_at.replace(tzinfo=timezone.utc)
+        else:
+            uploaded_utc = video.uploaded_at
+        processing_time = (now_utc - uploaded_utc).total_seconds()
+        logger.info(f"   Tiempo total: ~{int(processing_time)}s")
         logger.info("=" * 60)
         
         db.close()  # Cerrar sesión antes de salir
@@ -201,7 +209,7 @@ def process_video(self, video_id: int) -> Dict:
                 db = get_db_session()
                 video = db.query(Video).filter(Video.id == video_id).first()
                 if video:
-                    video.status = "failed"
+                    video.status = VideoStatus.failed.value
                     db.commit()
                     logger.info(f"💀 Video {video_id} marcado como 'failed' en BD")
                 db.close()
@@ -219,7 +227,7 @@ def process_video(self, video_id: int) -> Dict:
                 db = get_db_session()
                 video = db.query(Video).filter(Video.id == video_id).first()
                 if video:
-                    video.status = "failed"
+                    video.status = VideoStatus.failed.value
                     db.commit()
                     logger.info(f"💀 Video {video_id} marcado como 'failed' en BD")
                 db.close()
@@ -237,7 +245,7 @@ def process_video(self, video_id: int) -> Dict:
                 db = get_db_session()
                 video = db.query(Video).filter(Video.id == video_id).first()
                 if video:
-                    video.status = "failed"
+                    video.status = VideoStatus.failed.value
                     db.commit()
                     logger.info(f"💀 Video {video_id} marcado como 'failed' en BD")
                 db.close()
@@ -287,7 +295,7 @@ def handle_failed_video(video_id: int, error_message: str, original_task_id: str
         
         if video:
             # Solo podemos marcar como failed (init.sql no tiene error_message)
-            video.status = "failed"
+            video.status = VideoStatus.failed.value
             db.commit()
             
             logger.info(f"✅ Video {video_id} marcado como 'failed' en base de datos")
