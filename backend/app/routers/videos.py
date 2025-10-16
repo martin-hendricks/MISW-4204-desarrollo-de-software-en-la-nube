@@ -186,7 +186,7 @@ async def delete_video(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
-@router.get("/{video_id}/original")
+@router.get("/original/{video_id}")
 async def get_original_video(
     video_id: int,
     player_id: int = Depends(get_current_player_id),
@@ -205,20 +205,12 @@ async def get_original_video(
         
         # Determinar el tipo de contenido basado en la extensión del archivo
         content_type = "video/mp4"  # Default
-        if video.filename:
-            extension = video.filename.split('.')[-1].lower()
-            if extension == 'avi':
-                content_type = "video/x-msvideo"
-            elif extension == 'mov':
-                content_type = "video/quicktime"
-            elif extension == 'wmv':
-                content_type = "video/x-ms-wmv"
         
         return Response(
             content=video_content,
             media_type=content_type,
             headers={
-                "Content-Disposition": f"inline; filename={video.filename}",
+                "Content-Disposition": f"inline; filename={video.id}",
                 "Cache-Control": "public, max-age=3600"
             }
         )
@@ -238,7 +230,7 @@ async def get_original_video(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
-@router.get("/{video_id}/processed")
+@router.get("/processed/{video_id}")
 async def get_processed_video(
     video_id: int,
     player_id: int = Depends(get_current_player_id),
@@ -257,20 +249,12 @@ async def get_processed_video(
         
         # Determinar el tipo de contenido basado en la extensión del archivo
         content_type = "video/mp4"  # Default
-        if video.filename:
-            extension = video.filename.split('.')[-1].lower()
-            if extension == 'avi':
-                content_type = "video/x-msvideo"
-            elif extension == 'mov':
-                content_type = "video/quicktime"
-            elif extension == 'wmv':
-                content_type = "video/x-ms-wmv"
         
         return Response(
             content=video_content,
             media_type=content_type,
             headers={
-                "Content-Disposition": f"inline; filename=processed_{video.filename}",
+                "Content-Disposition": f"inline; filename=processed_{video.id}",
                 "Cache-Control": "public, max-age=3600"
             }
         )

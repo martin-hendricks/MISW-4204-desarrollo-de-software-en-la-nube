@@ -36,7 +36,7 @@ class Settings:
     FILE_STORAGE_TYPE: FileStorageType = FileStorageType(
         os.getenv("FILE_STORAGE_TYPE", "local")
     )
-    UPLOAD_DIR: str = os.getenv("UPLOAD_DIR", "uploads")
+    UPLOAD_DIR: str = os.getenv("UPLOAD_DIR", "/app/uploads")
     MAX_FILE_SIZE: int = int(os.getenv("MAX_FILE_SIZE", "104857600"))  # 100MB
     
     # AWS S3 (si se usa)
