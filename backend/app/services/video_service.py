@@ -58,7 +58,7 @@ class VideoService:
         filename = f"{created_video.id}.{file_extension}"
         
         # Generar la URL del archivo original
-        original_url = f"{settings.BASE_PATH}/original/{filename}"
+        original_url = f"{settings.BASE_PATH}/original/{created_video.id}"
         
         # Actualizar el video con el filename y URL correctos
         created_video.original_url = original_url

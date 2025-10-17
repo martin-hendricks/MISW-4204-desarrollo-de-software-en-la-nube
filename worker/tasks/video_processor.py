@@ -177,7 +177,7 @@ def process_video(self, video_id: int) -> Dict:
         # El backend puede servir el archivo desde /app/uploads/processed/{video_id}_processed.mp4
         # Ejemplo: https://anb.com/api/videos/{video_id}/download
         base_path = os.getenv("BASE_PATH", "http://localhost:80/api/videos")
-        video.processed_url = f"{base_path}/processed/{video_id}.mp4"
+        video.processed_url = f"{base_path}/processed/{video_id}"
 
         # Campos que NO existen en init.sql:
         # - processed_path (ruta interna, el worker la conoce por convención)
