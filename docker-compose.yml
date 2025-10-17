@@ -102,18 +102,6 @@ services:
       - app-network
     restart: unless-stopped
 
-  # RabbitMQ Message Broker
-  broker:
-    build: ./broker
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
-    networks:
-      - app-network
-    restart: unless-stopped
-
   # MinIO Object Storage
   minio:
     image: minio/minio:latest
