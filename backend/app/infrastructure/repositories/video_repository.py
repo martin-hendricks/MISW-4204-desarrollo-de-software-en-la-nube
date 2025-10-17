@@ -27,7 +27,6 @@ class VideoRepository(VideoRepositoryInterface):
             "processed": VideoStatus.PROCESSED,
         }
         
-        # Debug: imprimir el status que viene de la BD
         mapped_status = status_map.get(model.status, VideoStatus.UPLOADED)
         
         return Video(

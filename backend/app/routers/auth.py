@@ -3,7 +3,7 @@ from fastapi.security import HTTPBearer
 from app.services.player_service import PlayerService
 from app.dtos.player_dtos import (
     PlayerCreateDTO, PlayerLoginDTO, PlayerResponseDTO, 
-    TokenResponseDTO
+    TokenResponseDTO, PlayerInfoDTO
 )
 from app.shared.container import container
 from app.shared.dependencies.auth_dependencies import get_current_player_id
@@ -93,7 +93,7 @@ async def login(
         )
 
 
-@router.get("/me", response_model=PlayerResponseDTO)
+@router.get("/me", response_model=PlayerInfoDTO)
 async def get_current_user(
     player_id: int = Depends(get_current_player_id),
     player_service: PlayerService = Depends(get_player_service)
@@ -104,7 +104,7 @@ async def get_current_user(
     try:
         player = await player_service.get_player_by_id(player_id)
         
-        return PlayerResponseDTO(
+        return PlayerInfoDTO(
             id=player.id,
             first_name=player.first_name,
             last_name=player.last_name,

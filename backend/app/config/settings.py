@@ -38,6 +38,7 @@ class Settings:
     )
     UPLOAD_DIR: str = os.getenv("UPLOAD_DIR", "/app/uploads")
     MAX_FILE_SIZE: int = int(os.getenv("MAX_FILE_SIZE", "104857600"))  # 100MB
+    BASE_PATH: str = os.getenv("BASE_PATH", "http://localhost:80/api/videos")
     
     # AWS S3 (si se usa)
     AWS_ACCESS_KEY_ID: str = os.getenv("AWS_ACCESS_KEY_ID", "")

@@ -65,8 +65,9 @@ class LocalFileStorage(FileStorageInterface):
             return None
     
     async def get_file_content(self, filename: str, location: LocationType = "original") -> bytes:
-        """Obtiene el contenido del archivo como bytes"""
+        """Obtiene el contenido del archivo como bytes (busca por patrón si no tiene extensión)"""
         directory = os.path.join(self.upload_dir, location)
+
         try:
             if os.path.exists(directory):
                 files = os.listdir(directory)
@@ -84,5 +85,4 @@ class LocalFileStorage(FileStorageInterface):
             else:
                 raise FileNotFoundError(f"Directorio no encontrado: {location}")
         except OSError as e:
-            raise FileNotFoundError(f"Error al leer archivo: {filename} en ubicación {location}")
-    
+            raise FileNotFoundError(f"Error al leer archivo: {filename} en ubicación {location}")    

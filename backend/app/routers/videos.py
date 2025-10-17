@@ -214,6 +214,10 @@ async def get_original_video(
                 "Cache-Control": "public, max-age=3600"
             }
         )
+    except VideoNotFoundException as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except VideoNotOwnedException as e:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -258,6 +262,10 @@ async def get_processed_video(
                 "Cache-Control": "public, max-age=3600"
             }
         )
+    except VideoNotFoundException as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except VideoNotOwnedException as e:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
