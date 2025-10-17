@@ -10,6 +10,8 @@ services:
       - '--config.file=/etc/prometheus/prometheus.yml'
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    networks:
+      - app-network
     restart: unless-stopped
 
   grafana:
@@ -25,17 +27,42 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=admin
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    networks:
+      - app-network
     restart: unless-stopped
 
   jmeter:
     image: justb4/jmeter:latest
     container_name: jmeter
     volumes:
-      - ./jmeter/scenarios:/scripts
+      - ./web-api-tests/scenarios/scenarios:/scripts
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    # Keep the container running to execute tests on demand
+    networks:
+      - app-network
     entrypoint: tail -f /dev/null
+
+  producer:
+    build:
+      context: ./worker-tests
+      dockerfile: Dockerfile
+    container_name: producer
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - video_storage:/app/uploads
+    networks:
+      - app-network
+    depends_on:
+      - prometheus
+      - grafana
+    entrypoint: tail -f /dev/null
+
+networks:
+  app-network:
+    external: true
 
 volumes:
   grafana-storage: {}
+  video_storage:
+    external: true
