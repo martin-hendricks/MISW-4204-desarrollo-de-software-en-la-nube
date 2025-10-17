@@ -132,6 +132,7 @@ services:
 
 networks:
   app-network:
+    name: app-network
     driver: bridge
 
 volumes:
@@ -139,4 +140,5 @@ volumes:
   redis_data:
   rabbitmq_data:
   minio_data:
-  video_storage:  # Volumen compartido para videos (original y procesados)
+  video_storage:
+    name: video_storage

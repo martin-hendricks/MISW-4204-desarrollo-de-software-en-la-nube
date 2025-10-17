@@ -43,6 +43,10 @@ Thumbs.db
 !worker/assets/*.mp4
 !worker/assets/*.mov
 
+# PERO permitir assets del testing jmeter
+!performance-testing/web-api-tests/scenarios/scenarios/*.mp4
+# PERO permitir assets del testing worker
+!performance-testing/worker-tests/assets/*.mp4
 # Temporary files
 tmp/
 temp/
