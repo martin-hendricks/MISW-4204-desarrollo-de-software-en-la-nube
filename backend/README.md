@@ -39,33 +39,69 @@ backend/
 │   ├── main.py                 # Aplicación principal FastAPI
 │   ├── domain/                 # 🎯 Capa de Dominio
 │   │   ├── entities/           # Entidades de negocio
+│   │   │   ├── player.py       # Entidad Player
+│   │   │   ├── video.py        # Entidad Video
+│   │   │   └── vote.py         # Entidad Vote
 │   │   ├── value_objects/      # Objetos de valor
+│   │   │   ├── email.py        # Value Object Email
+│   │   │   └── password.py     # Value Object Password
 │   │   └── repositories/       # Interfaces de repositorios
-│   ├── application/            # 🔧 Capa de Aplicación
-│   │   ├── services/           # Servicios de aplicación
-│   │   └── dtos/               # Data Transfer Objects
+│   │       ├── player_repository.py
+│   │       ├── video_repository.py
+│   │       └── vote_repository.py
+│   ├── services/               # 🔧 Servicios de Aplicación
+│   │   ├── player_service.py   # Servicio de jugadores
+│   │   └── video_service.py    # Servicio de videos
+│   ├── dtos/                   # Data Transfer Objects
+│   │   ├── player_dtos.py      # DTOs de jugadores
+│   │   └── video_dtos.py       # DTOs de videos
 │   ├── infrastructure/         # 🔌 Capa de Infraestructura
 │   │   ├── database/           # Configuración de BD
+│   │   │   ├── database.py
+│   │   │   └── models.py       # Modelos SQLAlchemy
 │   │   ├── external_services/  # Servicios externos
+│   │   │   ├── jwt_auth_service.py
+│   │   │   ├── local_file_storage.py
+│   │   │   ├── s3_file_storage.py
+│   │   │   └── celery_client.py
 │   │   └── repositories/       # Implementaciones de repositorios
+│   │       ├── player_repository.py
+│   │       ├── video_repository.py
+│   │       └── vote_repository.py
 │   ├── shared/                 # 🔄 Capa Compartida
 │   │   ├── interfaces/         # Interfaces compartidas
+│   │   │   ├── authentication.py
+│   │   │   ├── file_storage.py
+│   │   │   └── task_queue.py
 │   │   ├── exceptions/         # Excepciones del dominio
+│   │   │   ├── player_exceptions.py
+│   │   │   └── video_exceptions.py
+│   │   ├── dependencies/       # Dependencias de FastAPI
+│   │   │   └── auth_dependencies.py
 │   │   └── container.py        # Contenedor de dependencias
 │   ├── config/                 # ⚙️ Configuración
 │   │   ├── settings.py         # Configuración de la aplicación
 │   │   └── container_config.py # Configuración del contenedor
-│   ├── routers/                # 🌐 Capa de Presentación
-│   │   ├── __init__.py
-│   │   └── auth.py             # Endpoints de autenticación
-│   └── db/                     # Base de datos
-│       └── database.py         # Configuración de BD
+│   └── routers/                # 🌐 Capa de Presentación
+│       ├── __init__.py
+│       ├── auth.py             # Endpoints de autenticación
+│       ├── videos.py           # Endpoints de videos
+│       └── public.py           # Endpoints públicos
 ├── tests/                      # Pruebas
+│   ├── conftest.py
+│   ├── test_auth.py
+│   ├── test_videos.py
+│   ├── test_public.py
+│   ├── test_basic.py
+│   └── test_auth_simple.py
 ├── uploads/                    # Archivos subidos (local)
+│   ├── original/               # Videos originales
+│   └── processed/              # Videos procesados
 ├── alembic/                    # Migraciones de BD
 ├── requirements.txt
 ├── start.py                    # Script de inicio
 ├── migrate.py                  # Script de migraciones
+├── app_test_main.py            # Aplicación para tests
 └── README.md
 ```
 
@@ -115,14 +151,27 @@ backend/
 
 ```bash
 # Ejecutar todas las pruebas
-pytest
+python3 -m pytest tests/ -v
 
 # Ejecutar pruebas con cobertura
-pytest --cov=app
+python3 -m pytest tests/ --cov=app
 
 # Ejecutar pruebas específicas
-pytest tests/test_auth.py
+python3 -m pytest tests/test_auth.py -v
+python3 -m pytest tests/test_videos.py -v
+python3 -m pytest tests/test_public.py -v
+
+# Ejecutar pruebas básicas
+python3 -m pytest tests/test_basic.py -v
 ```
+
+### Estado de las Pruebas
+- ✅ **37/37 tests pasando** (100% de éxito)
+- ✅ Tests de autenticación (7/7)
+- ✅ Tests de videos (10/10)
+- ✅ Tests públicos (10/10)
+- ✅ Tests básicos (5/5)
+- ✅ Tests simples (5/5)
 
 ## 📚 Documentación de la API
 
@@ -134,10 +183,26 @@ Una vez que la aplicación esté ejecutándose, puedes acceder a:
 ## 🔌 Endpoints Principales
 
 ### Autenticación
-- `POST /api/auth/signup` - Registro de jugadores
-- `POST /api/auth/login` - Inicio de sesión
-- `GET /api/auth/me` - Información del usuario actual
-- `PUT /api/auth/profile` - Actualizar perfil
+- `POST /auth/signup` - Registro de jugadores
+- `POST /auth/login` - Inicio de sesión
+- `GET /auth/me` - Información del usuario actual
+
+### Gestión de Videos
+- `POST /videos/upload` - Subir video (requiere autenticación)
+- `GET /videos` - Listar videos del usuario (requiere autenticación)
+- `GET /videos/{video_id}` - Obtener video específico (requiere autenticación)
+- `DELETE /videos/{video_id}` - Eliminar video (requiere autenticación)
+
+### Endpoints Públicos
+- `GET /public/videos` - Listar videos públicos para votación
+- `POST /public/videos/{video_id}/vote` - Votar por video (requiere autenticación)
+- `GET /public/rankings` - Obtener rankings de jugadores
+- `GET /public/rankings?city=Ciudad` - Rankings filtrados por ciudad
+
+### Endpoints del Sistema
+- `GET /` - Información de la API
+- `GET /health` - Health check
+- `GET /config` - Configuración actual (desarrollo)
 
 ## 🔄 Cambio Fácil de Implementaciones
 

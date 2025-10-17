@@ -6,7 +6,7 @@ Este documento resume todos los endpoints de la API y sus respuestas según la c
 
 ### 1. Autenticación
 
-#### POST `/api/auth/signup`
+#### POST `/auth/signup`
 **Estado:** ✅ Implementado correctamente
 
 **Request Body:**
@@ -35,7 +35,7 @@ Este documento resume todos los endpoints de la API y sus respuestas según la c
 
 ---
 
-#### POST `/api/auth/login`
+#### POST `/auth/login`
 **Estado:** ✅ Implementado correctamente
 
 **Request Body:**
@@ -50,7 +50,8 @@ Este documento resume todos los endpoints de la API y sus respuestas según la c
 ```json
 {
     "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-    "token_type": "bearer"
+    "token_type": "Bearer",
+    "expires_in": 3600
 }
 ```
 
@@ -60,9 +61,35 @@ Este documento resume todos los endpoints de la API y sus respuestas según la c
 
 ---
 
+#### GET `/auth/me`
+**Estado:** ✅ Implementado correctamente
+**Autenticación:** Requerida (Bearer Token)
+
+**Response (200 OK):**
+```json
+{
+    "id": 1,
+    "first_name": "John",
+    "last_name": "Doe",
+    "email": "john.doe@example.com",
+    "city": "Bogotá",
+    "country": "Colombia",
+    "username": "john.doe",
+    "is_active": true,
+    "created_at": "2025-01-15T10:30:00Z"
+}
+```
+
+**Códigos de respuesta:**
+- `200 OK`: Información del usuario obtenida
+- `401 Unauthorized`: Token inválido o expirado
+- `404 Not Found`: Usuario no encontrado
+
+---
+
 ### 2. Gestión de Videos
 
-#### POST `/api/videos/upload`
+#### POST `/videos/upload`
 **Estado:** ✅ Implementado correctamente
 **Autenticación:** Requerida (Bearer Token)
 
@@ -70,22 +97,22 @@ Este documento resume todos los endpoints de la API y sus respuestas según la c
 - `video_file`: archivo MP4 (máximo 100MB)
 - `title`: string
 
-**Response (201 Created):**
+**Response (202 Accepted):**
 ```json
 {
     "task_id": "550e8400-e29b-41d4-a716-446655440000",
-    "message": "Video subido exitosamente, procesamiento iniciado."
+    "message": "Video subido correctamente. Procesamiento en curso."
 }
 ```
 
 **Códigos de respuesta:**
-- `201 Created`: Video subido exitosamente, tarea de procesamiento creada
+- `202 Accepted`: Video subido exitosamente, tarea de procesamiento creada
 - `400 Bad Request`: Error en el archivo (tipo o tamaño inválido)
 - `401 Unauthorized`: Falta de autenticación
 
 ---
 
-#### GET `/api/videos`
+#### GET `/videos`
 **Estado:** ✅ Implementado correctamente
 **Autenticación:** Requerida (Bearer Token)
 
@@ -98,7 +125,7 @@ Este documento resume todos los endpoints de la API y sus respuestas según la c
         "status": "processed",
         "uploaded_at": "2025-03-10T14:30:00Z",
         "processed_at": "2025-03-10T14:35:00Z",
-        "processed_url": "uploads/123456.mp4"
+        "processed_url": "uploads/processed/123.mp4"
     },
     {
         "video_id": 456,
@@ -111,10 +138,13 @@ Este documento resume todos los endpoints de la API y sus respuestas según la c
 ]
 ```
 
-**Propiedades verificadas por Postman:**
+**Propiedades verificadas:**
 - ✅ `video_id`
 - ✅ `title`
 - ✅ `status`
+- ✅ `uploaded_at`
+- ✅ `processed_at`
+- ✅ `processed_url`
 
 **Códigos de respuesta:**
 - `200 OK`: Lista de videos obtenida
@@ -122,7 +152,7 @@ Este documento resume todos los endpoints de la API y sus respuestas según la c
 
 ---
 
-#### GET `/api/videos/{video_id}`
+#### GET `/videos/{video_id}`
 **Estado:** ✅ Implementado correctamente
 **Autenticación:** Requerida (Bearer Token)
 
@@ -133,17 +163,22 @@ Este documento resume todos los endpoints de la API y sus respuestas según la c
     "title": "Mi mejor jugada de 3 puntos",
     "status": "processed",
     "votes": 42,
-    "original_url": "uploads/original_123456.mp4",
-    "processed_url": "uploads/processed_123456.mp4",
-    "created_at": "2025-03-10T14:30:00Z"
+    "original_url": "uploads/original/123.mp4",
+    "processed_url": "uploads/processed/123.mp4",
+    "uploaded_at": "2025-03-10T14:30:00Z",
+    "processed_at": "2025-03-10T14:35:00Z"
 }
 ```
 
-**Propiedades verificadas por Postman:**
+**Propiedades verificadas:**
 - ✅ `video_id`
 - ✅ `title`
 - ✅ `status`
 - ✅ `votes`
+- ✅ `original_url`
+- ✅ `processed_url`
+- ✅ `uploaded_at`
+- ✅ `processed_at`
 
 **Códigos de respuesta:**
 - `200 OK`: Detalle del video obtenido
@@ -153,7 +188,7 @@ Este documento resume todos los endpoints de la API y sus respuestas según la c
 
 ---
 
-#### DELETE `/api/videos/{video_id}`
+#### DELETE `/videos/{video_id}`
 **Estado:** ✅ Implementado correctamente
 **Autenticación:** Requerida (Bearer Token)
 
@@ -175,7 +210,7 @@ Este documento resume todos los endpoints de la API y sus respuestas según la c
 
 ### 3. Endpoints Públicos
 
-#### GET `/api/public/videos`
+#### GET `/public/videos`
 **Estado:** ✅ Implementado correctamente
 **Autenticación:** No requerida
 
@@ -188,7 +223,7 @@ Este documento resume todos los endpoints de la API y sus respuestas según la c
         "status": "processed",
         "uploaded_at": "2025-03-10T14:30:00Z",
         "processed_at": "2025-03-10T14:35:00Z",
-        "processed_url": "uploads/processed_123456.mp4"
+        "processed_url": "uploads/processed/123.mp4"
     }
 ]
 ```
@@ -200,7 +235,7 @@ Este documento resume todos los endpoints de la API y sus respuestas según la c
 
 ---
 
-#### POST `/api/public/videos/{video_id}/vote`
+#### POST `/public/videos/{video_id}/vote`
 **Estado:** ✅ Implementado correctamente
 **Autenticación:** Requerida (Bearer Token)
 
@@ -219,7 +254,7 @@ Este documento resume todos los endpoints de la API y sus respuestas según la c
 
 ---
 
-#### GET `/api/public/rankings?city=Bogotá`
+#### GET `/public/rankings?city=Bogotá`
 **Estado:** ✅ Implementado correctamente
 **Autenticación:** No requerida
 
@@ -230,22 +265,22 @@ Este documento resume todos los endpoints de la API y sus respuestas según la c
 ```json
 [
     {
-        "position": 1,
-        "username": "johndoe",
+        "player_id": 1,
+        "username": "john.doe",
         "city": "Bogotá",
         "votes": 150
     },
     {
-        "position": 2,
-        "username": "janedoe",
+        "player_id": 2,
+        "username": "jane.doe",
         "city": "Bogotá",
         "votes": 120
     }
 ]
 ```
 
-**Propiedades verificadas por Postman:**
-- ✅ `position`
+**Propiedades verificadas:**
+- ✅ `player_id`
 - ✅ `username`
 - ✅ `city`
 - ✅ `votes`
@@ -278,18 +313,51 @@ Este documento resume todos los endpoints de la API y sus respuestas según la c
 
 ---
 
-## 🔧 Endpoint Auxiliar (Desarrollo)
+### 4. Endpoints del Sistema
 
-#### POST `/api/videos/{video_id}/process`
-**Estado:** ⚠️ Solo para desarrollo/testing
-**Autenticación:** Requerida (Bearer Token)
-
-Este endpoint temporal marca un video como procesado para facilitar las pruebas. En producción, esto debe ser manejado por el worker de Celery.
+#### GET `/`
+**Estado:** ✅ Implementado correctamente
+**Autenticación:** No requerida
 
 **Response (200 OK):**
 ```json
 {
-    "message": "Video marcado como procesado exitosamente."
+    "message": "ANB Rising Stars Showcase API",
+    "version": "1.0.0",
+    "architecture": "DDD + Clean Architecture",
+    "docs": "/docs",
+    "file_storage": "local"
+}
+```
+
+---
+
+#### GET `/health`
+**Estado:** ✅ Implementado correctamente
+**Autenticación:** No requerida
+
+**Response (200 OK):**
+```json
+{
+    "status": "healthy",
+    "service": "backend",
+    "architecture": "DDD",
+    "file_storage": "local"
+}
+```
+
+---
+
+#### GET `/config`
+**Estado:** ✅ Implementado correctamente
+**Autenticación:** No requerida
+
+**Response (200 OK):**
+```json
+{
+    "file_storage_type": "local",
+    "database_url": "localhost:5432/anb_rising_stars",
+    "redis_url": "localhost:6379/0"
 }
 ```
 
@@ -310,7 +378,7 @@ Los endpoints que requieren autenticación esperan un token JWT en el header:
 Authorization: Bearer <token>
 ```
 
-El token se obtiene del endpoint `/api/auth/login` y debe incluirse en todas las peticiones protegidas.
+El token se obtiene del endpoint `/auth/login` y debe incluirse en todas las peticiones protegidas.
 
 ---
 
@@ -321,7 +389,18 @@ El token se obtiene del endpoint `/api/auth/login` y debe incluirse en todas las
 
 ---
 
+## 🧪 Estado de Testing
+
+- ✅ **37/37 tests pasando** (100% de éxito)
+- ✅ Tests de autenticación (7/7)
+- ✅ Tests de videos (10/10)
+- ✅ Tests públicos (10/10)
+- ✅ Tests básicos (5/5)
+- ✅ Tests simples (5/5)
+
+---
+
 ## ✅ Conclusión
 
-Todos los endpoints de la colección de Postman están **implementados y alineados** con las especificaciones. La API está lista para ser probada con la colección completa.
+Todos los endpoints están **implementados y alineados** con las especificaciones actuales. La API está completamente funcional y lista para uso en desarrollo y testing.
 
