@@ -47,6 +47,8 @@ services:
       context: ./worker-tests
       dockerfile: Dockerfile
     container_name: producer
+    environment:
+      - REDIS_URL=redis://redis:6379/0
     volumes:
       - video_storage:/app/uploads
     networks:
