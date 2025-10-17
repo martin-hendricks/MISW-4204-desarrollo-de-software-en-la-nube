@@ -151,12 +151,9 @@ class VideoProcessor:
             if add_logo:
                 logo_file = logo_path or config.LOGO_PATH
                 if os.path.exists(logo_file):
-                    # Cargar logo y repetirlo durante todo el video (ffmpeg optimiza esto automáticamente)
-                    logo = ffmpeg.input(logo_file, loop=1)
+                    logo = ffmpeg.input(logo_file)
                     position = self._get_logo_position()
-                    # Aplicar overlay con soporte para canal alpha (transparencia)
-                    # shortest=0 asegura que el overlay dure lo que el video principal
-                    stream = stream.overlay(logo, x=position[0], y=position[1], format='auto', shortest=0)
+                    stream = stream.overlay(logo, x=position[0], y=position[1])
                     logger.info(f"✅ Logo agregado en posición: {config.LOGO_POSITION}")
                 else:
                     logger.warning(f"⚠️ Logo no encontrado: {logo_file}, se omite")
