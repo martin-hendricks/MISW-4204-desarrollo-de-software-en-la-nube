@@ -1,5 +1,6 @@
-from typing import List, Optional
+from typing import List
 from fastapi import UploadFile
+from app.config.settings import settings
 from app.domain.entities.video import Video, VideoStatus
 from app.domain.entities.vote import Vote
 from app.domain.repositories.video_repository import VideoRepositoryInterface
@@ -57,7 +58,7 @@ class VideoService:
         filename = f"{created_video.id}.{file_extension}"
         
         # Generar la URL del archivo original
-        original_url = f"/original/{filename}"
+        original_url = f"{settings.BASE_PATH}/original/{filename}"
         
         # Actualizar el video con el filename y URL correctos
         created_video.original_url = original_url

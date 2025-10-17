@@ -65,24 +65,35 @@ class LocalFileStorage(FileStorageInterface):
             return None
     
     async def get_file_content(self, filename: str, location: LocationType = "original") -> bytes:
-        """Obtiene el contenido del archivo como bytes"""
+        """Obtiene el contenido del archivo como bytes (busca por patrón si no tiene extensión)"""
         directory = os.path.join(self.upload_dir, location)
-        try:
-            if os.path.exists(directory):
-                files = os.listdir(directory)
-                matching_files = [f for f in files if f.startswith(f"{filename}.")]
-                
-                if matching_files:
-                    # Tomar el primer archivo que coincida
-                    actual_filename = matching_files[0]
-                    file_path = os.path.join(directory, actual_filename)
+        
+        if '.' not in filename:
+            # Si no tiene extensión, buscar por patrón
+            try:
+                if os.path.exists(directory):
+                    files = os.listdir(directory)
+                    matching_files = [f for f in files if f.startswith(f"{filename}.")]
                     
-                    with open(file_path, "rb") as file:
-                        return file.read()
+                    if matching_files:
+                        # Tomar el primer archivo que coincida
+                        actual_filename = matching_files[0]
+                        file_path = os.path.join(directory, actual_filename)
+                        
+                        with open(file_path, "rb") as file:
+                            return file.read()
+                    else:
+                        raise FileNotFoundError(f"Archivo no encontrado: {filename} en ubicación {location}")
                 else:
-                    raise FileNotFoundError(f"Archivo no encontrado: {filename} en ubicación {location}")
-            else:
-                raise FileNotFoundError(f"Directorio no encontrado: {location}")
-        except OSError as e:
-            raise FileNotFoundError(f"Error al leer archivo: {filename} en ubicación {location}")
+                    raise FileNotFoundError(f"Directorio no encontrado: {location}")
+            except OSError as e:
+                raise FileNotFoundError(f"Error al leer archivo: {filename} en ubicación {location}")
+        else:
+            # Si tiene extensión, buscar directamente
+            file_path = self._get_file_path(filename, location)
+            try:
+                with open(file_path, "rb") as file:
+                    return file.read()
+            except OSError as e:
+                raise FileNotFoundError(f"Archivo no encontrado: {filename} en ubicación {location}")
     

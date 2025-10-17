@@ -19,6 +19,7 @@ services:
     environment:
       - DATABASE_URL=postgresql://user:password@database:5432/fileprocessing
       - UPLOAD_DIR=/app/uploads
+      - BASE_PATH=http://localhost:80/api/videos
     depends_on:
       - database
     volumes:
@@ -31,6 +32,10 @@ services:
     build: ./worker
     ports:
       - "8001:8001"
+    environment:
+      - DATABASE_URL=postgresql://user:password@database:5432/fileprocessing
+      - UPLOAD_DIR=/app/uploads
+      - BASE_PATH=http://localhost:80/api/videos
     volumes:
       - ./worker:/app
     networks:
