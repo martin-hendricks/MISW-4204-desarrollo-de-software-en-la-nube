@@ -3,6 +3,7 @@
 from app.shared.container import container
 from app.shared.interfaces.file_storage import FileStorageInterface
 from app.shared.interfaces.authentication import AuthenticationInterface
+from app.shared.interfaces.task_queue import TaskQueueInterface
 from app.domain.repositories.player_repository import PlayerRepositoryInterface
 from app.domain.repositories.video_repository import VideoRepositoryInterface
 from app.domain.repositories.vote_repository import VoteRepositoryInterface
@@ -23,6 +24,10 @@ def configure_container():
     # Configurar autenticación
     from app.infrastructure.external_services.jwt_auth_service import JWTAuthService
     container.register_singleton(AuthenticationInterface, JWTAuthService)
+    
+    # Configurar cola de tareas
+    from app.infrastructure.external_services.celery_client import CeleryTaskQueue
+    container.register_singleton(TaskQueueInterface, CeleryTaskQueue)
     
     
     # Configurar repositorios

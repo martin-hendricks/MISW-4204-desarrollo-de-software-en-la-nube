@@ -24,35 +24,57 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - MINIO_URL=http://minio:9000
       - UPLOAD_DIR=/app/uploads
+    volumes:
+      - video_storage:/app/uploads  # Volumen compartido con worker
+
     depends_on:
       - database
       - redis
       - minio
-    volumes:
-      - uploads_data:/app/uploads
+
     networks:
       - app-network
     restart: unless-stopped
 
-  # Task Processor Worker
+  # Task Processor Worker (Celery + FastAPI Health Checks)
   worker:
     build: ./worker
     ports:
-      - "8001:8001"
+      - "8001:8001"  # Health API
     environment:
       - DATABASE_URL=postgresql://user:password@database:5432/fileprocessing
       - REDIS_URL=redis://redis:6379/0
-      - RABBITMQ_URL=amqp://user:password@broker:5672/
       - UPLOAD_DIR=/app/uploads
+      - CELERY_CONCURRENCY=4
+      - CELERY_MAX_RETRIES=3
+      - LOG_LEVEL=INFO
+    volumes:
+      - video_storage:/app/uploads  # Volumen compartido con backend
     depends_on:
       - database
       - redis
-      - broker
-    volumes:
-      - uploads_data:/app/uploads
     networks:
       - app-network
     restart: unless-stopped
+    command: >
+      sh -c "python main.py &
+             celery -A celery_app worker --loglevel=info --concurrency=4 --queues=video_processing,dlq"
+  
+  # Flower - Monitoreo de Celery
+  flower:
+    image: mher/flower:2.0
+    ports:
+      - "5555:5555"
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - FLOWER_PORT=5555
+    depends_on:
+      - redis
+      - worker
+    networks:
+      - app-network
+    restart: unless-stopped
+    command: celery --broker=redis://redis:6379/0 flower --port=5555
 
   # PostgreSQL Database
   database:
@@ -117,4 +139,4 @@ volumes:
   redis_data:
   rabbitmq_data:
   minio_data:
-  uploads_data:
+  video_storage:  # Volumen compartido para videos (original y procesados)

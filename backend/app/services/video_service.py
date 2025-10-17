@@ -5,6 +5,7 @@ from app.domain.entities.vote import Vote
 from app.domain.repositories.video_repository import VideoRepositoryInterface
 from app.domain.repositories.vote_repository import VoteRepositoryInterface
 from app.shared.interfaces.file_storage import FileStorageInterface
+from app.shared.interfaces.task_queue import TaskQueueInterface
 from app.shared.exceptions.video_exceptions import VideoNotFoundException, VideoNotOwnedException, VideoCannotBeDeletedException
 
 
@@ -15,11 +16,13 @@ class VideoService:
         self,
         video_repository: VideoRepositoryInterface,
         vote_repository: VoteRepositoryInterface,
-        file_storage: FileStorageInterface
+        file_storage: FileStorageInterface,
+        task_queue: TaskQueueInterface
     ):
         self._video_repository = video_repository
         self._vote_repository = vote_repository
         self._file_storage = file_storage
+        self._task_queue = task_queue
     
     async def upload_video(
         self,
@@ -163,9 +166,23 @@ class VideoService:
     # Método removido - ya no se usa filename único con UUID
     
     async def _start_video_processing(self, video: Video) -> None:
-        """Marca un video como procesado"""
-        # En una implementación real, aquí se enviaría la tarea a la cola
-        # await self._task_queue.enqueue('process_video', video.id)
+        """Inicia el procesamiento del video enviando tarea a la cola"""
+        try:
+            # Publicar tarea de procesamiento usando la interfaz
+            task_id = await self._task_queue.publish_video_processing_task(video.id)
+            
+            # Log para debugging
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info(f"🎬 Tarea de procesamiento iniciada para video {video.id}")
+            logger.info(f"   Task ID: {task_id}")
+            
+        except Exception as e:
+            # Si falla el envío de la tarea, loggear pero no fallar el upload
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"❌ Error enviando tarea de procesamiento para video {video.id}: {e}")
+            logger.warning("   El video se subió correctamente pero no se procesará automáticamente")
     
     async def mark_video_as_processed(self, video_id: int, processed_url: str) -> None:
         """Marca un video como procesado"""
