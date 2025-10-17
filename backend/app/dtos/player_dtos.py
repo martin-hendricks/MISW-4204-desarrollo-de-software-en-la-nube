@@ -32,6 +32,19 @@ class PlayerResponseDTO(BaseModel):
     message: str = "Usuario creado exitosamente."
 
 
+class PlayerInfoDTO(BaseModel):
+    """DTO para información del jugador"""
+    id: int
+    first_name: str
+    last_name: str
+    email: str
+    city: str
+    country: str
+    username: str
+    is_active: bool
+    created_at: datetime
+
+
 class TokenResponseDTO(BaseModel):
     """DTO de respuesta para token"""
     access_token: str

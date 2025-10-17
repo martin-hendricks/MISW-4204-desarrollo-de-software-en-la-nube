@@ -2,36 +2,21 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from app.main import app
 from app.infrastructure.database.database import get_db, Base
 from app.infrastructure.external_services.jwt_auth_service import JWTAuthService
 from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import os
+import sys
 
-# Modelos SQLAlchemy para tests
-class Player(Base):
-    __tablename__ = "players"
-    id = Column(Integer, primary_key=True, index=True)
-    first_name = Column(String(50), nullable=False)
-    last_name = Column(String(50), nullable=False)
-    email = Column(String(100), unique=True, index=True, nullable=False)
-    password_hash = Column(String(255), nullable=False)
-    city = Column(String(100), nullable=False)
-    country = Column(String(100), nullable=False)
-    is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+# Importar la app de tests que maneja la configuración correctamente
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from app_test_main import app
 
-class Video(Base):
-    __tablename__ = "videos"
-    id = Column(Integer, primary_key=True, index=True)
-    player_id = Column(Integer, ForeignKey("players.id"), nullable=False)
-    title = Column(String(200), nullable=False)
-    status = Column(String(20), default="uploaded")
-    original_url = Column(String(500))
-    processed_url = Column(String(500))
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+# Usar los modelos existentes de la aplicación
+from app.infrastructure.database.models import PlayerModel, VideoModel
 
 # Base de datos de prueba
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
@@ -81,12 +66,13 @@ def clean_database():
 
 
 @pytest.fixture
-async def test_player(db_session):
+def test_player(db_session):
     """Fixture para crear un jugador de prueba"""
+    import asyncio
     auth_service = JWTAuthService()
-    password_hash = await auth_service.hash_password("testpassword")
+    password_hash = asyncio.run(auth_service.hash_password("testpassword"))
     
-    player = Player(
+    player = PlayerModel(
         first_name="Test",
         last_name="Player",
         email="test@example.com",
@@ -101,12 +87,13 @@ async def test_player(db_session):
 
 
 @pytest.fixture
-async def test_video(db_session, test_player):
+def test_video(db_session, test_player):
     """Fixture para crear un video de prueba"""
-    video = Video(
+    from app.infrastructure.database.models import VideoStatusEnum
+    video = VideoModel(
         player_id=test_player.id,
         title="Test Video",
-        status="processed",
+        status=VideoStatusEnum.PROCESSED,
         original_url="/uploads/test_video.mp4",
         processed_url="/uploads/processed_test_video.mp4",
     )
@@ -117,17 +104,90 @@ async def test_video(db_session, test_player):
 
 
 @pytest.fixture
-async def auth_headers(test_player):
+def auth_headers(test_player):
     """Fixture para obtener headers de autenticación"""
     # Simular login para obtener token
     login_data = {
         "email": test_player.email,
         "password": "testpassword"
     }
-    response = client.post("/api/auth/login", json=login_data)
+    response = client.post("/auth/login", json=login_data)
     if response.status_code == 200:
         token = response.json()["access_token"]
         return {"Authorization": f"Bearer {token}"}
     else:
-        # Si falla el login, retornar headers vacíos
-        return {}
+        # Si falla el login, crear un usuario y hacer login
+        import uuid
+        unique_email = f"test.user.{uuid.uuid4().hex[:8]}@example.com"
+        
+        # Crear usuario
+        user_data = {
+            "first_name": "Test",
+            "last_name": "User",
+            "email": unique_email,
+            "password1": "testpassword",
+            "password2": "testpassword",
+            "city": "Bogotá",
+            "country": "Colombia"
+        }
+        client.post("/auth/signup", json=user_data)
+        
+        # Hacer login
+        login_data = {
+            "email": unique_email,
+            "password": "testpassword"
+        }
+        response = client.post("/auth/login", json=login_data)
+        if response.status_code == 200:
+            token = response.json()["access_token"]
+            return {"Authorization": f"Bearer {token}"}
+        else:
+            return {}
+
+
+@pytest.fixture
+def auth_video(auth_headers, db_session):
+    """Fixture para crear un video del usuario autenticado"""
+    from app.infrastructure.database.models import VideoModel, VideoStatusEnum
+    import uuid
+    
+    # Crear un usuario específico para el video
+    import asyncio
+    auth_service = JWTAuthService()
+    password_hash = asyncio.run(auth_service.hash_password("testpassword"))
+    
+    player = PlayerModel(
+        first_name="Video",
+        last_name="Owner",
+        email=f"video.owner.{uuid.uuid4().hex[:8]}@example.com",
+        password_hash=password_hash,
+        city="Bogotá",
+        country="Colombia"
+    )
+    db_session.add(player)
+    db_session.commit()
+    db_session.refresh(player)
+    
+    video = VideoModel(
+        player_id=player.id,
+        title="Auth Test Video",
+        status=VideoStatusEnum.PROCESSED,
+        original_url="/uploads/auth_test_video.mp4",
+        processed_url="/uploads/processed_auth_test_video.mp4",
+    )
+    db_session.add(video)
+    db_session.commit()
+    db_session.refresh(video)
+    
+    # Crear headers para este usuario específico
+    login_data = {
+        "email": player.email,
+        "password": "testpassword"
+    }
+    response = client.post("/auth/login", json=login_data)
+    if response.status_code == 200:
+        token = response.json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
+        return {"video": video, "headers": headers}
+    else:
+        return {"video": video, "headers": {}}
