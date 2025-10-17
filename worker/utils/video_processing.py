@@ -151,11 +151,9 @@ class VideoProcessor:
             if add_logo:
                 logo_file = logo_path or config.LOGO_PATH
                 if os.path.exists(logo_file):
-                    # Cargar el logo manteniendo su transparencia (canal alpha)
                     logo = ffmpeg.input(logo_file)
                     position = self._get_logo_position()
-                    # Aplicar overlay con soporte para transparencia
-                    stream = stream.overlay(logo, x=position[0], y=position[1], format='auto', shortest=1)
+                    stream = stream.overlay(logo, x=position[0], y=position[1])
                     logger.info(f"✅ Logo agregado en posición: {config.LOGO_POSITION}")
                 else:
                     logger.warning(f"⚠️ Logo no encontrado: {logo_file}, se omite")
