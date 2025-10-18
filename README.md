@@ -57,7 +57,7 @@ Contiene todos los archivos entregables de la primera entrega del proyecto, incl
 **[Ver documentación de la Entrega 1 →](docs/Entrega_1/)**
 
 ### 📁 [source/](source/)
-Contiene los archivos fuente de la aplicación, incluyendo el código del backend API, worker de procesamiento de videos, configuración de servicios y pruebas de carga. Esta es la carpeta principal del desarrollo.
+Contiene los archivos fuente de la aplicación, incluyendo el código del backend API, worker de procesamiento de videos, configuración de servicios y pruebas de carga. Esta es la carpeta principal del desarrollo. Tambien encontrara las instrucciones de ejecución.
 
 **Componentes incluidos:**
 - Backend API (FastAPI)

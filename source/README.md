@@ -8,46 +8,19 @@ La aplicacion esta construida siguiendo una arquitectura de microservicios con l
 
 ### Componentes Principales
 
-- **Backend API**: API REST desarrollada en FastAPI (Python) que gestiona la logica de negocio, autenticacion y persistencia de datos.
-- **Worker**: Servicio de procesamiento asincrono de videos utilizando Celery para el procesamiento batch.
-- **Base de Datos**: PostgreSQL para almacenamiento persistente de informacion de jugadores, videos y votaciones.
+- **Backend API** ([backend/](backend/README.md)): API REST desarrollada en FastAPI (Python) que gestiona la logica de negocio, autenticacion y persistencia de datos.
+- **Worker** ([worker/](worker/)): Servicio de procesamiento asincrono de videos utilizando Celery para el procesamiento batch.
+- **Base de Datos** ([database/](database/)): PostgreSQL para almacenamiento persistente de informacion de jugadores, videos y votaciones.
 - **Message Broker**: RabbitMQ para la comunicacion asincrona entre servicios.
-- **API Gateway**: NGINX como punto de entrada unico y balanceador de carga.
+- **API Gateway** ([api-gateway/](api-gateway/)): NGINX como punto de entrada unico y balanceador de carga.
 - **Almacenamiento**: Sistema de almacenamiento de archivos (S3 o local) para videos originales y procesados.
+- **Performance Testing** ([performance-testing/](performance-testing/README.md)): Suite de pruebas de rendimiento y carga con JMeter, Prometheus y Grafana. Este componente no forma parte de la aplicacion en produccion, pero es esencial para evaluar la capacidad y escalabilidad del sistema.
 
 ### Diagrama de Arquitectura
 
-```
-┌─────────────┐
-│   Cliente   │
-└──────┬──────┘
-       │
-       ▼
-┌─────────────────┐
-│  API Gateway    │
-│    (NGINX)      │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐         ┌──────────────┐
-│   Backend API   │────────▶│  PostgreSQL  │
-│   (FastAPI)     │         │   Database   │
-└────────┬────────┘         └──────────────┘
-         │
-         │ (Publica tareas)
-         ▼
-┌─────────────────┐
-│    RabbitMQ     │
-│ (Message Broker)│
-└────────┬────────┘
-         │
-         │ (Consume tareas)
-         ▼
-┌─────────────────┐         ┌──────────────┐
-│     Worker      │────────▶│ Almacenamiento│
-│    (Celery)     │         │  de Videos   │
-└─────────────────┘         └──────────────┘
-```
+Para ver el diagrama detallado de la arquitectura del sistema, los flujos de datos y la descripcion completa de cada componente, consulte:
+
+**[Diagrama de Arquitectura Completo](../docs/Entrega_1/diagramas_arquitectura.md)**
 
 ## Tecnologias Utilizadas
 
@@ -72,10 +45,17 @@ La aplicacion esta construida siguiendo una arquitectura de microservicios con l
 - **NGINX**: API Gateway, servidor web y balanceador de carga
 - **Redis**: Cache y almacenamiento de sesiones (opcional)
 
+### Performance Testing (Entorno Separado)
+El directorio `performance-testing/` incluye un stack independiente de Docker Compose para pruebas de rendimiento:
+- **Apache JMeter**: Herramienta de pruebas de carga y rendimiento de aplicaciones
+- **Prometheus**: Sistema de monitoreo y base de datos de series temporales
+- **Grafana**: Plataforma de visualizacion y analisis de metricas
+- **Python**: Scripts personalizados para pruebas de rendimiento del worker
+
+**Nota**: Las herramientas de performance testing se ejecutan en un entorno Docker separado y no forman parte del stack de produccion.
+
 ### Testing y Calidad
 - **Pytest**: Framework de testing para Python
-- **Apache JMeter**: Pruebas de rendimiento y carga
-- **Prometheus & Grafana**: Monitoreo y visualizacion de metricas
 - **Coverage.py**: Medicion de cobertura de codigo
 
 ## Estructura de Directorios
@@ -121,117 +101,61 @@ source/
 │   ├── init.sql                # Script de inicializacion
 │   └── Dockerfile              # Imagen Docker de PostgreSQL
 │
-├── performance-testing/         # Pruebas de rendimiento
+├── performance-testing/         # Pruebas de rendimiento (Docker separado)
 │   ├── web-api-tests/          # Tests de JMeter para la API
 │   │   └── scenarios/          # Escenarios de prueba
 │   ├── worker-tests/           # Tests de rendimiento del worker
 │   ├── grafana/                # Configuracion de Grafana
 │   ├── prometheus/             # Configuracion de Prometheus
+│   ├── docker-compose.testing.yml # Stack Docker para pruebas
 │   └── README.md               # Documentacion de pruebas
 │
-├── docker-compose.yml           # Orquestacion de servicios (produccion)
+├── docker-compose.yml           # Orquestacion de servicios
 └── docker-compose.dev.yml       # Orquestacion de servicios (desarrollo)
 ```
 
 ## Requisitos Previos
 
+### Software
 - **Docker Desktop**: Version 20.10 o superior
 - **Docker Compose**: Version 2.0 o superior
-- **Recursos del Sistema**:
-  - Al menos 4GB de RAM disponible
-  - 10GB de espacio en disco
-  - CPU multi-core recomendado para procesamiento de videos
+
+### Recursos del Sistema
+- **S.O**: Ubuntu Server 24.04.3 LTS
+- **RAM**: 4 GB
+- **CPU**: 2 Cores
+- **Almacenamiento**: 25 GB
 
 ## Instalacion y Configuracion
 
 ### 1. Configurar Variables de Entorno
 
-El backend requiere un archivo de configuracion con las variables de entorno necesarias:
+El backend requiere configuracion especifica. Para detalles completos sobre la configuracion de variables de entorno, consulte:
 
+**[backend/README.md](backend/README.md)** - Configuracion detallada del backend
+
+Resumen rapido:
 ```bash
 cd backend
 cp config.env.example config.env
-```
-
-Editar `config.env` y configurar las siguientes variables:
-
-```bash
-# Database
-DATABASE_URL=postgresql://postgres:postgres@database:5432/anb_showcase
-
-# JWT Configuration
-SECRET_KEY=your-secret-key-here
-ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=30
-
-# Celery/RabbitMQ
-CELERY_BROKER_URL=amqp://guest:guest@rabbitmq:5672//
-CELERY_RESULT_BACKEND=rpc://
-
-# File Storage (S3 o Local)
-STORAGE_TYPE=local  # o 's3'
-# Si usa S3:
-# AWS_ACCESS_KEY_ID=your-access-key
-# AWS_SECRET_ACCESS_KEY=your-secret-key
-# AWS_BUCKET_NAME=your-bucket-name
-# AWS_REGION=us-east-1
-
-# Application Settings
-ENVIRONMENT=development
-DEBUG=true
+# Editar config.env con las variables necesarias
 ```
 
 ### 2. Levantar los Servicios
 
-#### Entorno de Desarrollo
+El archivo `docker-compose.yml` se encuentra en el directorio `source/`. Puede ejecutar los servicios de dos formas:
 
+#### Opcion 1: Desde el directorio source
 ```bash
-docker-compose -f docker-compose.dev.yml up --build
-```
-
-El modo desarrollo incluye:
-- Hot-reload del codigo
-- Logs detallados
-- Volumenes montados para desarrollo en tiempo real
-
-#### Entorno de Produccion
-
-```bash
+cd source
 docker-compose up --build
 ```
 
-### 3. Verificar que los Servicios Esten Funcionando
-
-Los servicios estaran disponibles en:
-
-- **API Backend**: http://localhost/api
-- **Documentacion API (Swagger)**: http://localhost/docs
-- **Documentacion API (ReDoc)**: http://localhost/redoc
-- **RabbitMQ Management Console**: http://localhost:15672
-  - Usuario: `guest`
-  - Contrasena: `guest`
-- **Prometheus** (si esta habilitado): http://localhost:9090
-- **Grafana** (si esta habilitado): http://localhost:3000
-
-### 4. Ejecutar Migraciones de Base de Datos
-
+#### Opcion 2: Desde el directorio raiz
 ```bash
-# Ejecutar migraciones
-docker-compose exec backend python migrate.py
-
-# O con Alembic directamente
-docker-compose exec backend alembic upgrade head
+docker-compose -f source/docker-compose.yml up --build
 ```
 
-### 5. Crear Migraciones (Desarrollo)
-
-```bash
-# Generar una nueva migracion automaticamente
-docker-compose exec backend alembic revision --autogenerate -m "descripcion de la migracion"
-
-# Aplicar la migracion
-docker-compose exec backend alembic upgrade head
-```
 
 ## Uso del Sistema
 
@@ -254,17 +178,19 @@ docker-compose exec backend alembic upgrade head
 - `POST /api/auth/login` - Inicio de sesion
 - `POST /api/videos/upload` - Subir video
 - `GET /api/videos` - Listar videos procesados
+- `GET /api/videos/processed/{video_id}` - Descargar video procesado
+- `GET /api/videos/original/{video_id}` - Descargar video original
 - `POST /api/videos/{id}/vote` - Votar por un video
 - `GET /api/public/ranking` - Obtener ranking de jugadores
 
 Para documentacion completa de los endpoints, ver:
-- **Swagger UI**: http://localhost/docs
-- [API_ENDPOINTS_SUMMARY.md](backend/API_ENDPOINTS_SUMMARY.md)
+- **[Coleccion de Postman](../collections/README.md)**
 
 ## Pruebas
 
 ### Ejecutar Pruebas Unitarias
 
+#### Opcion 1: Desde el directorio source
 ```bash
 # Backend
 docker-compose exec backend pytest
@@ -276,15 +202,21 @@ docker-compose exec backend pytest --cov=app --cov-report=html
 docker-compose exec worker pytest
 ```
 
-### Ejecutar Pruebas de Integracion
-
+#### Opcion 2: Desde el directorio raiz
 ```bash
-docker-compose exec backend pytest tests/test_integration/
+# Backend
+docker-compose -f source/docker-compose.yml exec backend pytest
+
+# Con cobertura
+docker-compose -f source/docker-compose.yml exec backend pytest --cov=app --cov-report=html
+
+# Worker
+docker-compose -f source/docker-compose.yml exec worker pytest
 ```
 
 ### Ejecutar Pruebas de Rendimiento
 
-Las pruebas de rendimiento se realizan con Apache JMeter. Ver documentacion detallada en:
+Las pruebas de rendimiento se realizan con Apache JMeter en un stack Docker separado. Ver documentacion detallada en:
 
 **[performance-testing/README.md](performance-testing/README.md)**
 
@@ -294,43 +226,11 @@ Tipos de pruebas disponibles:
 - **Sustained Test**: Carga sostenida por periodo prolongado
 - **Worker Performance Test**: Rendimiento del procesamiento de videos
 
-## Monitoreo y Observabilidad
-
-### Prometheus
-
-Prometheus recopila metricas de los servicios:
-
-```bash
-# Acceder a Prometheus
-http://localhost:9090
-```
-
-Metricas disponibles:
-- Latencia de requests HTTP
-- Throughput de la API
-- Tasa de exito/error de requests
-- Tiempo de procesamiento de videos
-- Longitud de cola de tareas en RabbitMQ
-
-### Grafana
-
-Grafana visualiza las metricas recopiladas por Prometheus:
-
-```bash
-# Acceder a Grafana
-http://localhost:3000
-```
-
-Dashboards incluidos:
-- Backend API Performance
-- Worker Processing Metrics
-- Database Performance
-- RabbitMQ Queue Metrics
-
-### Logs
+## Logs
 
 Ver logs de los servicios:
 
+#### Opcion 1: Desde el directorio source
 ```bash
 # Todos los servicios
 docker-compose logs -f
@@ -341,8 +241,20 @@ docker-compose logs -f worker
 docker-compose logs -f rabbitmq
 ```
 
+#### Opcion 2: Desde el directorio raiz
+```bash
+# Todos los servicios
+docker-compose -f source/docker-compose.yml logs -f
+
+# Servicio especifico
+docker-compose -f source/docker-compose.yml logs -f backend
+docker-compose -f source/docker-compose.yml logs -f worker
+docker-compose -f source/docker-compose.yml logs -f rabbitmq
+```
+
 ## Detener y Limpiar
 
+#### Opcion 1: Desde el directorio source
 ```bash
 # Detener servicios
 docker-compose down
@@ -354,24 +266,50 @@ docker-compose down -v
 docker image prune
 ```
 
+#### Opcion 2: Desde el directorio raiz
+```bash
+# Detener servicios
+docker-compose -f source/docker-compose.yml down
+
+# Detener y eliminar volumenes (cuidado! elimina datos)
+docker-compose -f source/docker-compose.yml down -v
+
+# Limpiar imagenes huerfanas
+docker image prune
+```
+
 ## Troubleshooting
 
 ### El backend no se conecta a la base de datos
 
 Verificar que el servicio de PostgreSQL este ejecutandose:
 
+**Desde el directorio source:**
 ```bash
 docker-compose ps database
 docker-compose logs database
+```
+
+**Desde el directorio raiz:**
+```bash
+docker-compose -f source/docker-compose.yml ps database
+docker-compose -f source/docker-compose.yml logs database
 ```
 
 ### El worker no procesa videos
 
 Verificar la conexion con RabbitMQ:
 
+**Desde el directorio source:**
 ```bash
 docker-compose logs rabbitmq
 docker-compose logs worker
+```
+
+**Desde el directorio raiz:**
+```bash
+docker-compose -f source/docker-compose.yml logs rabbitmq
+docker-compose -f source/docker-compose.yml logs worker
 ```
 
 Acceder a RabbitMQ Management Console para verificar las colas:
@@ -379,39 +317,8 @@ http://localhost:15672
 
 ### Videos no se almacenan correctamente
 
-Verificar la configuracion de almacenamiento en `config.env`:
+Verificar la configuracion de almacenamiento en `backend/config.env`:
 - Si `STORAGE_TYPE=local`, verificar que el directorio de almacenamiento tenga permisos
-- Si `STORAGE_TYPE=s3`, verificar las credenciales de AWS
-
-### Errores de migracion de base de datos
-
-```bash
-# Ver estado de migraciones
-docker-compose exec backend alembic current
-
-# Revertir ultima migracion
-docker-compose exec backend alembic downgrade -1
-
-# Ver historial de migraciones
-docker-compose exec backend alembic history
-```
-
-## Documentacion Adicional
-
-- **[Backend API Documentation](backend/README.md)** - Detalles del backend y arquitectura DDD
-- **[Worker Documentation](backend/README.md)** - Procesamiento de videos y Celery
-- **[Performance Testing Guide](performance-testing/README.md)** - Guia completa de pruebas de rendimiento
-- **[API Endpoints Summary](backend/API_ENDPOINTS_SUMMARY.md)** - Resumen de endpoints
-- **[Architecture Details](backend/ARCHITECTURE.md)** - Arquitectura detallada del sistema
-
-## Contribuir
-
-Este proyecto sigue las siguientes convenciones:
-
-- **Estilo de Codigo**: PEP 8 para Python
-- **Commits**: Conventional Commits
-- **Branches**: GitFlow (main, develop, feature/*, hotfix/*)
-- **Testing**: Cobertura minima del 80%
 
 ## Licencia
 
