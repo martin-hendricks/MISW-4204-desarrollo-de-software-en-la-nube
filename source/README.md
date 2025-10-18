@@ -16,11 +16,11 @@ La aplicacion esta construida siguiendo una arquitectura de microservicios con l
 - **Almacenamiento**: Sistema de almacenamiento de archivos (S3 o local) para videos originales y procesados.
 - **Performance Testing** ([performance-testing/](performance-testing/README.md)): Suite de pruebas de rendimiento y carga con JMeter, Prometheus y Grafana. Este componente no forma parte de la aplicacion en produccion, pero es esencial para evaluar la capacidad y escalabilidad del sistema.
 
-### Diagrama de Arquitectura
+### Diagramas de Arquitectura
 
-Para ver el diagrama detallado de la arquitectura del sistema, los flujos de datos y la descripcion completa de cada componente, consulte:
+Para ver los diagramas completos de arquitectura del sistema (contexto, contenedores, componentes, entidad-relacion y flujos), consulte:
 
-**[Diagrama de Arquitectura Completo](../docs/Entrega_1/diagramas_arquitectura.md)**
+**[Diagramas de Arquitectura Completos](../docs/Entrega_1/diagramas_arquitectura.md)**
 
 ## Tecnologias Utilizadas
 
