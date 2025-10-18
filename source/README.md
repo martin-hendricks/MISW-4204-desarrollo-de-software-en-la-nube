@@ -14,7 +14,7 @@ La aplicacion esta construida siguiendo una arquitectura de microservicios con l
 - **Message Broker**: RabbitMQ para la comunicacion asincrona entre servicios.
 - **API Gateway** ([api-gateway/](api-gateway/)): NGINX como punto de entrada unico y balanceador de carga.
 - **Almacenamiento**: Sistema de almacenamiento de archivos (S3 o local) para videos originales y procesados.
-- **Performance Testing** ([performance-testing/](performance-testing/README.md)): Suite de pruebas de rendimiento y carga con JMeter, Prometheus y Grafana. Este componente no forma parte de la aplicacion en produccion, pero es esencial para evaluar la capacidad y escalabilidad del sistema.
+- **Performance Testing** ([performance-testing/](performance-testing/README.md)): Suite de pruebas de rendimiento y carga con JMeter, Prometheus y Grafana. Este componente no forma parte de la aplicacion en produccion, pero es esencial para evaluar la capacidad y escalabilidad del sistema.Para instrucciones detalladas de ejecucion, configuracion y analisis de resultados, consulte:[performance-testing/README.md](performance-testing/README.md)
 
 ### Diagramas de Arquitectura
 
@@ -216,9 +216,9 @@ docker-compose -f source/docker-compose.yml exec worker pytest
 
 ### Ejecutar Pruebas de Rendimiento
 
-Las pruebas de rendimiento se realizan con Apache JMeter en un stack Docker separado. Ver documentacion detallada en:
+Las pruebas de rendimiento se realizan con Apache JMeter en un stack Docker separado. Para instrucciones detalladas de ejecucion, configuracion y analisis de resultados, consulte:
 
-**[performance-testing/README.md](performance-testing/README.md)**
+**[performance-testing/README.md](performance-testing/README.md)** - Guia completa de pruebas de rendimiento
 
 Tipos de pruebas disponibles:
 - **Smoke Test**: Validacion basica con carga minima
@@ -311,9 +311,6 @@ docker-compose logs worker
 docker-compose -f source/docker-compose.yml logs rabbitmq
 docker-compose -f source/docker-compose.yml logs worker
 ```
-
-Acceder a RabbitMQ Management Console para verificar las colas:
-http://localhost:15672
 
 ### Videos no se almacenan correctamente
 
