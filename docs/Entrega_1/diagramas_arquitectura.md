@@ -1,6 +1,27 @@
 # Diagrama de Arquitectura - ANB Rising Stars Showcase
 
-Este documento presenta el diagrama de arquitectura del sistema ANB Rising Stars Showcase, mostrando los componentes principales y sus interacciones.
+Diagrama de contexto
+<img width="704" height="591" alt="Contexto" src="https://github.com/user-attachments/assets/8fd93a1d-916d-455f-b36e-af250f66b010" />
+
+Diagrama de contenedores 
+
+<img width="1102" height="1288" alt="c2-contenedores" src="https://github.com/user-attachments/assets/e9e2e0fb-3a25-4790-9603-2d269d7fc06e" />
+
+Diagrama de componentes 
+
+<img width="1721" height="689" alt="C3-componentes" src="https://github.com/user-attachments/assets/11557da0-3c6f-4b5e-ada9-0c18bddc103b" />
+
+Diagrama de Entidad relacion
+
+<img width="306" height="610" alt="ER" src="https://github.com/user-attachments/assets/93d91a88-9f04-4348-948a-3a1c3c475462" />
+
+Diagrama de FLujo
+
+<img width="1625" height="961" alt="Diagrama de Flujo" src="https://github.com/user-attachments/assets/7e8b8800-d5f3-4aba-aab9-6eb2dd05a769" />
+
+
+Este documento present![Uploading c2-contenedores.png…]()
+a el diagrama de arquitectura del sistema ANB Rising Stars Showcase, mostrando los componentes principales y sus interacciones.
 
 ## Arquitectura de Microservicios
 
