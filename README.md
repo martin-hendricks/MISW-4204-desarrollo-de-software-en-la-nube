@@ -1,6 +1,6 @@
 # ANB Rising Stars Showcase
 
-## Integrantes del Grupo
+## Integrantes del Grupo 2
 
 | Nombre | Correo |
 |--------|--------|
@@ -72,61 +72,6 @@ Contiene los archivos fuente de la aplicación, incluyendo el código del backen
 Contiene el video de sustentación del proyecto para la primera entrega, donde se presenta la solución desarrollada, la arquitectura implementada y una demostración del funcionamiento del sistema.
 
 **[Ver información del video de sustentación →](sustentacion/Entrega_1/README.md)**
-
-## Inicio Rápido
-
-### Requisitos Previos
-
-- Docker Desktop (versión 20.10 o superior)
-- Docker Compose (versión 2.0 o superior)
-- Al menos 4GB de RAM disponible
-- 10GB de espacio en disco
-
-### Instalación y Ejecución
-
-```bash
-# 1. Clonar el repositorio
-git clone <repository-url>
-cd MISW-4204-desarrollo-de-software-en-la-nube
-
-# 2. Ir al directorio source
-cd source
-
-# 3. Configurar variables de entorno
-cd backend
-cp config.env.example config.env
-# Editar config.env con los valores apropiados
-cd ..
-
-# 4. Levantar los servicios
-docker-compose up --build
-```
-
-Los servicios estarán disponibles en:
-- **API Backend**: http://localhost/api
-- **Documentación API (Swagger)**: http://localhost/docs
-- **RabbitMQ Management**: http://localhost:15672
-
-Para instrucciones detalladas de instalación, configuración y despliegue, consulte la **[documentación técnica en source/](source/README.md)**.
-
-## Pruebas de la API
-
-Para probar la API puede utilizar:
-
-1. **Swagger UI**: Acceder a http://localhost/docs
-2. **Colección de Postman**: Importar desde [collections/](collections/README.md)
-
-## Documentación del Proyecto
-
-- **[Plan de Pruebas de Capacidad](capacity-planning/plan_de_pruebas.md)** - Análisis de capacidad y escalabilidad
-- **[Arquitectura y Detalles Técnicos](source/README.md)** - Información completa sobre la arquitectura, tecnologías y componentes
-- **[Colección de Postman](collections/README.md)** - Endpoints y ejemplos de uso de la API
-- **[Documentación Entrega 1](docs/Entrega_1/README.md)** - Entregables y documentación académica
-- **[Video de Sustentación](sustentacion/Entrega_1/README.md)** - Presentación del proyecto
-
-## Impacto Esperado
-
-ANB Rising Stars Showcase democratiza el acceso al proceso de selección de nuevos talentos en el baloncesto, reduciendo barreras geográficas y económicas. La plataforma tecnológica apoya la misión de la ANB de fomentar el deporte e identificar jóvenes promesas que puedan integrarse en el baloncesto profesional.
 
 ## Licencia
 
