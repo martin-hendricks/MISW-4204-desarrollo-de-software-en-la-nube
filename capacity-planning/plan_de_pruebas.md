@@ -186,10 +186,10 @@ Este plan de pruebas se enfoca en medir la capacidad de estos componentes bajo d
 ```
 
 ### 8.2 Infraestructura de Pruebas
-- **Sistema Operativo**: Linux (Docker containers)
-- **CPU**: Mínimo 4 cores, recomendado 8+ cores
-- **Memoria RAM**: Mínimo 8GB, recomendado 16GB+
-- **Almacenamiento**: SSD con 50GB+ de espacio libre
+- **Sistema Operativo**: Ubuntu Server 24.04.3 LTS (Docker containers)
+- **CPU**: 2 cores
+- **Memoria RAM**: 4 GB
+- **Almacenamiento**: 25 GB
 - **Red**: Conexión estable para evitar interferencias
 
 ### 8.3 Software de Soporte
@@ -263,7 +263,7 @@ Este plan de pruebas se enfoca en medir la capacidad de estos componentes bajo d
 ## 11. Riesgos y Limitaciones
 
 ### 11.1 Limitaciones Identificadas
-- **Recursos de Hardware**: Limitaciones del entorno de pruebas local
+- **Recursos de Hardware**: Limitaciones significativas del entorno de pruebas (2 cores, 4GB RAM, 25GB almacenamiento)
 - **Red**: Latencia de red puede afectar resultados
 - **Datos de Prueba**: Uso de datos sintéticos vs. datos reales
 - **Configuración**: Diferencias entre entorno de pruebas y producción
@@ -308,10 +308,10 @@ Este plan de pruebas se enfoca en medir la capacidad de estos componentes bajo d
 - **Base de Datos**: Read replicas para consultas de solo lectura
 - **Almacenamiento**: Distribución de archivos en múltiples nodos
 
-### 13.2 Escalamiento Vertical
-- **CPU**: Aumentar cores para procesamiento de video
-- **Memoria**: Más RAM para buffers de video
-- **Almacenamiento**: SSD de alto rendimiento
+### 13.2 Escalamiento Vertical (Recomendado para este entorno)
+- **CPU**: Aumentar a 4-8 cores para mejor procesamiento de video
+- **Memoria**: Aumentar a 8-16GB para buffers de video y concurrencia
+- **Almacenamiento**: SSD de alto rendimiento (actualmente limitado a 25GB)
 - **Red**: Mayor ancho de banda para transferencia de archivos
 
 ### 13.3 Optimizaciones de Código
