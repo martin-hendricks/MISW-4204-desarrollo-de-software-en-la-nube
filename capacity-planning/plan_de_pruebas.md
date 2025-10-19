@@ -65,12 +65,12 @@ Este plan de pruebas se enfoca en medir la capacidad de estos componentes bajo d
 
 **Prueba de Escalamiento (Ramp-up)**
 - **Estrategia**: Iniciar en 0 usuarios y aumentar gradualmente hasta X usuarios en 3 minutos, mantener 5 minutos
-- **Niveles de Prueba**: 100 → 200 → 300 → 400 → 500 usuarios
+- **Niveles de Prueba**: 100 → 200 → 300 → 400 → 500 usuarios (se saturo maquina en 300 usuarios)
 - **Objetivo**: Encontrar la capacidad máxima sin degradación significativa
 - **Comando**: `docker exec jmeter /bin/bash -c "jmeter -n -t /scripts/ramp_up_test.jmx -l /scripts/ramp_up_X_users_results.jtl -Jusers=X"`
 
 **Prueba Sostenida**
-- **Usuarios**: 80% de la capacidad máxima encontrada
+- **Usuarios**: 80% de la capacidad máxima encontrada (cap maxima 145 usuarios, se realizo prueba con 116 usuarios)
 - **Duración**: 5 minutos
 - **Objetivo**: Confirmar estabilidad del sistema bajo carga sostenida
 - **Comando**: `docker exec jmeter /bin/bash -c "jmeter -n -t /scripts/sustained_test.jmx -l /scripts/sustained_X_users_results.jtl -Jusers=X"`
@@ -86,7 +86,7 @@ Este plan de pruebas se enfoca en medir la capacidad de estos componentes bajo d
 
 #### 4.2.1 Estrategia de Implementación
 - **Bypass de la Web**: Inyección directa de mensajes en la cola Redis
-- **Payloads Realistas**: Uso de archivos de video de diferentes tamaños (50MB, 100MB)
+- **Payloads Realistas**: Uso de archivos de video de diferentes tamaños (50MB)
 - **Configuraciones Variables**: 1, 2, 4 procesos/hilos por nodo
 
 #### 4.2.2 Escenarios de Prueba
@@ -96,23 +96,12 @@ Este plan de pruebas se enfoca en medir la capacidad de estos componentes bajo d
 - **Estrategia**: Aumentar progresivamente la cantidad de tareas en la cola
 - **Comandos**:
   ```bash
-  # Carga inicial
-  docker exec producer python producer.py --num-videos 50 --video-file ./assets/dummy_file_50mb.mp4 --no-wait
-  
-  # Carga media
-  docker exec producer python producer.py --num-videos 100 --video-file ./assets/dummy_file_50mb.mp4 --no-wait
-  
-  # Carga alta
-  docker exec producer python producer.py --num-videos 200 --video-file ./assets/dummy_file_50mb.mp4 --no-wait
+  # Carga
+  docker exec producer python producer.py --num-videos 20 --video-file ./assets/dummy_file_50mb.mp4 --no-wait
   ```
 
-**Pruebas Sostenidas**
-- **Objetivo**: Medir throughput estable sin saturación de la cola
-- **Estrategia**: Mantener un número fijo de archivos en la cola
-- **Comando**: `docker exec producer python producer.py --num-videos 20 --video-file ./assets/dummy_file_50mb.mp4 --no-wait`
-
 #### 4.2.3 Configuraciones de Prueba
-- **Tamaños de Video**: 50MB, 100MB
+- **Tamaños de Video**: 50MB
 - **Concurrencia de Worker**: 1, 2, 4 procesos/hilos por nodo
 - **Tiempo de Espera**: 600 segundos máximo por lote
 
@@ -146,8 +135,7 @@ Este plan de pruebas se enfoca en medir la capacidad de estos componentes bajo d
 - **Datos de Perfil**: Nombres, emails, ciudades, países
 
 ### 6.2 Archivos de Video
-- **Tamaño Pequeño**: 50MB (dummy_file_50mb.mp4)
-- **Tamaño Mediano**: 100MB (dummy_file_100mb.mp4)
+- **Tamaño**: 50MB (dummy_file_50mb.mp4)
 - **Formato**: MP4 estándar
 - **Duración**: 2-5 minutos de video de prueba
 
