@@ -119,6 +119,9 @@ Una vez que ambos entornos estén corriendo, puedes ejecutar los diferentes esce
 
     # Prueba con 200 usuarios
     docker exec jmeter /bin/bash -c "jmeter -n -t /scripts/ramp_up_test.jmx -l /scripts/ramp_up_200_users_results.jtl -Jusers=200"
+
+    # Prueba con 300 usuarios
+    docker exec jmeter /bin/bash -c "jmeter -n -t /scripts/ramp_up_test.jmx -l /scripts/ramp_up_300_users_results.jtl -Jusers=300"
     ```
 
 #### 3. Prueba Sostenida (Sustained)
@@ -136,7 +139,7 @@ Los archivos de resultados (`.jtl`) de cada ejecución aparecerán en la carpeta
 
 ---
 
-## Troubleshooting - Configuración JWT
+### Troubleshooting del BACKEND - Configuración JWT
 
 ### El servicio setup-jwt falla al conectar con la API
 
@@ -297,18 +300,18 @@ A continuación se muestran el uso para los dos tipos de pruebas principales.
 
 El objetivo es medir cuántos videos por minuto procesa el sistema bajo una carga constante y estable, sin que la cola de tareas crezca indefinidamente.
 
-**Ejemplo básico con 20 videos:**
 ```bash
+#Prueba básico con 20 videos:
 docker exec producer python producer.py --num-videos 20 --video-file ./assets/dummy_file_50mb.mp4 --no-wait
 ```
 
-**Ejemplo con 50 videos y modo debug:**
 ```bash
+#Prueba con 50 videos y modo debug:
 docker exec producer python producer.py --num-videos 50 --video-file ./assets/dummy_file_50mb.mp4 --no-wait --debug
 ```
 
-**Ejemplo con video de 100MB:**
 ```bash
+#prueba con video de 100MB:
 docker exec producer python producer.py --num-videos 10 --video-file ./assets/dummy_file_100mb.mp4 --no-wait
 ```
 
@@ -318,23 +321,62 @@ El objetivo es encontrar el punto de quiebre del sistema. Para ello, se aumenta 
 
 **Se recomienda ejecutar los siguientes comandos de forma secuencial**, observando el comportamiento en Grafana entre cada ejecución:
 
-**Paso 1: Carga inicial (50 videos)**
 ```bash
+#prueba Carga inicial (50 videos)
 docker exec producer python producer.py --num-videos 50 --video-file ./assets/dummy_file_50mb.mp4 --no-wait
 ```
 
-**Paso 2: Aumentar la carga si el sistema se mantiene estable (100 videos)**
 ```bash
+#prueba Aumentar la carga si el sistema se mantiene estable (100 videos)
 docker exec producer python producer.py --num-videos 100 --video-file ./assets/dummy_file_50mb.mp4 --no-wait
 ```
 
-**Paso 3: Carga alta para encontrar el punto de saturación (200 videos)**
 ```bash
+#prueba Carga alta para encontrar el punto de saturación (200 videos)
 docker exec producer python producer.py --num-videos 200 --video-file ./assets/dummy_file_50mb.mp4 --no-wait
 ```
 
 **Importante:** Espera a que se procesen todas las tareas antes de lanzar el siguiente lote. Monitorea en Grafana que la cola se vacíe completamente.
 
+### Troubleshooting del Worker
+
+### El script producer no muestra output
+- **Solución:** Asegúrate de haber reconstruido el contenedor producer después de modificar el código:
+
+**Desde el directorio performance-testing:**
+```bash
+docker-compose -f docker-compose.testing.yml up -d --build producer
+```
+
+**Desde el directorio source:**
+```bash
+docker-compose -f performance-testing/docker-compose.testing.yml up -d --build producer
+```
+
+**Desde el directorio raiz:**
+```bash
+docker-compose -f source/performance-testing/docker-compose.testing.yml up -d --build producer
+```
+
+### Las tareas no se procesan
+- **Verificar que el worker esté corriendo:**
+  ```bash
+  docker ps | grep worker
+  ```
+- **Ver logs del worker para errores:**
+  ```bash
+  docker logs misw-4204-desarrollo-de-software-en-la-nube-worker-1
+  ```
+
+### Error de conexión a Redis
+- **Verificar que Redis esté corriendo:**
+  ```bash
+  docker ps | grep redis
+  ```
+- **Verificar que ambos contenedores estén en la misma red:**
+  ```bash
+  docker network inspect app-network
+  ```
 ---
 # Monitoreo del Rendimiento
 
@@ -392,44 +434,3 @@ docker exec redis redis-cli LLEN video_processing
 ```
 
 ---
-## Troubleshooting del Worker
-
-### El script producer no muestra output
-- **Solución:** Asegúrate de haber reconstruido el contenedor producer después de modificar el código:
-
-**Desde el directorio performance-testing:**
-```bash
-docker-compose -f docker-compose.testing.yml up -d --build producer
-```
-
-**Desde el directorio source:**
-```bash
-docker-compose -f performance-testing/docker-compose.testing.yml up -d --build producer
-```
-
-**Desde el directorio raiz:**
-```bash
-docker-compose -f source/performance-testing/docker-compose.testing.yml up -d --build producer
-```
-
-### Las tareas no se procesan
-- **Verificar que el worker esté corriendo:**
-  ```bash
-  docker ps | grep worker
-  ```
-- **Ver logs del worker para errores:**
-  ```bash
-  docker logs misw-4204-desarrollo-de-software-en-la-nube-worker-1
-  ```
-
-### Error de conexión a Redis
-- **Verificar que Redis esté corriendo:**
-  ```bash
-  docker ps | grep redis
-  ```
-- **Verificar que ambos contenedores estén en la misma red:**
-  ```bash
-  docker network inspect app-network
-  ```
-  
-**Nota:** Los tiempos reales dependerán del hardware donde se ejecute Docker y del tamaño de los videos.
