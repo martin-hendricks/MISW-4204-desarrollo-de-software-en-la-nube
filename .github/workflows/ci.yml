@@ -77,6 +77,14 @@ jobs:
         export UPLOAD_DIR="/tmp/test_uploads"
         mkdir -p /tmp/test_uploads/original /tmp/test_uploads/processed
         
+        # Crear las tablas de la base de datos
+        python3 -c "
+        from app.infrastructure.database.database import engine, Base
+        from app.infrastructure.database import models
+        Base.metadata.create_all(bind=engine)
+        print('✅ Database tables created successfully')
+        "
+        
         # Ejecutar las pruebas
         pytest tests/ -v --cov=app --cov-report=xml --cov-report=html
 
