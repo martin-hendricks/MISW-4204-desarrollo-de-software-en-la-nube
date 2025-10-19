@@ -154,8 +154,8 @@ jobs:
 
     - name: Test Docker Compose
       run: |
-        # Verificar que docker-compose puede construir todos los servicios
-        docker-compose -f docker-compose.yml config
+        # Verificar que docker compose puede construir todos los servicios
+        docker compose -f docker-compose.yml config
         echo "Docker Compose configuration is valid"
 
   # Etapa 3: Validación de calidad del código con SonarQube
