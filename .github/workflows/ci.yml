@@ -1,0 +1,331 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  PYTHON_VERSION: '3.11'
+  SONAR_HOST_URL: 'http://localhost:9000'
+  SONAR_TOKEN: 'admin'
+
+jobs:
+  # Etapa 1: Ejecución de pruebas unitarias
+  test:
+    name: Run Unit Tests
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: password
+          POSTGRES_USER: user
+          POSTGRES_DB: test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ffmpeg
+
+    - name: Install backend dependencies
+      run: |
+        cd backend
+        pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest-cov
+
+    - name: Install worker dependencies
+      run: |
+        cd worker
+        pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Run backend tests
+      run: |
+        cd backend
+        export DATABASE_URL="postgresql://user:password@localhost:5432/test"
+        export REDIS_URL="redis://localhost:6379/0"
+        export TEST_MODE=true
+        export UPLOAD_DIR="/tmp/test_uploads"
+        mkdir -p /tmp/test_uploads/original /tmp/test_uploads/processed
+        pytest tests/ -v --cov=app --cov-report=xml --cov-report=html
+
+    - name: Run worker tests
+      run: |
+        cd worker
+        export DATABASE_URL="postgresql://user:password@localhost:5432/test"
+        export REDIS_URL="redis://localhost:6379/0"
+        export UPLOAD_DIR="/tmp/test_uploads"
+        pytest tests/ -v --cov=tasks --cov-report=xml --cov-report=html
+
+    - name: Upload coverage reports
+      uses: codecov/codecov-action@v3
+      with:
+        files: ./backend/coverage.xml,./worker/coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+
+  # Etapa 2: Construcción automática de la aplicación
+  build:
+    name: Build Application
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build backend image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./backend
+        push: false
+        tags: misw4204-backend:latest
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Build worker image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./worker
+        push: false
+        tags: misw4204-worker:latest
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Build API Gateway image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./api-gateway
+        push: false
+        tags: misw4204-api-gateway:latest
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Build database image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./database
+        push: false
+        tags: misw4204-database:latest
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Test Docker Compose
+      run: |
+        # Verificar que docker-compose puede construir todos los servicios
+        docker-compose -f docker-compose.yml config
+        echo "Docker Compose configuration is valid"
+
+  # Etapa 3: Validación de calidad del código con SonarQube
+  sonarqube:
+    name: Code Quality Analysis
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Necesario para SonarQube
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install dependencies
+      run: |
+        cd backend
+        pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest-cov
+        cd ../worker
+        pip install -r requirements.txt
+
+    - name: Run tests with coverage for SonarQube
+      run: |
+        # Backend tests with coverage
+        cd backend
+        export DATABASE_URL="sqlite:///./test.db"
+        export REDIS_URL="redis://localhost:6379/0"
+        export TEST_MODE=true
+        export UPLOAD_DIR="/tmp/test_uploads"
+        mkdir -p /tmp/test_uploads/original /tmp/test_uploads/processed
+        pytest tests/ --cov=app --cov-report=xml --cov-report=term
+
+        # Worker tests with coverage
+        cd ../worker
+        export DATABASE_URL="sqlite:///./test.db"
+        export REDIS_URL="redis://localhost:6379/0"
+        export UPLOAD_DIR="/tmp/test_uploads"
+        pytest tests/ --cov=tasks --cov-report=xml --cov-report=term
+
+    - name: Start SonarQube
+      run: |
+        # Crear directorio para SonarQube
+        mkdir -p sonarqube-data
+        
+        # Descargar y ejecutar SonarQube
+        docker run -d \
+          --name sonarqube \
+          -p 9000:9000 \
+          -e SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true \
+          -e SONAR_JDBC_URL=jdbc:h2:tcp://localhost:9092/sonar \
+          -e SONAR_JDBC_USERNAME=sonar \
+          -e SONAR_JDBC_PASSWORD=sonar \
+          -v sonarqube-data:/opt/sonarqube/data \
+          sonarqube:9.9-community
+        
+        # Esperar a que SonarQube esté listo
+        echo "Waiting for SonarQube to start..."
+        timeout 300 bash -c 'until curl -f http://localhost:9000/api/system/status; do sleep 5; done'
+        
+        # Verificar que SonarQube esté funcionando
+        curl -f http://localhost:9000/api/system/status || exit 1
+        echo "SonarQube is ready!"
+
+    - name: Wait for SonarQube to be ready
+      run: |
+        # Esperar adicional para asegurar que esté completamente listo
+        sleep 30
+        
+        # Verificar que podemos hacer peticiones a la API
+        for i in {1..10}; do
+          if curl -s http://localhost:9000/api/system/status | grep -q "UP"; then
+            echo "SonarQube is fully ready!"
+            break
+          fi
+          echo "Waiting for SonarQube... attempt $i"
+          sleep 10
+        done
+
+    - name: SonarQube Scan
+      run: |
+        # Instalar SonarScanner
+        wget https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.8.0.2856-linux.zip
+        unzip sonar-scanner-cli-4.8.0.2856-linux.zip
+        export PATH=$PATH:$(pwd)/sonar-scanner-4.8.0.2856-linux/bin
+        
+        # Ejecutar análisis de SonarQube
+        sonar-scanner \
+          -Dsonar.projectKey=misw4204-cloud \
+          -Dsonar.projectName=MISW-4204-desarrollo-de-software-en-la-nube \
+          -Dsonar.projectVersion=1.0 \
+          -Dsonar.sources=backend/app,worker/tasks,worker/utils \
+          -Dsonar.tests=backend/tests,worker/tests \
+          -Dsonar.language=py \
+          -Dsonar.python.version=3.11 \
+          -Dsonar.sourceEncoding=UTF-8 \
+          -Dsonar.exclusions=**/__pycache__/**,**/*.pyc,**/migrations/**,**/uploads/**,**/assets/**,**/alembic/** \
+          -Dsonar.test.inclusions=**/test_*.py,**/*_test.py \
+          -Dsonar.python.coverage.reportPaths=backend/coverage.xml,worker/coverage.xml \
+          -Dsonar.host.url=http://localhost:9000 \
+          -Dsonar.login=admin \
+          -Dsonar.password=admin
+
+    - name: Check SonarQube Quality Gate
+      run: |
+        # Instalar jq para procesar JSON
+        sudo apt-get update && sudo apt-get install -y jq
+        
+        # Obtener el task ID del análisis
+        TASK_ID=$(cat .scannerwork/report-task.txt | grep ceTaskId | cut -d'=' -f2)
+        echo "Task ID: $TASK_ID"
+        
+        # Esperar a que el análisis termine
+        echo "Waiting for analysis to complete..."
+        for i in {1..30}; do
+          STATUS=$(curl -s "http://localhost:9000/api/ce/task?id=$TASK_ID" | jq -r '.task.status')
+          echo "Analysis status: $STATUS"
+          
+          if [ "$STATUS" = "SUCCESS" ] || [ "$STATUS" = "FAILED" ] || [ "$STATUS" = "CANCELED" ]; then
+            break
+          fi
+          sleep 10
+        done
+        
+        # Obtener el resultado del quality gate
+        PROJECT_KEY="misw4204-cloud"
+        QUALITY_GATE=$(curl -s "http://localhost:9000/api/qualitygates/project_status?projectKey=$PROJECT_KEY" | jq -r '.projectStatus.status')
+        echo "Quality Gate Status: $QUALITY_GATE"
+        
+        if [ "$QUALITY_GATE" != "OK" ]; then
+          echo "❌ Quality Gate failed!"
+          curl -s "http://localhost:9000/api/qualitygates/project_status?projectKey=$PROJECT_KEY" | jq '.'
+          exit 1
+        else
+          echo "✅ Quality Gate passed!"
+        fi
+
+    - name: Cleanup SonarQube
+      if: always()
+      run: |
+        # Detener y eliminar el contenedor de SonarQube
+        docker stop sonarqube || true
+        docker rm sonarqube || true
+
+  # Job de notificación (opcional)
+  notify:
+    name: Notify Results
+    runs-on: ubuntu-latest
+    needs: [test, build, sonarqube]
+    if: always()
+    
+    steps:
+    - name: Notify Success
+      if: ${{ needs.test.result == 'success' && needs.build.result == 'success' && needs.sonarqube.result == 'success' }}
+      run: |
+        echo "✅ All CI/CD stages completed successfully!"
+        echo "✅ Unit tests passed"
+        echo "✅ Application built successfully"
+        echo "✅ Code quality analysis passed"
+
+    - name: Notify Failure
+      if: ${{ needs.test.result == 'failure' || needs.build.result == 'failure' || needs.sonarqube.result == 'failure' }}
+      run: |
+        echo "❌ CI/CD pipeline failed!"
+        echo "Test result: ${{ needs.test.result }}"
+        echo "Build result: ${{ needs.build.result }}"
+        echo "SonarQube result: ${{ needs.sonarqube.result }}"
+        exit 1
