@@ -8,8 +8,6 @@ on:
 
 env:
   PYTHON_VERSION: '3.11'
-  SONAR_HOST_URL: 'http://localhost:9000'
-  SONAR_TOKEN: 'admin'
 
 jobs:
   # Etapa 1: Ejecución de pruebas unitarias
