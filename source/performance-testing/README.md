@@ -129,8 +129,8 @@ Una vez que ambos entornos estén corriendo, puedes ejecutar los diferentes esce
 *   **Parámetro:** `-Jusers=<numero>`
 *   **Comando de ejemplo:**
     ```sh
-    # Prueba con 80 usuarios (si 100 fue la capacidad máxima)
-    docker exec jmeter /bin/bash -c "jmeter -n -t /scripts/sustained_test.jmx -l /scripts/sustained_80_users_results.jtl -Jusers=80"
+    # Prueba con 116 usuarios para 146 que fue la capacidad máxima detectada en el ramp-up
+    docker exec jmeter /bin/bash -c "jmeter -n -t /scripts/sustained_test.jmx -l /scripts/sustained_116_users_results.jtl -Jusers=116"
     ```
 
 ---
