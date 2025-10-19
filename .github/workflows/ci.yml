@@ -77,24 +77,8 @@ jobs:
         export UPLOAD_DIR="/tmp/test_uploads"
         mkdir -p /tmp/test_uploads/original /tmp/test_uploads/processed
         
-        # Debug: Mostrar información del entorno
-        echo "=== Environment Debug ==="
-        echo "DATABASE_URL: $DATABASE_URL"
-        echo "REDIS_URL: $REDIS_URL"
-        echo "TEST_MODE: $TEST_MODE"
-        echo "UPLOAD_DIR: $UPLOAD_DIR"
-        echo "Python version: $(python3 --version)"
-        echo "Current directory: $(pwd)"
-        echo "Files in current dir: $(ls -la)"
-        echo "========================="
-        
-        # Verificar que podemos importar los módulos
-        echo "=== Import Test ==="
-        python3 -c "from app.main import app; print('App imported successfully')" || echo "Failed to import app"
-        echo "==================="
-        
-        # Ejecutar las pruebas con más información de debug
-        pytest tests/ -v --cov=app --cov-report=xml --cov-report=html --tb=short --maxfail=5
+        # Ejecutar las pruebas
+        pytest tests/ -v --cov=app --cov-report=xml --cov-report=html
 
     - name: Run worker tests (SQLite)
       run: |
