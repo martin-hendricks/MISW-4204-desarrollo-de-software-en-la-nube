@@ -18,20 +18,6 @@ jobs:
     runs-on: ubuntu-latest
     
     services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_PASSWORD: password
-          POSTGRES_USER: user
-          POSTGRES_DB: test
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-      
       redis:
         image: redis:7-alpine
         options: >-
@@ -62,7 +48,7 @@ jobs:
     - name: Install system dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y ffmpeg postgresql-client
+        sudo apt-get install -y ffmpeg
 
     - name: Install backend dependencies
       run: |
@@ -77,44 +63,20 @@ jobs:
         pip install --upgrade pip
         pip install -r requirements.txt
 
-    - name: Wait for PostgreSQL to be ready
-      run: |
-        until pg_isready -h localhost -p 5432 -U user; do
-          echo "Waiting for PostgreSQL..."
-          sleep 2
-        done
-        echo "PostgreSQL is ready!"
-
-    - name: Create test database
-      run: |
-        # Crear la base de datos test si no existe
-        PGPASSWORD=password psql -h localhost -U user -d postgres -c "CREATE DATABASE test;" || echo "Database test already exists or creation failed, continuing..."
-        
-        # Verificar que la base de datos existe
-        PGPASSWORD=password psql -h localhost -U user -d test -c "SELECT 1;" || (echo "Failed to connect to test database" && exit 1)
-        echo "Test database is ready!"
-
-    - name: Run backend tests
+    - name: Run backend tests (SQLite)
       run: |
         cd backend
-        # Usar SQLite para las pruebas (más confiable que PostgreSQL en CI)
         export DATABASE_URL="sqlite:///./test.db"
         export REDIS_URL="redis://localhost:6379/0"
         export TEST_MODE=true
         export UPLOAD_DIR="/tmp/test_uploads"
         mkdir -p /tmp/test_uploads/original /tmp/test_uploads/processed
-        
-        # Ejecutar las pruebas
-        pytest tests/ -v --cov=app --cov-report=xml --cov-report=html || {
-          echo "Tests failed with SQLite, trying with PostgreSQL..."
-          export DATABASE_URL="postgresql://user:password@localhost:5432/test"
-          pytest tests/ -v --cov=app --cov-report=xml --cov-report=html
-        }
+        pytest tests/ -v --cov=app --cov-report=xml --cov-report=html
 
-    - name: Run worker tests
+    - name: Run worker tests (SQLite)
       run: |
         cd worker
-        export DATABASE_URL="postgresql://user:password@localhost:5432/test"
+        export DATABASE_URL="sqlite:///./test.db"
         export REDIS_URL="redis://localhost:6379/0"
         export UPLOAD_DIR="/tmp/test_uploads"
         pytest tests/ -v --cov=tasks --cov-report=xml --cov-report=html

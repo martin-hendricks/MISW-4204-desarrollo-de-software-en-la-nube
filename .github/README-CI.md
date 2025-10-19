@@ -108,14 +108,16 @@ Para que un PR pueda ser mergeado, todas las etapas deben pasar:
 
 ### **Pipeline Principal** (`ci.yml`)
 - **Triggers**: Push y PRs a `main` y `develop`
-- **Incluye**: Tests, Build, SonarQube
-- **Duración**: ~8-10 minutos
+- **Incluye**: Tests (SQLite), Build, SonarQube
+- **Duración**: ~5-7 minutos
+- **Base de datos**: SQLite (más confiable en CI)
 
 ### **Pipeline de Backend** (`test-backend-only.yml`)
 - **Triggers**: Cambios solo en `backend/`
 - **Incluye**: Solo tests del backend
-- **Duración**: ~3-4 minutos
+- **Duración**: ~2-3 minutos
 - **Ventaja**: Más rápido para cambios solo en backend
+- **Base de datos**: SQLite (más confiable en CI)
 
 ## 🚀 **Próximos Pasos**
 
@@ -125,9 +127,10 @@ Para que un PR pueda ser mergeado, todas las etapas deben pasar:
 
 ## 🐛 **Solución de Problemas Actualizada**
 
-### Error de PostgreSQL
-- ✅ **Solucionado**: Se instala `postgresql-client` y se espera a que esté listo
-- ✅ **Mejorado**: Se crea la base de datos `test` automáticamente
+### Error de Base de Datos
+- ✅ **Solucionado**: Uso exclusivo de SQLite (más confiable en CI)
+- ✅ **Eliminado**: Dependencias de PostgreSQL que causaban fallos
+- ✅ **Mejorado**: Configuración simplificada y robusta
 
 ### Error de SonarQube
 - ✅ **Solucionado**: Configuración optimizada con más memoria
@@ -136,4 +139,5 @@ Para que un PR pueda ser mergeado, todas las etapas deben pasar:
 
 ### Error de Tests
 - ✅ **Solucionado**: Variables de entorno configuradas correctamente
-- ✅ **Mejorado**: Espera a que los servicios estén listos antes de ejecutar tests
+- ✅ **Mejorado**: Solo Redis como dependencia externa
+- ✅ **Simplificado**: Menos puntos de fallo
