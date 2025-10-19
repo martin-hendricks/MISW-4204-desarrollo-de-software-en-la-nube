@@ -1,11 +1,33 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
+import time
 import os
 
 # Importar configuración del contenedor
 from app.config.container_config import configure_container
 from app.config.settings import settings
+
+# ===== MÉTRICAS DE PROMETHEUS =====
+# Definir métricas manualmente (igual que en worker)
+http_requests_total = Counter(
+    'http_requests_total',
+    'Total HTTP requests',
+    ['method', 'endpoint', 'status']
+)
+
+http_request_duration_seconds = Histogram(
+    'http_request_duration_seconds',
+    'HTTP request duration in seconds',
+    ['method', 'endpoint'],
+    buckets=[0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1.0, 2.5, 5.0, 7.5, 10.0]
+)
+
+http_requests_in_progress = Counter(
+    'http_requests_in_progress',
+    'HTTP requests currently in progress'
+)
 
 # Crear la aplicación FastAPI
 app = FastAPI(
@@ -15,6 +37,33 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc"
 )
+
+# ===== MIDDLEWARE DE PROMETHEUS =====
+@app.middleware("http")
+async def prometheus_middleware(request: Request, call_next):
+    """Middleware para capturar métricas de todas las requests"""
+    # Excluir el endpoint /metrics de las métricas
+    if request.url.path == "/metrics":
+        return await call_next(request)
+
+    method = request.method
+    endpoint = request.url.path
+
+    # Iniciar timer
+    start_time = time.time()
+
+    # Procesar request
+    response = await call_next(request)
+
+    # Calcular duración
+    duration = time.time() - start_time
+
+    # Registrar métricas
+    status = response.status_code
+    http_requests_total.labels(method=method, endpoint=endpoint, status=status).inc()
+    http_request_duration_seconds.labels(method=method, endpoint=endpoint).observe(duration)
+
+    return response
 
 # Configurar CORS
 app.add_middleware(
@@ -38,6 +87,15 @@ from app.routers import auth, videos, public
 app.include_router(auth.router)
 app.include_router(videos.router)
 app.include_router(public.router)
+
+# ===== ENDPOINT DE MÉTRICAS =====
+@app.get("/metrics")
+async def metrics():
+    """Endpoint para exponer métricas de Prometheus"""
+    return Response(
+        content=generate_latest(),
+        media_type=CONTENT_TYPE_LATEST
+    )
 
 @app.get("/")
 def read_root():

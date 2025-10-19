@@ -5,6 +5,7 @@ kombu==5.3.5
 
 # ===== Monitoreo =====
 flower==2.0.1
+prometheus-client==0.19.0
 
 # ===== Procesamiento de Video =====
 ffmpeg-python==0.2.0

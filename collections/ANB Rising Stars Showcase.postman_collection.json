@@ -93,7 +93,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"email\": \"john.doe@example.com\",\n    \"password\": \"StrongPass123\"\n}",
+							"raw": "{\n    \"email\": \"barney@example.com\",\n    \"password\": \"StrongPass123\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
