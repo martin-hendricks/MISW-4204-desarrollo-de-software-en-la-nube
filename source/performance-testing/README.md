@@ -28,17 +28,30 @@ Este documento contiene las instrucciones para ejecutar los escenarios de prueba
 
 ### Pasos para la Ejecución
 
-1.  **Iniciar la Aplicación Principal**
-    *   Abre una terminal en la raíz del proyecto. Si la aplicación ya está corriendo, es recomendable reconstruirla para asegurar que los cambios en el código se apliquen.
-    ```sh
-    docker-compose up --build --remove-orphans
-    ```
+#### 1. Iniciar la Aplicación Principal
 
-2.  **Iniciar el Entorno de Pruebas**
-    *   En la misma terminal, levanta el stack de Prometheus, Grafana y JMeter.
-    ```sh
-    docker-compose -f performance-testing/docker-compose.testing.yml up -d
-    ```
+**Opcion 1: Desde el directorio source**
+```sh
+cd source
+docker-compose up --build --remove-orphans
+```
+
+**Opcion 2: Desde el directorio raiz**
+```sh
+docker-compose -f source/docker-compose.yml up --build --remove-orphans
+```
+
+#### 2. Iniciar el Entorno de Pruebas
+
+**Opcion 1: Desde el directorio source**
+```sh
+docker-compose -f performance-testing/docker-compose.testing.yml up -d
+```
+
+**Opcion 2: Desde el directorio raiz**
+```sh
+docker-compose -f source/performance-testing/docker-compose.testing.yml up -d
+```
 
 ### Comandos de JMeter
 
@@ -83,8 +96,30 @@ Para medir el rendimiento de la capa de workers (videos procesados por minuto), 
 
 ## Requisitos Previos
 
-*   Tener la aplicación principal corriendo: `docker-compose up --build --remove-orphans`
-*   Tener el entorno de pruebas corriendo: `docker-compose -f performance-testing/docker-compose.testing.yml up -d`
+### Tener la aplicación principal corriendo
+
+**Opcion 1: Desde el directorio source**
+```sh
+cd source
+docker-compose up --build --remove-orphans
+```
+
+**Opcion 2: Desde el directorio raiz**
+```sh
+docker-compose -f source/docker-compose.yml up --build --remove-orphans
+```
+
+### Tener el entorno de pruebas corriendo
+
+**Opcion 1: Desde el directorio source**
+```sh
+docker-compose -f performance-testing/docker-compose.testing.yml up -d
+```
+
+**Opcion 2: Desde el directorio raiz**
+```sh
+docker-compose -f source/performance-testing/docker-compose.testing.yml up -d
+```
 
 ## Parámetros del Script
 
@@ -183,9 +218,16 @@ docker exec redis redis-cli LLEN video_processing
 
 ### El script no muestra output
 - **Solución:** Asegúrate de haber reconstruido el contenedor producer después de modificar el código:
-  ```bash
-  docker-compose -f performance-testing/docker-compose.testing.yml up -d --build producer
-  ```
+
+**Desde el directorio source:**
+```bash
+docker-compose -f performance-testing/docker-compose.testing.yml up -d --build producer
+```
+
+**Desde el directorio raiz:**
+```bash
+docker-compose -f source/performance-testing/docker-compose.testing.yml up -d --build producer
+```
 
 ### Las tareas no se procesan
 - **Verificar que el worker esté corriendo:**

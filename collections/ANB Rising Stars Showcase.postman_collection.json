@@ -355,7 +355,7 @@
 					"response": []
 				},
 				{
-					"name": "Get proccesed video",
+					"name": "Get Processed Video",
 					"request": {
 						"auth": {
 							"type": "bearer",
@@ -368,13 +368,7 @@
 							]
 						},
 						"method": "GET",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "",
-								"type": "text"
-							}
-						],
+						"header": [],
 						"url": {
 							"raw": "{{base_url}}/api/videos/processed/:video_id",
 							"host": [
@@ -392,12 +386,13 @@
 									"value": "1"
 								}
 							]
-						}
+						},
+						"description": "**Descarga el video procesado de un jugador.**\n\nRetorna el archivo de video que ha sido procesado (recortado a 30s, con marca de agua de ANB, sin audio).\n\n**Codigos de respuesta:**\n- `200 OK`: Video procesado descargado exitosamente.\n- `401 Unauthorized`: Usuario no autenticado.\n- `403 Forbidden`: El usuario no es el propietario del video.\n- `404 Not Found`: Video no encontrado o aun no procesado."
 					},
 					"response": []
 				},
 				{
-					"name": "Get original video",
+					"name": "Get Original Video",
 					"request": {
 						"auth": {
 							"type": "bearer",
@@ -428,7 +423,8 @@
 									"value": "1"
 								}
 							]
-						}
+						},
+						"description": "**Descarga el video original subido por el jugador.**\n\nRetorna el archivo de video sin procesar, tal como fue cargado inicialmente.\n\n**Codigos de respuesta:**\n- `200 OK`: Video original descargado exitosamente.\n- `401 Unauthorized`: Usuario no autenticado.\n- `403 Forbidden`: El usuario no es el propietario del video.\n- `404 Not Found`: Video no encontrado."
 					},
 					"response": []
 				}
