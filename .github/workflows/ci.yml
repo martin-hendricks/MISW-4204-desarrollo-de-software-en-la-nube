@@ -158,8 +158,8 @@ jobs:
         docker compose -f docker-compose.yml config
         echo "Docker Compose configuration is valid"
 
-  # Etapa 3: Validación de calidad del código con SonarQube
-  sonarqube:
+  # Etapa 3: Validación de calidad del código con SonarCloud
+  sonarcloud:
     name: Code Quality Analysis
     runs-on: ubuntu-latest
     needs: test
@@ -168,7 +168,7 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       with:
-        fetch-depth: 0  # Necesario para SonarQube
+        fetch-depth: 0  # Necesario para SonarCloud
 
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -184,7 +184,7 @@ jobs:
         cd ../worker
         pip install -r requirements.txt
 
-    - name: Run tests with coverage for SonarQube
+    - name: Run tests with coverage for SonarCloud
       run: |
         # Backend tests with coverage
         cd backend
@@ -202,121 +202,37 @@ jobs:
         export UPLOAD_DIR="/tmp/test_uploads"
         pytest tests/ --cov=tasks --cov-report=xml --cov-report=term
 
-    - name: Start SonarQube
-      run: |
-        # Crear directorio para SonarQube
-        mkdir -p sonarqube-data
-        
-        # Descargar y ejecutar SonarQube con configuración optimizada para CI
-        docker run -d \
-          --name sonarqube \
-          -p 9000:9000 \
-          -e SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true \
-          -e SONAR_JDBC_URL=jdbc:h2:tcp://localhost:9092/sonar \
-          -e SONAR_JDBC_USERNAME=sonar \
-          -e SONAR_JDBC_PASSWORD=sonar \
-          -e SONAR_WEB_JAVAADDITIONALOPTS="-Xmx512m -XX:+UseG1GC" \
-          -e SONAR_CE_JAVAADDITIONALOPTS="-Xmx512m -XX:+UseG1GC" \
-          -e SONAR_ES_JAVA_OPTS="-Xmx512m -XX:+UseG1GC" \
-          -v sonarqube-data:/opt/sonarqube/data \
-          sonarqube:9.9-community
-        
-        # Esperar a que SonarQube esté listo con timeout optimizado
-        echo "Waiting for SonarQube to start..."
-        for i in {1..30}; do
-          if curl -s http://localhost:9000/api/system/status | grep -q "UP"; then
-            echo "SonarQube is ready!"
-            break
-          fi
-          echo "Attempt $i/30: Waiting for SonarQube..."
-          sleep 15
-        done
-        
-        # Verificar que SonarQube esté funcionando
-        curl -f http://localhost:9000/api/system/status || (echo "SonarQube failed to start" && exit 1)
-
-    - name: Wait for SonarQube to be ready
-      run: |
-        # Esperar adicional para asegurar que esté completamente listo
-        sleep 15
-        echo "SonarQube should be ready now"
-
-    - name: SonarQube Scan
-      run: |
-        # Instalar SonarScanner
-        wget -q https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.8.0.2856-linux.zip
-        unzip -q sonar-scanner-cli-4.8.0.2856-linux.zip
-        export PATH=$PATH:$(pwd)/sonar-scanner-4.8.0.2856-linux/bin
-        
-        # Verificar que SonarQube esté disponible antes del análisis
-        echo "Checking SonarQube availability..."
-        curl -s http://localhost:9000/api/system/status || (echo "SonarQube not available" && exit 1)
-        
-        # Ejecutar análisis de SonarQube
-        sonar-scanner \
-          -Dsonar.projectKey=misw4204-cloud \
-          -Dsonar.projectName=MISW-4204-desarrollo-de-software-en-la-nube \
-          -Dsonar.projectVersion=1.0 \
-          -Dsonar.sources=backend/app,worker/tasks,worker/utils \
-          -Dsonar.tests=backend/tests,worker/tests \
-          -Dsonar.language=py \
-          -Dsonar.python.version=3.11 \
-          -Dsonar.sourceEncoding=UTF-8 \
-          -Dsonar.exclusions=**/__pycache__/**,**/*.pyc,**/migrations/**,**/uploads/**,**/assets/**,**/alembic/** \
-          -Dsonar.test.inclusions=**/test_*.py,**/*_test.py \
-          -Dsonar.python.coverage.reportPaths=backend/coverage.xml,worker/coverage.xml \
-          -Dsonar.host.url=http://localhost:9000 \
-          -Dsonar.login=admin \
-          -Dsonar.password=admin \
-          -Dsonar.scanner.force-deprecated-java-version=true
-
-    - name: Check SonarQube Quality Gate
-      run: |
-        # Instalar jq para procesar JSON
-        sudo apt-get update && sudo apt-get install -y jq
-        
-        # Esperar un poco para que el análisis se complete
-        echo "Waiting for analysis to complete..."
-        sleep 30
-        
-        # Obtener el resultado del quality gate
-        PROJECT_KEY="misw4204-cloud"
-        echo "Checking quality gate for project: $PROJECT_KEY"
-        
-        # Intentar obtener el status del quality gate
-        QUALITY_GATE_RESPONSE=$(curl -s "http://localhost:9000/api/qualitygates/project_status?projectKey=$PROJECT_KEY" || echo '{"projectStatus":{"status":"UNKNOWN"}}')
-        QUALITY_GATE=$(echo "$QUALITY_GATE_RESPONSE" | jq -r '.projectStatus.status // "UNKNOWN"')
-        
-        echo "Quality Gate Status: $QUALITY_GATE"
-        echo "Full response: $QUALITY_GATE_RESPONSE"
-        
-        # Si no podemos obtener el status, asumir que pasó (para evitar fallos por problemas de conectividad)
-        if [ "$QUALITY_GATE" = "UNKNOWN" ] || [ "$QUALITY_GATE" = "null" ]; then
-          echo "⚠️ Could not determine Quality Gate status, but continuing..."
-        elif [ "$QUALITY_GATE" != "OK" ]; then
-          echo "❌ Quality Gate failed with status: $QUALITY_GATE"
-          exit 1
-        else
-          echo "✅ Quality Gate passed!"
-        fi
-
-    - name: Cleanup SonarQube
-      if: always()
-      run: |
-        # Detener y eliminar el contenedor de SonarQube
-        docker stop sonarqube || true
-        docker rm sonarqube || true
+    - name: SonarCloud Scan
+      uses: SonarSource/sonarcloud-github-action@master
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      with:
+        args: >
+          -Dsonar.projectKey=misw4204-cloud
+          -Dsonar.organization=misw4204
+          -Dsonar.projectName=MISW-4204-desarrollo-de-software-en-la-nube
+          -Dsonar.projectVersion=1.0
+          -Dsonar.sources=backend/app,worker/tasks,worker/utils
+          -Dsonar.tests=backend/tests,worker/tests
+          -Dsonar.language=py
+          -Dsonar.python.version=3.11
+          -Dsonar.sourceEncoding=UTF-8
+          -Dsonar.exclusions=**/__pycache__/**,**/*.pyc,**/migrations/**,**/uploads/**,**/assets/**,**/alembic/**
+          -Dsonar.test.inclusions=**/test_*.py,**/*_test.py
+          -Dsonar.python.coverage.reportPaths=backend/coverage.xml,worker/coverage.xml
+          -Dsonar.qualitygate.wait=true
 
   # Job de notificación (opcional)
   notify:
     name: Notify Results
     runs-on: ubuntu-latest
-    needs: [test, build, sonarqube]
+    needs: [test, build, sonarcloud]
     if: always()
     
     steps:
     - name: Notify Success
-      if: ${{ needs.test.result == 'success' && needs.build.result == 'success' && needs.sonarqube.result == 'success' }}
+      if: ${{ needs.test.result == 'success' && needs.build.result == 'success' && needs.sonarcloud.result == 'success' }}
       run: |
         echo "✅ All CI/CD stages completed successfully!"
         echo "✅ Unit tests passed"
@@ -324,10 +240,10 @@ jobs:
         echo "✅ Code quality analysis passed"
 
     - name: Notify Failure
-      if: ${{ needs.test.result == 'failure' || needs.build.result == 'failure' || needs.sonarqube.result == 'failure' }}
+      if: ${{ needs.test.result == 'failure' || needs.build.result == 'failure' || needs.sonarcloud.result == 'failure' }}
       run: |
         echo "❌ CI/CD pipeline failed!"
         echo "Test result: ${{ needs.test.result }}"
         echo "Build result: ${{ needs.build.result }}"
-        echo "SonarQube result: ${{ needs.sonarqube.result }}"
+        echo "SonarCloud result: ${{ needs.sonarcloud.result }}"
         exit 1
