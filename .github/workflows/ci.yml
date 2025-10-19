@@ -85,7 +85,7 @@ jobs:
         print('✅ Database tables created successfully')
         "
         
-        # Ejecutar las pruebas
+        # Ejecutar las pruebas usando app_test_main (que ya tiene la configuración correcta)
         pytest tests/ -v --cov=app --cov-report=xml --cov-report=html
 
     - name: Run worker tests (SQLite)
