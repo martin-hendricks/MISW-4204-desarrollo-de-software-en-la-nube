@@ -205,7 +205,7 @@ jobs:
         # Crear directorio para SonarQube
         mkdir -p sonarqube-data
         
-        # Descargar y ejecutar SonarQube con configuración optimizada
+        # Descargar y ejecutar SonarQube 8.9 LTS (más estable y ligero)
         docker run -d \
           --name sonarqube \
           -p 9991:9000 \
@@ -213,21 +213,21 @@ jobs:
           -e SONAR_JDBC_URL=jdbc:h2:tcp://localhost:9092/sonar \
           -e SONAR_JDBC_USERNAME=sonar \
           -e SONAR_JDBC_PASSWORD=sonar \
-          -e SONAR_WEB_JAVAADDITIONALOPTS="-Xmx512m -XX:+UseG1GC" \
-          -e SONAR_CE_JAVAADDITIONALOPTS="-Xmx512m -XX:+UseG1GC" \
-          -e SONAR_ES_JAVA_OPTS="-Xmx256m -XX:+UseG1GC" \
+          -e SONAR_WEB_JAVAADDITIONALOPTS="-Xmx256m -XX:+UseG1GC" \
+          -e SONAR_CE_JAVAADDITIONALOPTS="-Xmx256m -XX:+UseG1GC" \
+          -e SONAR_ES_JAVA_OPTS="-Xmx128m -XX:+UseG1GC" \
           -v sonarqube-data:/opt/sonarqube/data \
-          sonarqube:9.9-community
+          sonarqube:8.9-community
         
-        # Esperar a que SonarQube esté listo
-        echo "Waiting for SonarQube to start on port 9991..."
-        for i in {1..30}; do
+        # Esperar a que SonarQube esté listo (optimizado para 8.9 LTS)
+        echo "Waiting for SonarQube 8.9 LTS to start on port 9991..."
+        for i in {1..20}; do
           if curl -s http://localhost:9991/api/system/status | grep -q "UP"; then
-            echo "SonarQube is ready on port 9991!"
+            echo "SonarQube 8.9 LTS is ready on port 9991!"
             break
           fi
-          echo "Attempt $i/30: Waiting for SonarQube..."
-          sleep 15
+          echo "Attempt $i/20: Waiting for SonarQube..."
+          sleep 10
         done
         
         # Verificar que SonarQube esté funcionando
@@ -235,22 +235,22 @@ jobs:
 
     - name: Wait for SonarQube to be ready
       run: |
-        # Esperar adicional para asegurar que esté completamente listo
-        sleep 15
-        echo "SonarQube should be ready now on port 9991"
+        # Esperar adicional para asegurar que esté completamente listo (8.9 LTS es más rápido)
+        sleep 10
+        echo "SonarQube 8.9 LTS should be ready now on port 9991"
 
     - name: SonarQube Scan
       run: |
-        # Instalar SonarScanner
-        wget -q https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.8.0.2856-linux.zip
-        unzip -q sonar-scanner-cli-4.8.0.2856-linux.zip
-        export PATH=$PATH:$(pwd)/sonar-scanner-4.8.0.2856-linux/bin
+        # Instalar SonarScanner compatible con SonarQube 8.9
+        wget -q https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.7.0.2747-linux.zip
+        unzip -q sonar-scanner-cli-4.7.0.2747-linux.zip
+        export PATH=$PATH:$(pwd)/sonar-scanner-4.7.0.2747-linux/bin
         
         # Verificar que SonarQube esté disponible antes del análisis
         echo "Checking SonarQube availability on port 9991..."
         curl -s http://localhost:9991/api/system/status || (echo "SonarQube not available" && exit 1)
         
-        # Ejecutar análisis de SonarQube
+        # Ejecutar análisis de SonarQube (configuración simplificada para 8.9 LTS)
         sonar-scanner \
           -Dsonar.projectKey=misw4204-local \
           -Dsonar.projectName=MISW-4204-desarrollo-de-software-en-la-nube \
@@ -265,17 +265,16 @@ jobs:
           -Dsonar.python.coverage.reportPaths=backend/coverage.xml,worker/coverage.xml \
           -Dsonar.host.url=http://localhost:9991 \
           -Dsonar.login=admin \
-          -Dsonar.password=admin \
-          -Dsonar.scanner.force-deprecated-java-version=true
+          -Dsonar.password=admin
 
     - name: Check SonarQube Quality Gate
       run: |
         # Instalar jq para procesar JSON
         sudo apt-get update && sudo apt-get install -y jq
         
-        # Esperar un poco para que el análisis se complete
+        # Esperar un poco para que el análisis se complete (8.9 LTS es más rápido)
         echo "Waiting for analysis to complete..."
-        sleep 30
+        sleep 20
         
         # Obtener el resultado del quality gate
         PROJECT_KEY="misw4204-local"
