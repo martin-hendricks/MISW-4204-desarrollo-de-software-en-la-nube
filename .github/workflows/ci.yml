@@ -207,7 +207,7 @@ jobs:
         # Crear directorio para SonarQube
         mkdir -p sonarqube-data
         
-        # Descargar y ejecutar SonarQube con configuración optimizada
+        # Descargar y ejecutar SonarQube con configuración optimizada para CI
         docker run -d \
           --name sonarqube \
           -p 9000:9000 \
@@ -215,20 +215,21 @@ jobs:
           -e SONAR_JDBC_URL=jdbc:h2:tcp://localhost:9092/sonar \
           -e SONAR_JDBC_USERNAME=sonar \
           -e SONAR_JDBC_PASSWORD=sonar \
-          -e SONAR_WEB_JAVAADDITIONALOPTS="-Xmx1g -XX:+UseG1GC" \
-          -e SONAR_CE_JAVAADDITIONALOPTS="-Xmx1g -XX:+UseG1GC" \
+          -e SONAR_WEB_JAVAADDITIONALOPTS="-Xmx512m -XX:+UseG1GC" \
+          -e SONAR_CE_JAVAADDITIONALOPTS="-Xmx512m -XX:+UseG1GC" \
+          -e SONAR_ES_JAVA_OPTS="-Xmx512m -XX:+UseG1GC" \
           -v sonarqube-data:/opt/sonarqube/data \
           sonarqube:9.9-community
         
-        # Esperar a que SonarQube esté listo con timeout más largo
+        # Esperar a que SonarQube esté listo con timeout optimizado
         echo "Waiting for SonarQube to start..."
-        for i in {1..60}; do
+        for i in {1..30}; do
           if curl -s http://localhost:9000/api/system/status | grep -q "UP"; then
             echo "SonarQube is ready!"
             break
           fi
-          echo "Attempt $i/60: Waiting for SonarQube..."
-          sleep 10
+          echo "Attempt $i/30: Waiting for SonarQube..."
+          sleep 15
         done
         
         # Verificar que SonarQube esté funcionando
@@ -237,7 +238,7 @@ jobs:
     - name: Wait for SonarQube to be ready
       run: |
         # Esperar adicional para asegurar que esté completamente listo
-        sleep 30
+        sleep 15
         echo "SonarQube should be ready now"
 
     - name: SonarQube Scan
@@ -276,7 +277,7 @@ jobs:
         
         # Esperar un poco para que el análisis se complete
         echo "Waiting for analysis to complete..."
-        sleep 60
+        sleep 30
         
         # Obtener el resultado del quality gate
         PROJECT_KEY="misw4204-cloud"
