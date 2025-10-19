@@ -289,9 +289,9 @@ El script `producer.py` acepta los siguientes parámetros:
 - Puedes monitorear el progreso real en Grafana o los logs del worker
 
 ---
-## Ejemplos de Uso
+## Uso en escenarios de prueba
 
-A continuación se muestran ejemplos para los dos tipos de pruebas principales.
+A continuación se muestran el uso para los dos tipos de pruebas principales.
 
 ### 1. Pruebas Sostenidas (Medir Throughput Estable)
 
@@ -318,34 +318,52 @@ El objetivo es encontrar el punto de quiebre del sistema. Para ello, se aumenta 
 
 **Se recomienda ejecutar los siguientes comandos de forma secuencial**, observando el comportamiento en Grafana entre cada ejecución:
 
+**Paso 1: Carga inicial (50 videos)**
 ```bash
-# Paso 1: Carga inicial (50 videos)
 docker exec producer python producer.py --num-videos 50 --video-file ./assets/dummy_file_50mb.mp4 --no-wait
+```
 
-# Paso 2: Aumentar la carga si el sistema se mantiene estable (100 videos)
+**Paso 2: Aumentar la carga si el sistema se mantiene estable (100 videos)**
+```bash
 docker exec producer python producer.py --num-videos 100 --video-file ./assets/dummy_file_50mb.mp4 --no-wait
+```
 
-# Paso 3: Carga alta para encontrar el punto de saturación (200 videos)
+**Paso 3: Carga alta para encontrar el punto de saturación (200 videos)**
+```bash
 docker exec producer python producer.py --num-videos 200 --video-file ./assets/dummy_file_50mb.mp4 --no-wait
 ```
 
 **Importante:** Espera a que se procesen todas las tareas antes de lanzar el siguiente lote. Monitorea en Grafana que la cola se vacíe completamente.
 
 ---
-## Monitoreo del Rendimiento
+# Monitoreo del Rendimiento
 
 Existen varias formas de monitorear el procesamiento de las tareas:
 
 ### 1. Grafana (Recomendado para Métricas)
-*   **URL:** [http://localhost:3000](http://localhost:3000)
+*   **URL:** [http://localhost:3000](http://localhost:3000/dashboards)
 *   **Credenciales:** `admin` / `admin`
+
+#### Dashboard del Worker **URL:** [http://localhost:3000/d/worker-perf/worker-performance-video-processing](http://localhost:3000/d/worker-perf/worker-performance-video-processing?orgId=1&from=now-15m&to=now&timezone=browser)
 *   **Qué observar:**
     - Tamaño de la cola de tareas (debe decrecer si el sistema está procesando)
     - Throughput (videos procesados por minuto)
     - Tiempo de procesamiento por video
     - Uso de CPU y memoria
 
-### 2. Logs del Worker en Tiempo Real
+#### Dashboard del Backend **URL:** [http://localhost:3000/d/backend-api-perf/backend-api-performance](http://localhost:3000/d/backend-api-perf/backend-api-performance?orgId=1&from=now-15m&to=now&timezone=browser)
+*   **Qué observar:**
+    - Total de requests HTTP
+    - Duración de las requests (latencia)
+    - Requests en progreso (usuarios concurrentes)
+    - Estado de las respuestas (códigos 200, 400, 500, etc.)
+
+**Nota importante sobre "Requests en Progreso (Usuarios Concurrentes)":**
+Esta métrica solo mostrará valores > 0 cuando exista carga concurrente sostenida. Si las requests se completan en menos de 100ms (lo cual es típico para endpoints simples), la métrica volverá a 0 antes de que Prometheus haga el scraping (cada 15 segundos). Para visualizar esta métrica correctamente, es necesario ejecutar pruebas de carga con JMeter o generar múltiples requests concurrentes que se mantengan activas por más de 100ms.
+
+### 2. Logs en Tiempo Real
+
+#### Logs del Worker
 Para ver el procesamiento en tiempo real:
 ```bash
 docker logs -f misw-4204-desarrollo-de-software-en-la-nube-worker-1
@@ -356,16 +374,27 @@ Para ver solo las tareas completadas:
 docker logs misw-4204-desarrollo-de-software-en-la-nube-worker-1 2>&1 | grep "succeeded"
 ```
 
-### 3. Verificar Cola de Redis
+#### Logs del Backend
+Para ver las requests HTTP en tiempo real:
+```bash
+docker logs -f source-backend-1
+```
+
+Para ver solo errores:
+```bash
+docker logs source-backend-1 2>&1 | grep -i error
+```
+
+### 3. Verificar Cola de Redis (Worker)
 Para ver cuántas tareas hay pendientes en la cola:
 ```bash
 docker exec redis redis-cli LLEN video_processing
 ```
 
 ---
-## Troubleshooting
+## Troubleshooting del Worker
 
-### El script no muestra output
+### El script producer no muestra output
 - **Solución:** Asegúrate de haber reconstruido el contenedor producer después de modificar el código:
 
 **Desde el directorio performance-testing:**
@@ -402,13 +431,5 @@ docker-compose -f source/performance-testing/docker-compose.testing.yml up -d --
   ```bash
   docker network inspect app-network
   ```
-
----
-## Resultados Esperados
-
-Con la configuración por defecto (4 workers concurrentes), deberías observar:
-- **Throughput:** Aproximadamente 12-15 videos/minuto (con videos de ~2MB)
-- **Tiempo de procesamiento:** 4-5 segundos por video
-- **Concurrencia:** Hasta 4 videos procesándose simultáneamente
-
+  
 **Nota:** Los tiempos reales dependerán del hardware donde se ejecute Docker y del tamaño de los videos.
