@@ -39,7 +39,7 @@ jobs:
       uses: actions/cache@v3
       with:
         path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        key: ${{ runner.os }}-pip-${{ hashFiles('source/**/requirements.txt') }}
         restore-keys: |
           ${{ runner.os }}-pip-
 
@@ -50,7 +50,7 @@ jobs:
 
     - name: Install backend dependencies
       run: |
-        cd backend
+        cd source/backend
         pip install --upgrade pip
         pip install -r requirements.txt
         pip install pytest-cov
@@ -62,13 +62,13 @@ jobs:
 
     - name: Install worker dependencies
       run: |
-        cd worker
+        cd source/worker
         pip install --upgrade pip
         pip install -r requirements.txt
 
     - name: Run backend tests (SQLite)
       run: |
-        cd backend
+        cd source/backend
         export DATABASE_URL="sqlite:///./test.db"
         export REDIS_URL="redis://localhost:6379/0"
         export TEST_MODE=true
@@ -88,7 +88,7 @@ jobs:
 
     - name: Run worker tests (SQLite)
       run: |
-        cd worker
+        cd source/worker
         export DATABASE_URL="sqlite:///./test.db"
         export REDIS_URL="redis://localhost:6379/0"
         export UPLOAD_DIR="/tmp/test_uploads"
@@ -97,7 +97,7 @@ jobs:
     - name: Upload coverage reports
       uses: codecov/codecov-action@v3
       with:
-        files: ./backend/coverage.xml,./worker/coverage.xml
+        files: ./source/backend/coverage.xml,./source/worker/coverage.xml
         flags: unittests
         name: codecov-umbrella
 
@@ -117,7 +117,7 @@ jobs:
     - name: Build backend image
       uses: docker/build-push-action@v5
       with:
-        context: ./backend
+        context: ./source/backend
         push: false
         tags: misw4204-backend:latest
         cache-from: type=gha
@@ -126,7 +126,7 @@ jobs:
     - name: Build worker image
       uses: docker/build-push-action@v5
       with:
-        context: ./worker
+        context: ./source/worker
         push: false
         tags: misw4204-worker:latest
         cache-from: type=gha
@@ -135,7 +135,7 @@ jobs:
     - name: Build API Gateway image
       uses: docker/build-push-action@v5
       with:
-        context: ./api-gateway
+        context: ./source/api-gateway
         push: false
         tags: misw4204-api-gateway:latest
         cache-from: type=gha
@@ -144,7 +144,7 @@ jobs:
     - name: Build database image
       uses: docker/build-push-action@v5
       with:
-        context: ./database
+        context: ./source/database
         push: false
         tags: misw4204-database:latest
         cache-from: type=gha
@@ -153,7 +153,7 @@ jobs:
     - name: Test Docker Compose
       run: |
         # Verificar que docker compose puede construir todos los servicios
-        docker compose -f docker-compose.yml config
+        docker compose -f source/docker-compose.yml config
         echo "Docker Compose configuration is valid"
 
   # Etapa 3: Validación de calidad del código con SonarCloud
@@ -175,7 +175,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        cd backend
+        cd source/backend
         pip install --upgrade pip
         pip install -r requirements.txt
         pip install pytest-cov
@@ -185,7 +185,7 @@ jobs:
     - name: Run tests with coverage
       run: |
         # Backend tests with coverage
-        cd backend
+        cd source/backend
         export DATABASE_URL="sqlite:///./test.db"
         export REDIS_URL="redis://localhost:6379/0"
         export TEST_MODE=true
