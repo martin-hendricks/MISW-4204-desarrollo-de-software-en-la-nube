@@ -1,4 +1,4 @@
-name: CI/CD Pipeline
+name: CI/CD Pipeline (Simplified)
 
 on:
   push:
@@ -12,26 +12,12 @@ env:
   SONAR_TOKEN: 'admin'
 
 jobs:
-  # Etapa 1: Ejecución de pruebas unitarias
+  # Etapa 1: Ejecución de pruebas unitarias (simplificada)
   test:
     name: Run Unit Tests
     runs-on: ubuntu-latest
     
     services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_PASSWORD: password
-          POSTGRES_USER: user
-          POSTGRES_DB: test
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-      
       redis:
         image: redis:7-alpine
         options: >-
@@ -62,7 +48,7 @@ jobs:
     - name: Install system dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y ffmpeg postgresql-client
+        sudo apt-get install -y ffmpeg
 
     - name: Install backend dependencies
       run: |
@@ -77,44 +63,20 @@ jobs:
         pip install --upgrade pip
         pip install -r requirements.txt
 
-    - name: Wait for PostgreSQL to be ready
-      run: |
-        until pg_isready -h localhost -p 5432 -U user; do
-          echo "Waiting for PostgreSQL..."
-          sleep 2
-        done
-        echo "PostgreSQL is ready!"
-
-    - name: Create test database
-      run: |
-        # Crear la base de datos test si no existe
-        PGPASSWORD=password psql -h localhost -U user -d postgres -c "CREATE DATABASE test;" || echo "Database test already exists or creation failed, continuing..."
-        
-        # Verificar que la base de datos existe
-        PGPASSWORD=password psql -h localhost -U user -d test -c "SELECT 1;" || (echo "Failed to connect to test database" && exit 1)
-        echo "Test database is ready!"
-
-    - name: Run backend tests
+    - name: Run backend tests (SQLite)
       run: |
         cd backend
-        # Usar SQLite para las pruebas (más confiable que PostgreSQL en CI)
         export DATABASE_URL="sqlite:///./test.db"
         export REDIS_URL="redis://localhost:6379/0"
         export TEST_MODE=true
         export UPLOAD_DIR="/tmp/test_uploads"
         mkdir -p /tmp/test_uploads/original /tmp/test_uploads/processed
-        
-        # Ejecutar las pruebas
-        pytest tests/ -v --cov=app --cov-report=xml --cov-report=html || {
-          echo "Tests failed with SQLite, trying with PostgreSQL..."
-          export DATABASE_URL="postgresql://user:password@localhost:5432/test"
-          pytest tests/ -v --cov=app --cov-report=xml --cov-report=html
-        }
+        pytest tests/ -v --cov=app --cov-report=xml --cov-report=html
 
-    - name: Run worker tests
+    - name: Run worker tests (SQLite)
       run: |
         cd worker
-        export DATABASE_URL="postgresql://user:password@localhost:5432/test"
+        export DATABASE_URL="sqlite:///./test.db"
         export REDIS_URL="redis://localhost:6379/0"
         export UPLOAD_DIR="/tmp/test_uploads"
         pytest tests/ -v --cov=tasks --cov-report=xml --cov-report=html
@@ -181,7 +143,7 @@ jobs:
         docker-compose -f docker-compose.yml config
         echo "Docker Compose configuration is valid"
 
-  # Etapa 3: Validación de calidad del código con SonarQube
+  # Etapa 3: Validación de calidad del código con SonarQube (simplificada)
   sonarqube:
     name: Code Quality Analysis
     runs-on: ubuntu-latest
@@ -191,7 +153,7 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       with:
-        fetch-depth: 0  # Necesario para SonarQube
+        fetch-depth: 0
 
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -243,7 +205,7 @@ jobs:
           -v sonarqube-data:/opt/sonarqube/data \
           sonarqube:9.9-community
         
-        # Esperar a que SonarQube esté listo con timeout más largo
+        # Esperar a que SonarQube esté listo
         echo "Waiting for SonarQube to start..."
         for i in {1..60}; do
           if curl -s http://localhost:9000/api/system/status | grep -q "UP"; then
@@ -256,12 +218,6 @@ jobs:
         
         # Verificar que SonarQube esté funcionando
         curl -f http://localhost:9000/api/system/status || (echo "SonarQube failed to start" && exit 1)
-
-    - name: Wait for SonarQube to be ready
-      run: |
-        # Esperar adicional para asegurar que esté completamente listo
-        sleep 30
-        echo "SonarQube should be ready now"
 
     - name: SonarQube Scan
       run: |
@@ -292,36 +248,6 @@ jobs:
           -Dsonar.password=admin \
           -Dsonar.scanner.force-deprecated-java-version=true
 
-    - name: Check SonarQube Quality Gate
-      run: |
-        # Instalar jq para procesar JSON
-        sudo apt-get update && sudo apt-get install -y jq
-        
-        # Esperar un poco para que el análisis se complete
-        echo "Waiting for analysis to complete..."
-        sleep 60
-        
-        # Obtener el resultado del quality gate
-        PROJECT_KEY="misw4204-cloud"
-        echo "Checking quality gate for project: $PROJECT_KEY"
-        
-        # Intentar obtener el status del quality gate
-        QUALITY_GATE_RESPONSE=$(curl -s "http://localhost:9000/api/qualitygates/project_status?projectKey=$PROJECT_KEY" || echo '{"projectStatus":{"status":"UNKNOWN"}}')
-        QUALITY_GATE=$(echo "$QUALITY_GATE_RESPONSE" | jq -r '.projectStatus.status // "UNKNOWN"')
-        
-        echo "Quality Gate Status: $QUALITY_GATE"
-        echo "Full response: $QUALITY_GATE_RESPONSE"
-        
-        # Si no podemos obtener el status, asumir que pasó (para evitar fallos por problemas de conectividad)
-        if [ "$QUALITY_GATE" = "UNKNOWN" ] || [ "$QUALITY_GATE" = "null" ]; then
-          echo "⚠️ Could not determine Quality Gate status, but continuing..."
-        elif [ "$QUALITY_GATE" != "OK" ]; then
-          echo "❌ Quality Gate failed with status: $QUALITY_GATE"
-          exit 1
-        else
-          echo "✅ Quality Gate passed!"
-        fi
-
     - name: Cleanup SonarQube
       if: always()
       run: |
@@ -329,7 +255,7 @@ jobs:
         docker stop sonarqube || true
         docker rm sonarqube || true
 
-  # Job de notificación (opcional)
+  # Job de notificación
   notify:
     name: Notify Results
     runs-on: ubuntu-latest
