@@ -103,3 +103,37 @@ Para que un PR pueda ser mergeado, todas las etapas deben pasar:
 - **Logs detallados**: Revisa la pestaña "Actions" en GitHub
 - **Cobertura de código**: Los reportes se suben automáticamente a Codecov
 - **Calidad de código**: SonarQube se ejecuta automáticamente en cada pipeline
+
+## 🔧 **Pipelines Disponibles**
+
+### **Pipeline Principal** (`ci.yml`)
+- **Triggers**: Push y PRs a `main` y `develop`
+- **Incluye**: Tests, Build, SonarQube
+- **Duración**: ~8-10 minutos
+
+### **Pipeline de Backend** (`test-backend-only.yml`)
+- **Triggers**: Cambios solo en `backend/`
+- **Incluye**: Solo tests del backend
+- **Duración**: ~3-4 minutos
+- **Ventaja**: Más rápido para cambios solo en backend
+
+## 🚀 **Próximos Pasos**
+
+1. **Haz un push** a cualquier rama para activar el pipeline automáticamente
+2. **Revisa los resultados** en la pestaña "Actions" de GitHub
+3. **El pipeline se ejecutará** sin configuración adicional
+
+## 🐛 **Solución de Problemas Actualizada**
+
+### Error de PostgreSQL
+- ✅ **Solucionado**: Se instala `postgresql-client` y se espera a que esté listo
+- ✅ **Mejorado**: Se crea la base de datos `test` automáticamente
+
+### Error de SonarQube
+- ✅ **Solucionado**: Configuración optimizada con más memoria
+- ✅ **Mejorado**: Timeouts más largos y verificación robusta
+- ✅ **Fallback**: Si no se puede verificar el Quality Gate, continúa
+
+### Error de Tests
+- ✅ **Solucionado**: Variables de entorno configuradas correctamente
+- ✅ **Mejorado**: Espera a que los servicios estén listos antes de ejecutar tests
