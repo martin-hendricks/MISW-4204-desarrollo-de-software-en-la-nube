@@ -71,7 +71,7 @@ def create_test_user():
         if response.status_code == 201:
             print("Usuario de prueba creado exitosamente")
             return True
-        elif response.status_code == 400 and "ya existe" in response.text.lower():
+        elif response.status_code == 400 and ("ya existe" in response.text.lower() or "ya está registrado" in response.text.lower()):
             print("Usuario de prueba ya existe, continuando...")
             return True
         else:

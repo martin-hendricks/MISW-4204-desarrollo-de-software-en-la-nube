@@ -7,7 +7,7 @@ Este documento contiene las instrucciones para ejecutar los escenarios de prueba
 ### Requisitos Previos
 
 1.  **Configuración y Renovación Automática de JWT Token**
-    *   **¡MEJORADO!** El sistema ahora configura y renueva automáticamente el JWT token.
+    *  El sistema ahora configura y renueva automáticamente el JWT token.
     *   Al ejecutar `docker-compose -f performance-testing/docker-compose.testing.yml up`:
 
         **Servicio `setup-jwt` (ejecución única al inicio):**
