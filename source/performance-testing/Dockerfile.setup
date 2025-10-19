@@ -1,0 +1,17 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Instalar dependencias
+RUN pip install --no-cache-dir requests==2.31.0
+
+# Copiar los scripts
+COPY setup_jwt.py /app/setup_jwt.py
+COPY renew_jwt.py /app/renew_jwt.py
+
+# Hacer los scripts ejecutables
+RUN chmod +x /app/setup_jwt.py /app/renew_jwt.py
+
+# Por defecto ejecuta el setup, pero puede ser sobrescrito
+ENTRYPOINT ["python"]
+CMD ["/app/setup_jwt.py"]

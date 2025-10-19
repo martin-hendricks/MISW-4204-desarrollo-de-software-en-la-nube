@@ -6,9 +6,35 @@ Este documento contiene las instrucciones para ejecutar los escenarios de prueba
 
 ### Requisitos Previos
 
-1.  **Token de Autenticación (¡MUY IMPORTANTE!)**
-    *   Antes de ejecutar cualquier prueba, es **indispensable** editar los 3 archivos `.jmx` (`smoke_test.jmx`, `ramp_up_test.jmx`, `sustained_test.jmx`) en un editor de texto. Estos archivos se encuentran en la carpeta `performance-testing/web-api-tests/scenarios/`.
-    *   Busca el valor `Bearer YOUR_JWT_TOKEN_HERE` y reemplázalo con un token JWT válido de un usuario de prueba de tu aplicación.
+1.  **Configuración y Renovación Automática de JWT Token**
+    *   **¡MEJORADO!** El sistema ahora configura y renueva automáticamente el JWT token.
+    *   Al ejecutar `docker-compose -f performance-testing/docker-compose.testing.yml up`:
+
+        **Servicio `setup-jwt` (ejecución única al inicio):**
+        - Espera a que la API esté disponible
+        - Crea automáticamente un usuario de prueba (`performance_test@example.com`)
+        - Obtiene un JWT token válido inicial
+        - Actualiza los 3 archivos JMeter con el token
+
+        **Servicio `renew-jwt` (ejecución continua en segundo plano):**
+        - Se ejecuta automáticamente después del setup inicial
+        - Renueva el JWT token cada 30 minutos (antes de que expire a los 60 minutos)
+        - Actualiza automáticamente los archivos JMeter con el nuevo token
+        - **Garantiza que las pruebas largas nunca fallen por token expirado**
+
+    *   **Configuración personalizada (opcional):** Puedes modificar las variables de entorno en `docker-compose.testing.yml`:
+        ```yaml
+        setup-jwt:
+          environment:
+            - TEST_USER_EMAIL=tu_email@example.com
+            - TEST_USER_PASSWORD=TuPassword123!
+
+        renew-jwt:
+          environment:
+            - TEST_USER_EMAIL=tu_email@example.com  # Mismo usuario
+            - TEST_USER_PASSWORD=TuPassword123!      # Misma contraseña
+            - RENEWAL_INTERVAL=1800  # Intervalo en segundos (30 min)
+        ```
 
 2.  **Activar el Modo de Prueba en el Backend**
     *   Asegúrate de que tu archivo principal `docker-compose.yml` tenga la variable de entorno `TEST_MODE: "true"` en el servicio `backend`. Esto es necesario para desacoplar la capa asíncrona y medir únicamente el rendimiento de la capa web.
@@ -43,15 +69,34 @@ docker-compose -f source/docker-compose.yml up --build --remove-orphans
 
 #### 2. Iniciar el Entorno de Pruebas
 
-**Opcion 1: Desde el directorio source**
+**IMPORTANTE:**
+- El primer inicio puede tardar un poco más mientras se configura automáticamente el JWT token.
+- Debes especificar el archivo con `-f docker-compose.testing.yml` ya que no se llama `docker-compose.yml`.
+
+**Opcion 1: Desde el directorio performance-testing**
 ```sh
-docker-compose -f performance-testing/docker-compose.testing.yml up -d
+cd source/performance-testing
+docker-compose -f docker-compose.testing.yml up --build --remove-orphans
 ```
 
-**Opcion 2: Desde el directorio raiz**
+**Opcion 2: Desde el directorio source**
 ```sh
-docker-compose -f source/performance-testing/docker-compose.testing.yml up -d
+docker-compose -f performance-testing/docker-compose.testing.yml up --build --remove-orphans
 ```
+
+**Opcion 3: Desde el directorio raiz**
+```sh
+docker-compose -f source/performance-testing/docker-compose.testing.yml up --build --remove-orphans
+```
+
+Durante el inicio verás:
+1. El servicio `setup-jwt` esperando a que la API esté disponible
+2. La creación del usuario de prueba
+3. La obtención del JWT token
+4. La actualización de los archivos JMeter
+5. El inicio de Prometheus, Grafana y JMeter
+
+**Nota:** El comando anterior ejecuta los contenedores en **primer plano** (attached mode), mostrando todos los logs en tiempo real.
 
 ### Comandos de JMeter
 
@@ -89,6 +134,104 @@ Una vez que ambos entornos estén corriendo, puedes ejecutar los diferentes esce
 
 Los archivos de resultados (`.jtl`) de cada ejecución aparecerán en la carpeta `performance-testing/web-api-tests/scenarios/` para su posterior análisis.
 
+---
+
+## Troubleshooting - Configuración JWT
+
+### El servicio setup-jwt falla al conectar con la API
+
+**Problema:** El servicio `setup-jwt` no puede conectarse a la API en `http://host.docker.internal:80`
+
+**Soluciones:**
+1. Verifica que el servicio principal esté corriendo:
+   ```bash
+   docker ps | grep api-gateway
+   ```
+
+2. Asegúrate de que la API esté respondiendo:
+   ```bash
+   curl http://localhost:80/health
+   ```
+
+3. Espera unos segundos más para que todos los servicios inicien completamente y vuelve a intentar.
+
+### Ver logs del proceso de setup y renovación
+
+Para ver qué está haciendo el servicio de configuración JWT inicial:
+```bash
+docker logs setup-jwt
+```
+
+Para ver el servicio de renovación automática en tiempo real:
+```bash
+docker logs -f renew-jwt
+```
+
+Verás mensajes como:
+```
+[2025-10-18 10:30:00] [INFO] Renovando JWT token para: performance_test@example.com
+[2025-10-18 10:30:01] [INFO] JWT token renovado exitosamente (primeros 20 chars): eyJhbGciOiJIUzI1NiIsIn...
+[2025-10-18 10:30:01] [INFO] Archivos JMeter actualizados: 3/3
+[2025-10-18 10:30:01] [INFO] Renovación completada exitosamente
+[2025-10-18 10:30:01] [INFO] Próxima renovación en 30.0 minutos
+```
+
+### Verificar que los archivos JMeter se actualizaron correctamente
+
+Puedes verificar que el token se insertó en los archivos:
+```bash
+grep -r "Bearer" performance-testing/web-api-tests/scenarios/scenarios/*.jmx
+```
+
+Deberías ver líneas con tokens JWT reales en lugar de `Bearer YOUR_JWT_TOKEN_HERE`.
+
+### Ajustar el intervalo de renovación
+
+El token se renueva cada 30 minutos por defecto. Para cambiar este intervalo:
+
+1. Edita el archivo `docker-compose.testing.yml`
+2. Modifica la variable `RENEWAL_INTERVAL` del servicio `renew-jwt`:
+   ```yaml
+   renew-jwt:
+     environment:
+       - RENEWAL_INTERVAL=900  # 15 minutos (en segundos)
+   ```
+3. Reinicia el servicio:
+   ```bash
+   docker-compose -f performance-testing/docker-compose.testing.yml restart renew-jwt
+   ```
+
+**Nota:** Se recomienda que el intervalo sea menor al tiempo de expiración del token (60 minutos). Un intervalo de 30-45 minutos es ideal.
+
+### Resetear la configuración JWT
+
+Si necesitas volver a ejecutar el setup:
+```bash
+# Desde performance-testing:
+docker-compose -f docker-compose.testing.yml down
+docker-compose -f docker-compose.testing.yml up --build
+
+# Desde source:
+docker-compose -f performance-testing/docker-compose.testing.yml down
+docker-compose -f performance-testing/docker-compose.testing.yml up --build
+
+# Desde raiz:
+docker-compose -f source/performance-testing/docker-compose.testing.yml down
+docker-compose -f source/performance-testing/docker-compose.testing.yml up --build
+```
+
+### Detener solo el servicio de renovación
+
+Si por alguna razón quieres detener la renovación automática (no recomendado para pruebas largas):
+```bash
+docker stop renew-jwt
+```
+
+Para volver a iniciarlo:
+```bash
+docker start renew-jwt
+```
+
 
 # Guía de Pruebas de Rendimiento del Worker (Escenario 2)
 
@@ -111,12 +254,18 @@ docker-compose -f source/docker-compose.yml up --build --remove-orphans
 
 ### Tener el entorno de pruebas corriendo
 
-**Opcion 1: Desde el directorio source**
+**Opcion 1: Desde el directorio performance-testing**
+```sh
+cd source/performance-testing
+docker-compose -f docker-compose.testing.yml up -d
+```
+
+**Opcion 2: Desde el directorio source**
 ```sh
 docker-compose -f performance-testing/docker-compose.testing.yml up -d
 ```
 
-**Opcion 2: Desde el directorio raiz**
+**Opcion 3: Desde el directorio raiz**
 ```sh
 docker-compose -f source/performance-testing/docker-compose.testing.yml up -d
 ```
@@ -218,6 +367,11 @@ docker exec redis redis-cli LLEN video_processing
 
 ### El script no muestra output
 - **Solución:** Asegúrate de haber reconstruido el contenedor producer después de modificar el código:
+
+**Desde el directorio performance-testing:**
+```bash
+docker-compose -f docker-compose.testing.yml up -d --build producer
+```
 
 **Desde el directorio source:**
 ```bash
