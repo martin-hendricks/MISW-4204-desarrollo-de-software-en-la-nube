@@ -108,7 +108,17 @@ def process_video(self, video_id: int) -> Dict:
             logger.error(f"❌ {error_msg}")
             raise VideoProcessingError(error_msg)
 
-        logger.info("✅ Archivo original encontrado en almacenamiento")
+        # Obtener tamaño del archivo original para métricas
+        file_size_bytes = os.path.getsize(original_path)
+        file_size_mb = file_size_bytes / (1024 * 1024)
+        logger.info(f"✅ Archivo original encontrado: {file_size_mb:.2f} MB")
+
+        # Registrar métrica de tamaño de archivo
+        try:
+            from metrics import video_file_size_bytes
+            video_file_size_bytes.observe(file_size_bytes)
+        except ImportError as e:
+            logger.warning(f"Could not import metrics: {e}")  # Métricas no disponibles, continuar sin ellas
 
         # ===== 3. PROCESAR VIDEO CON FFMPEG =====
 

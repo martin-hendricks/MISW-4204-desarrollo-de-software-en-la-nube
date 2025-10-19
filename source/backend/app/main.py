@@ -1,11 +1,38 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from prometheus_client import Counter, Histogram, Gauge, generate_latest, CONTENT_TYPE_LATEST
+import time
 import os
+import asyncio
+import logging
+
+# Configurar logger
+logger = logging.getLogger(__name__)
 
 # Importar configuración del contenedor
 from app.config.container_config import configure_container
 from app.config.settings import settings
+
+# ===== MÉTRICAS DE PROMETHEUS =====
+# Definir métricas manualmente (igual que en worker)
+http_requests_total = Counter(
+    'http_requests_total',
+    'Total HTTP requests',
+    ['method', 'endpoint', 'status']
+)
+
+http_request_duration_seconds = Histogram(
+    'http_request_duration_seconds',
+    'HTTP request duration in seconds',
+    ['method', 'endpoint'],
+    buckets=[0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1.0, 2.5, 5.0, 7.5, 10.0]
+)
+
+http_requests_in_progress = Gauge(
+    'http_requests_in_progress',
+    'HTTP requests currently in progress'
+)
 
 # Crear la aplicación FastAPI
 app = FastAPI(
@@ -15,6 +42,44 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc"
 )
+
+# ===== MIDDLEWARE DE PROMETHEUS =====
+@app.middleware("http")
+async def prometheus_middleware(request: Request, call_next):
+    """Middleware para capturar métricas de todas las requests"""
+    # Excluir el endpoint /metrics de las métricas
+    if request.url.path == "/metrics":
+        return await call_next(request)
+
+    method = request.method
+    endpoint = request.url.path
+
+    # Incrementar contador de requests en progreso
+    http_requests_in_progress.inc()
+    current_value = http_requests_in_progress._value.get()
+    logger.info(f"[METRICS DEBUG] Incremented gauge. Current value: {current_value}. Path: {endpoint}")
+
+    # Iniciar timer
+    start_time = time.time()
+
+    try:
+        # Procesar request
+        response = await call_next(request)
+
+        # Calcular duración
+        duration = time.time() - start_time
+
+        # Registrar métricas
+        status = response.status_code
+        http_requests_total.labels(method=method, endpoint=endpoint, status=status).inc()
+        http_request_duration_seconds.labels(method=method, endpoint=endpoint).observe(duration)
+
+        return response
+    finally:
+        # Decrementar contador de requests en progreso (siempre se ejecuta)
+        http_requests_in_progress.dec()
+        current_value = http_requests_in_progress._value.get()
+        logger.info(f"[METRICS DEBUG] Decremented gauge. Current value: {current_value}. Path: {endpoint}")
 
 # Configurar CORS
 app.add_middleware(
@@ -39,6 +104,15 @@ app.include_router(auth.router)
 app.include_router(videos.router)
 app.include_router(public.router)
 
+# ===== ENDPOINT DE MÉTRICAS =====
+@app.get("/metrics")
+async def metrics():
+    """Endpoint para exponer métricas de Prometheus"""
+    return Response(
+        content=generate_latest(),
+        media_type=CONTENT_TYPE_LATEST
+    )
+
 @app.get("/")
 def read_root():
     return {
@@ -48,6 +122,14 @@ def read_root():
         "docs": "/docs",
         "file_storage": settings.FILE_STORAGE_TYPE.value
     }
+
+@app.get("/test-gauge")
+async def test_gauge():
+    """Endpoint de prueba para verificar que el gauge funciona"""
+    http_requests_in_progress.inc()
+    await asyncio.sleep(5)  # Mantener incrementado por 5 segundos
+    http_requests_in_progress.dec()
+    return {"message": "Gauge test completed"}
 
 @app.get("/health")
 def health_check():

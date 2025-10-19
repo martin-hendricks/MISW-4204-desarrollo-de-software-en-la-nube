@@ -3,14 +3,29 @@ API de Health Checks para el Worker ANB Rising Stars
 Este servicio corre en paralelo al worker de Celery
 """
 from fastapi import FastAPI, status
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel
 from typing import Dict, Optional
 import logging
 
+from prometheus_client import CONTENT_TYPE_LATEST
+
 from config import config
 from database import test_db_connection
 from celery_app import app as celery_app
+
+# Importar métricas del módulo centralizado (multiprocess-safe)
+from metrics import (
+    celery_tasks_total,
+    celery_tasks_failed,
+    celery_task_duration,
+    video_processing_duration,
+    celery_active_tasks,
+    celery_reserved_tasks,
+    celery_queue_length,
+    video_file_size_bytes,
+    generate_multiprocess_metrics
+)
 
 # Configurar logging
 logging.basicConfig(level=config.LOG_LEVEL)
@@ -43,9 +58,61 @@ def read_root():
         "endpoints": {
             "health": "/health",
             "health_detailed": "/health/detailed",
-            "celery_stats": "/celery/stats"
+            "celery_stats": "/celery/stats",
+            "metrics": "/metrics"
         }
     }
+
+
+@app.get("/metrics")
+def metrics():
+    """
+    Endpoint de métricas para Prometheus
+    Expone métricas en formato Prometheus
+    """
+    try:
+        # Actualizar gauges con información actual de Celery
+        inspect = celery_app.control.inspect()
+
+        # Obtener tareas activas
+        active = inspect.active()
+        if active:
+            total_active = sum(len(tasks) for tasks in active.values())
+            celery_active_tasks.set(total_active)
+        else:
+            celery_active_tasks.set(0)
+
+        # Obtener tareas reservadas
+        reserved = inspect.reserved()
+        if reserved:
+            total_reserved = sum(len(tasks) for tasks in reserved.values())
+            celery_reserved_tasks.set(total_reserved)
+        else:
+            celery_reserved_tasks.set(0)
+
+        # Obtener tamaño de colas de Redis
+        try:
+            import redis
+            r = redis.from_url(config.REDIS_URL)
+
+            # Medir colas de Celery (las colas en Redis se llaman "celery" por defecto)
+            video_queue_length = r.llen('video_processing')  # Cola de procesamiento de video
+            dlq_length = r.llen('dlq')  # Dead Letter Queue
+
+            celery_queue_length.labels(queue_name='video_processing').set(video_queue_length or 0)
+            celery_queue_length.labels(queue_name='dlq').set(dlq_length or 0)
+
+        except Exception as e:
+            logger.warning(f"Error obteniendo tamaño de colas Redis: {e}")
+
+    except Exception as e:
+        logger.warning(f"Error actualizando métricas de Celery: {e}")
+
+    # Generar respuesta en formato Prometheus (multiprocess-safe)
+    return Response(
+        content=generate_multiprocess_metrics(),
+        media_type=CONTENT_TYPE_LATEST
+    )
 
 
 @app.get("/health", response_model=HealthResponse)
