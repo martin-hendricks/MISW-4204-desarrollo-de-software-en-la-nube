@@ -104,11 +104,32 @@ def test_video(db_session, test_player):
 
 
 @pytest.fixture
-def auth_headers(test_player):
-    """Fixture para obtener headers de autenticación"""
-    # Simular login para obtener token
+def auth_headers(db_session):
+    """Fixture para obtener headers de autenticación de un usuario diferente al que crea videos"""
+    import uuid
+    import asyncio
+    from app.infrastructure.external_services.jwt_auth_service import JWTAuthService
+    
+    # Crear un usuario diferente para votar (no el mismo que crea videos)
+    unique_email = f"voter.{uuid.uuid4().hex[:8]}@example.com"
+    auth_service = JWTAuthService()
+    password_hash = asyncio.run(auth_service.hash_password("testpassword"))
+    
+    voter_player = PlayerModel(
+        first_name="Voter",
+        last_name="User",
+        email=unique_email,
+        password_hash=password_hash,
+        city="Medellín",
+        country="Colombia"
+    )
+    db_session.add(voter_player)
+    db_session.commit()
+    db_session.refresh(voter_player)
+    
+    # Hacer login con este usuario
     login_data = {
-        "email": test_player.email,
+        "email": unique_email,
         "password": "testpassword"
     }
     response = client.post("/auth/login", json=login_data)
@@ -116,43 +137,18 @@ def auth_headers(test_player):
         token = response.json()["access_token"]
         return {"Authorization": f"Bearer {token}"}
     else:
-        # Si falla el login, crear un usuario y hacer login
-        import uuid
-        unique_email = f"test.user.{uuid.uuid4().hex[:8]}@example.com"
-        
-        # Crear usuario
-        user_data = {
-            "first_name": "Test",
-            "last_name": "User",
-            "email": unique_email,
-            "password1": "testpassword",
-            "password2": "testpassword",
-            "city": "Bogotá",
-            "country": "Colombia"
-        }
-        client.post("/auth/signup", json=user_data)
-        
-        # Hacer login
-        login_data = {
-            "email": unique_email,
-            "password": "testpassword"
-        }
-        response = client.post("/auth/login", json=login_data)
-        if response.status_code == 200:
-            token = response.json()["access_token"]
-            return {"Authorization": f"Bearer {token}"}
-        else:
-            return {}
+        return {}
 
 
 @pytest.fixture
-def auth_video(auth_headers, db_session):
+def auth_video(db_session):
     """Fixture para crear un video del usuario autenticado"""
     from app.infrastructure.database.models import VideoModel, VideoStatusEnum
     import uuid
+    import asyncio
+    from app.infrastructure.external_services.jwt_auth_service import JWTAuthService
     
     # Crear un usuario específico para el video
-    import asyncio
     auth_service = JWTAuthService()
     password_hash = asyncio.run(auth_service.hash_password("testpassword"))
     

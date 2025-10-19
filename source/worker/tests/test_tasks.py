@@ -70,7 +70,7 @@ class TestProcessVideoTask:
         # Verificaciones básicas
         assert result["status"] == "success"
         assert mock_video.status == VideoStatus.processed
-        assert mock_video.processed_url == "/api/videos/processed/123.mp4"
+        assert mock_video.processed_url == "http://localhost:80/api/videos/processed/123"
         mock_db_session.commit.assert_called_once()
 
     @patch("tasks.video_processor.get_db_session")
