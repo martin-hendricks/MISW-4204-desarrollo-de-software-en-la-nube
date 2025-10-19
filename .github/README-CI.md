@@ -17,30 +17,31 @@ El pipeline incluye tres etapas fundamentales:
 - Valida la configuración de docker-compose
 - Utiliza cache de Docker para optimizar el tiempo de construcción
 
-### 3. **Análisis de Calidad con SonarQube** (`sonarqube`)
-- Analiza la calidad del código Python
+### 3. **Análisis de Calidad con SonarCloud** (`sonarcloud`)
+- Analiza la calidad del código Python usando SonarCloud
 - Detecta vulnerabilidades, code smells y problemas de mantenibilidad
-- Genera reportes de cobertura para SonarQube
+- Genera reportes de cobertura para SonarCloud
 - Bloquea el merge si no pasa el quality gate
 
 ## ⚙️ Configuración Requerida
 
-### ✅ **Sin Configuración Adicional Necesaria**
+### ✅ **Configuración Requerida para SonarCloud**
 
-El pipeline está configurado para funcionar **automáticamente** sin necesidad de configurar secrets o instancias externas:
+Para que el pipeline funcione completamente, necesitas configurar:
 
-- **SonarQube**: Se levanta automáticamente en un contenedor Docker
-- **Base de datos**: Se configura automáticamente para las pruebas
-- **Servicios**: PostgreSQL y Redis se configuran automáticamente
+#### **1. SonarCloud Token (Requerido)**
+1. Ve a [SonarCloud.io](https://sonarcloud.io)
+2. Inicia sesión con tu cuenta de GitHub
+3. Ve a **Account > Security > Generate Tokens**
+4. Crea un token con nombre "GitHub Actions"
+5. Copia el token generado
+6. En GitHub, ve a **Settings > Secrets and variables > Actions**
+7. Crea un nuevo secret llamado `SONAR_TOKEN` con el token copiado
 
-### 🔧 **Configuración Automática de SonarQube**
-
-El pipeline:
-1. **Levanta SonarQube** automáticamente en un contenedor Docker
-2. **Configura el proyecto** con la clave `misw4204-cloud`
-3. **Ejecuta el análisis** de calidad del código
-4. **Verifica el Quality Gate** automáticamente
-5. **Limpia los recursos** al finalizar
+#### **2. Configuración Automática**
+- **Base de datos**: Se configura automáticamente para las pruebas (SQLite)
+- **Servicios**: Redis se configura automáticamente
+- **SonarCloud**: Se conecta automáticamente usando el token
 
 ## 🔧 Configuración Local (Opcional)
 
@@ -81,13 +82,13 @@ Para que un PR pueda ser mergeado, todas las etapas deben pasar:
 
 - ✅ **Tests**: Todas las pruebas unitarias deben pasar
 - ✅ **Build**: Todas las imágenes Docker deben construirse correctamente
-- ✅ **SonarQube**: El análisis de calidad debe pasar el quality gate
+- ✅ **SonarCloud**: El análisis de calidad debe pasar el quality gate
 
 ## 🐛 Solución de Problemas
 
-### Error de SonarQube
-- El contenedor de SonarQube se levanta automáticamente
-- Si falla, verifica que Docker esté disponible en el runner
+### Error de SonarCloud
+- Verifica que el secret `SONAR_TOKEN` esté configurado correctamente
+- Asegúrate de que el token tenga permisos de análisis
 - El proyecto se crea automáticamente con la clave `misw4204-cloud`
 
 ### Error de Tests
@@ -102,13 +103,13 @@ Para que un PR pueda ser mergeado, todas las etapas deben pasar:
 
 - **Logs detallados**: Revisa la pestaña "Actions" en GitHub
 - **Cobertura de código**: Los reportes se suben automáticamente a Codecov
-- **Calidad de código**: SonarQube se ejecuta automáticamente en cada pipeline
+- **Calidad de código**: SonarCloud se ejecuta automáticamente en cada pipeline
 
 ## 🔧 **Pipelines Disponibles**
 
 ### **Pipeline Principal** (`ci.yml`)
 - **Triggers**: Push y PRs a `main` y `develop`
-- **Incluye**: Tests (SQLite), Build, SonarQube
+- **Incluye**: Tests (SQLite), Build, SonarCloud
 - **Duración**: ~5-7 minutos
 - **Base de datos**: SQLite (más confiable en CI)
 
@@ -132,10 +133,10 @@ Para que un PR pueda ser mergeado, todas las etapas deben pasar:
 - ✅ **Eliminado**: Dependencias de PostgreSQL que causaban fallos
 - ✅ **Mejorado**: Configuración simplificada y robusta
 
-### Error de SonarQube
-- ✅ **Solucionado**: Configuración optimizada con más memoria
-- ✅ **Mejorado**: Timeouts más largos y verificación robusta
-- ✅ **Fallback**: Si no se puede verificar el Quality Gate, continúa
+### Error de SonarCloud
+- ✅ **Solucionado**: Uso de SonarCloud en lugar de SonarQube local
+- ✅ **Mejorado**: Configuración automática con GitHub Actions
+- ✅ **Estable**: Sin problemas de contenedores o recursos
 
 ### Error de Tests
 - ✅ **Solucionado**: Variables de entorno configuradas correctamente
