@@ -25,7 +25,7 @@ def test_upload_video_success(auth_headers):
         data=data
     )
     
-    assert response.status_code == 202
+    assert response.status_code == 201
     assert "task_id" in response.json()
     assert "Video subido correctamente" in response.json()["message"]
 
