@@ -147,7 +147,7 @@ Contiene los resultados de las pruebas automatizadas de la API ejecutadas con Ne
 
 Contiene el video de sustentacion del proyecto para la primera entrega, donde se presenta la solucion desarrollada, la arquitectura implementada y una demostracion del funcionamiento del sistema.
 
-**[Ver informacion del video de sustentacion →](../../sustentacion)**
+**[Ver informacion del video de sustentacion →](../../sustentacion/Entrega_1)**
 
 **Curso**: MISW-4204 Desarrollo de Software en la Nube
 **Numero de Equipo** : 2
