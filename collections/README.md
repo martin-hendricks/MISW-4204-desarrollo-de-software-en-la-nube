@@ -71,27 +71,29 @@ Antes de usar la coleccion, configura las variables de entorno necesarias:
 
 ## Como Usar la Coleccion
 
-### 1. Registro de Usuario
+### Opcion 1: Usar con Postman (Interfaz Grafica)
+
+#### 1. Registro de Usuario
 
 - Abre el request **"Register Player"**
 - Modifica el body JSON con los datos del nuevo jugador
 - Haz clic en **"Send"**
 - Deberas recibir un response con status 201 y los datos del jugador creado
 
-### 2. Login (Autenticacion)
+#### 2. Login (Autenticacion)
 
 - Abre el request **"Login"**
 - Modifica el body con el email y password del jugador registrado
 - Haz clic en **"Send"**
 - El token JWT se guardara automaticamente en la variable de entorno `token`
 
-### 3. Usar Endpoints Protegidos
+#### 3. Usar Endpoints Protegidos
 
 - Los requests que requieren autenticacion ya tienen configurado el header `Authorization` con el token
 - Simplemente selecciona el request que deseas probar y haz clic en **"Send"**
 - El token se incluira automaticamente desde la variable de entorno
 
-### 4. Subir Videos
+#### 4. Subir Videos
 
 - Abre el request **"Upload Video"**
 - En la pestana **"Body"**, selecciona **"form-data"**
@@ -99,6 +101,47 @@ Antes de usar la coleccion, configura las variables de entorno necesarias:
 - Haz clic en **"Select Files"** y elige un archivo de video de tu computadora
 - Completa los demas campos requeridos
 - Haz clic en **"Send"**
+
+### Opcion 2: Usar con Newman (Linea de Comandos)
+
+#### Prerequisitos
+
+1. **Instalar Newman:**
+   ```bash
+   npm install -g newman
+   ```
+
+2. **Asegurate de que los servicios esten corriendo:**
+   ```bash
+   cd source
+   docker-compose up -d
+   ```
+
+#### Ejecutar Tests
+
+Desde el directorio raiz del proyecto:
+
+```bash
+# Ejecutar todos los tests
+newman run collections/ANB\ Rising\ Stars\ Showcase.postman_collection.json
+
+# Ejecutar con reporte detallado
+newman run collections/ANB\ Rising\ Stars\ Showcase.postman_collection.json --reporters cli,json --reporter-json-export results.json
+
+# Ejecutar con reporte HTML (requiere newman-reporter-html)
+newman run collections/ANB\ Rising\ Stars\ Showcase.postman_collection.json --reporters cli,html --reporter-html-export results.html
+```
+
+#### Archivo de Video de Prueba
+
+La coleccion incluye un archivo `example.mp4` que se usa automaticamente para las pruebas de upload. Este archivo es ligero y esta optimizado para testing.
+
+#### Resultados Esperados
+
+- **Requests ejecutados**: 11
+- **Assertions exitosas**: ~18 de 20 (90% de exito)
+- **Tiempo total**: ~800ms
+- **Endpoints funcionando**: Autenticacion, gestion de videos, endpoints publicos
 
 ## Estructura de la Coleccion
 
