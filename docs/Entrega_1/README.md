@@ -17,7 +17,7 @@ Contiene los archivos fuente de la aplicacion, incluyendo el codigo del backend 
 
 **[Ver documentacion tecnica completa →](../../source/README.md)**
 
-### 🧪 Pruebas de Rendimiento y Carga
+### 🧪Codigo Fuente de las Pruebas de Rendimiento y Carga
 **Ubicacion:** `source/performance-testing/`
 
 Contiene la suite completa de pruebas de rendimiento y carga del sistema, ejecutandose en un entorno Docker separado. Incluye:
