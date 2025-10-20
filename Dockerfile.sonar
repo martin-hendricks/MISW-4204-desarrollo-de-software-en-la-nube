@@ -1,0 +1,6 @@
+# SonarScanner CLI para Python
+# Usar este Dockerfile para crear una imagen que ejecute SonarScanner en el proyecto
+FROM sonarsource/sonar-scanner-cli:latest
+WORKDIR /app
+COPY . /app
+# Entrypoint por defecto: sonar-scanner

@@ -1,4 +1,0 @@
-"""
-Utilidades del worker
-"""
-

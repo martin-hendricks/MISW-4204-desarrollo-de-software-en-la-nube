@@ -1,4 +1,0 @@
-"""
-Tareas asíncronas de Celery
-"""
-

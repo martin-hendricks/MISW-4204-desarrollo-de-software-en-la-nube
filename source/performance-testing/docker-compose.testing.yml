@@ -1,0 +1,114 @@
+services:
+  setup-jwt:
+    build:
+      context: .
+      dockerfile: Dockerfile.setup
+    container_name: setup-jwt
+    environment:
+      - API_BASE_URL=http://host.docker.internal:80
+      - TEST_USER_EMAIL=performance_test@example.com
+      - TEST_USER_PASSWORD=PerformanceTest123!
+    volumes:
+      - ./web-api-tests/scenarios/scenarios:/scripts
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - app-network
+    restart: "no"
+
+  renew-jwt:
+    build:
+      context: .
+      dockerfile: Dockerfile.setup
+    container_name: renew-jwt
+    command: ["/app/renew_jwt.py"]
+    environment:
+      - API_BASE_URL=http://host.docker.internal:80
+      - TEST_USER_EMAIL=performance_test@example.com
+      - TEST_USER_PASSWORD=PerformanceTest123!
+      - RENEWAL_INTERVAL=1800  # 30 minutos
+    volumes:
+      - ./web-api-tests/scenarios/scenarios:/scripts
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - app-network
+    depends_on:
+      setup-jwt:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - app-network
+    restart: unless-stopped
+    depends_on:
+      setup-jwt:
+        condition: service_completed_successfully
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./grafana/provisioning/:/etc/grafana/provisioning/
+      - grafana-storage:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_LOG_LEVEL=warn
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  jmeter:
+    image: justb4/jmeter:latest
+    container_name: jmeter
+    volumes:
+      - ./web-api-tests/scenarios/scenarios:/scripts
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - app-network
+    depends_on:
+      setup-jwt:
+        condition: service_completed_successfully
+    entrypoint: tail -f /dev/null
+
+  producer:
+    build:
+      context: ./worker-tests
+      dockerfile: Dockerfile
+    container_name: producer
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - video_storage:/app/uploads
+    networks:
+      - app-network
+    depends_on:
+      - prometheus
+      - grafana
+    entrypoint: tail -f /dev/null
+
+networks:
+  app-network:
+    external: true
+
+volumes:
+  grafana-storage: {}
+  video_storage:
+    external: true
