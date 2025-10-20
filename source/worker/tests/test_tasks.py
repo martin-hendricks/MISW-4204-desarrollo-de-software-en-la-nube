@@ -41,13 +41,14 @@ class TestProcessVideoTask:
 
     @patch("tasks.video_processor.get_db_session")
     @patch("tasks.video_processor.video_processor")
+    @patch("os.path.getsize")
     @patch("os.path.exists")
     @patch("os.makedirs")
     @patch("os.remove")
     @patch("os.rename")
     def test_process_video_success(
         self, mock_rename, mock_remove, mock_makedirs, mock_exists, 
-        mock_processor, mock_get_db, mock_db_session, mock_video
+        mock_getsize, mock_processor, mock_get_db, mock_db_session, mock_video
     ):
         """Test procesamiento de video exitoso"""
         # Setup
@@ -60,6 +61,7 @@ class TestProcessVideoTask:
             return True  # Todos los demás archivos existen
         
         mock_exists.side_effect = exists_side_effect
+        mock_getsize.return_value = 1024 * 1024  # 1MB file size
         mock_processor.process_video.return_value = "/app/uploads/processed/123.mp4"
         mock_processor.validate_video.return_value = True
         mock_processor.get_video_info.return_value = {"duration": 30, "width": 1280, "height": 720}
@@ -70,7 +72,7 @@ class TestProcessVideoTask:
         # Verificaciones básicas
         assert result["status"] == "success"
         assert mock_video.status == VideoStatus.processed
-        assert mock_video.processed_url == "/api/videos/processed/123.mp4"
+        assert mock_video.processed_url == "http://localhost:80/api/videos/processed/123"
         mock_db_session.commit.assert_called_once()
 
     @patch("tasks.video_processor.get_db_session")

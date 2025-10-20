@@ -50,6 +50,8 @@ services:
       - CELERY_CONCURRENCY=4
       - CELERY_MAX_RETRIES=3
       - LOG_LEVEL=INFO
+      - PYTHONPATH=/app
+      - PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus_multiproc
     volumes:
       - video_storage:/app/uploads  # Volumen compartido con backend
     depends_on:

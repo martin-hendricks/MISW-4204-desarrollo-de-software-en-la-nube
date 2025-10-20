@@ -35,43 +35,12 @@ La plataforma sirve como centro de carga, almacenamiento y evaluación de videos
 
 ## Estructura del Repositorio
 
-Este repositorio contiene todos los componentes del proyecto ANB Rising Stars Showcase, organizado en los siguientes directorios:
-
-### 📁 [capacity-planning/](capacity-planning/plan_de_pruebas.md)
-Contiene el análisis detallado de capacidad de la aplicación, incluyendo:
-- Escenarios de carga planteados
-- Métricas seleccionadas para evaluación
-- Resultados esperados de las pruebas
-- Recomendaciones para escalar la solución
-
-**[Ver plan de pruebas de capacidad →](capacity-planning/plan_de_pruebas.md)**
-
-### 📁 [collections/](collections/)
-Contiene la colección de Postman con todos los endpoints de la API documentados y listos para probar. Incluye ejemplos de requests y responses para facilitar la integración y testing de la API.
-
-**[Ver documentación completa de la colección →](collections/)**
+Este repositorio contiene todos los componentes del proyecto ANB Rising Stars Showcase, los cuales encontrara segmentados y explicados en el siguiente directorio:
 
 ### 📁 [docs/Entrega_1/](docs/Entrega_1/)
 Contiene todos los archivos entregables de la primera entrega del proyecto, incluyendo diagramas de arquitectura, documentación técnica, y reportes de las pruebas realizadas.
 
 **[Ver documentación de la Entrega 1 →](docs/Entrega_1/)**
-
-### 📁 [source/](source/)
-Contiene los archivos fuente de la aplicación, incluyendo el código del backend API, worker de procesamiento de videos, configuración de servicios y pruebas de carga. Esta es la carpeta principal del desarrollo. Tambien encontrara las instrucciones de ejecución.
-
-**Componentes incluidos:**
-- Backend API (FastAPI)
-- Worker de procesamiento de videos (Celery)
-- API Gateway (NGINX)
-- Base de datos (PostgreSQL)
-- Pruebas de rendimiento (JMeter)
-
-**[Ver documentación técnica completa →](source/)**
-
-### 📁 [sustentacion/Entrega_1/](sustentacion/Entrega_1/)
-Contiene el video de sustentación del proyecto para la primera entrega, donde se presenta la solución desarrollada, la arquitectura implementada y una demostración del funcionamiento del sistema.
-
-**[Ver información del video de sustentación →](sustentacion/Entrega_1/)**
 
 ## Licencia
 

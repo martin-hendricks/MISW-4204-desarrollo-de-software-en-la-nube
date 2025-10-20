@@ -1,0 +1,4694 @@
+{
+  "collection": {
+    "_": {
+      "postman_id": "3312625e-a497-4ddd-a90b-7fe143590148",
+      "exporter_id": "49276550",
+      "collection_link": "https://martin-hendricks-9934464.postman.co/workspace/Martin's-Workspace~ed414676-be51-4ce6-8380-435b2e6b710d/collection/49276550-3312625e-a497-4ddd-a90b-7fe143590148?action=share&source=collection_link&creator=49276550"
+    },
+    "item": [
+      {
+        "id": "3f7a5cec-7c76-4788-83db-bd7890b99429",
+        "name": "1. Autenticación",
+        "item": [
+          {
+            "id": "e7602a68-0a6c-4db1-ba43-5027928119b2",
+            "name": "Register Player",
+            "request": {
+              "description": {
+                "content": "**Registra un nuevo jugador en la plataforma.**\n\n- Valida que el email sea único.\n- Confirma que las contraseñas coincidan.\n- Almacena la contraseña de forma segura (hash).\n\n**Códigos de respuesta:**\n- `201 Created`: Usuario creado exitosamente.\n- `400 Bad Request`: Error de validación (email duplicado, contraseñas no coinciden).",
+                "type": "text/plain"
+              },
+              "url": {
+                "path": [
+                  "api",
+                  "auth",
+                  "signup"
+                ],
+                "host": [
+                  "{{base_url}}"
+                ],
+                "query": [],
+                "variable": []
+              },
+              "method": "POST",
+              "body": {
+                "mode": "raw",
+                "raw": "{\n    \"first_name\": \"Barney\",\n    \"last_name\": \"Gomez\",\n    \"email\": \"barney@example.com\",\n    \"password1\": \"StrongPass123\",\n    \"password2\": \"StrongPass123\",\n    \"city\": \"Bogotá\",\n    \"country\": \"Colombia\"\n}",
+                "options": {
+                  "raw": {
+                    "language": "json"
+                  }
+                }
+              }
+            },
+            "response": [],
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "id": "160e7422-fb21-4fc8-b9ab-02879eda70b5",
+                  "type": "text/javascript",
+                  "packages": {},
+                  "exec": [
+                    "pm.test(\"Status code is 201 Created\", function () {",
+                    "    pm.response.to.have.status(201);",
+                    "});",
+                    "",
+                    "pm.test(\"Response body contains success message\", function () {",
+                    "    var jsonData = pm.response.json();",
+                    "    pm.expect(jsonData.message).to.eql(\"Usuario creado exitosamente.\");",
+                    "});"
+                  ],
+                  "_lastExecutionId": "9ed479ca-680c-4613-b34c-99795e79ddae"
+                }
+              }
+            ]
+          },
+          {
+            "id": "2466d87a-d5c8-4ef8-8bb4-b7be6ef7144b",
+            "name": "Log In Player",
+            "request": {
+              "description": {
+                "content": "**Autentica a un jugador y genera un token JWT.**\n\nEl token devuelto debe ser utilizado en el encabezado `Authorization` como `Bearer <token>` para las solicitudes que requieran autenticación.\n\n**Códigos de respuesta:**\n- `200 OK`: Autenticación exitosa, retorna el token.\n- `401 Unauthorized`: Credenciales inválidas.",
+                "type": "text/plain"
+              },
+              "url": {
+                "path": [
+                  "api",
+                  "auth",
+                  "login"
+                ],
+                "host": [
+                  "{{base_url}}"
+                ],
+                "query": [],
+                "variable": []
+              },
+              "method": "POST",
+              "body": {
+                "mode": "raw",
+                "raw": "{\n    \"email\": \"barney@example.com\",\n    \"password\": \"StrongPass123\"\n}",
+                "options": {
+                  "raw": {
+                    "language": "json"
+                  }
+                }
+              }
+            },
+            "response": [],
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "id": "307d7168-d541-42f1-8eea-b9d81ad9e7b7",
+                  "type": "text/javascript",
+                  "exec": [
+                    "pm.test(\"Status code is 200 OK\", function () {",
+                    "    pm.response.to.have.status(200);",
+                    "});",
+                    "",
+                    "pm.test(\"Response includes an access_token\", function () {",
+                    "    var jsonData = pm.response.json();",
+                    "    pm.expect(jsonData.access_token).to.exist;",
+                    "});",
+                    "",
+                    "// Guarda el token en una variable de la colección para usarlo en otras solicitudes",
+                    "pm.test(\"Set bearer_token variable\", function () {",
+                    "    var jsonData = pm.response.json();",
+                    "    if (jsonData.access_token) {",
+                    "        pm.collectionVariables.set(\"bearer_token\", jsonData.access_token);",
+                    "    }",
+                    "});"
+                  ],
+                  "_lastExecutionId": "4f754637-a36d-4e6c-a078-e7d61dfb91c4"
+                }
+              }
+            ]
+          }
+        ],
+        "event": []
+      },
+      {
+        "id": "990804f1-b97b-43b2-840a-b490a115fc45",
+        "name": "2. Gestión de Videos",
+        "item": [
+          {
+            "id": "0eefcc55-beee-4f7d-b6c7-76567998a8d2",
+            "name": "Upload Video",
+            "request": {
+              "description": {
+                "content": "**Permite a un jugador subir un video de habilidades.**\n\n- La solicitud debe ser `form-data`.\n- El `video_file` debe ser un archivo MP4 de máximo 100MB.\n- Inicia una tarea de procesamiento asíncrono.\n\n**Códigos de respuesta:**\n- `201 Created`: Video subido exitosamente, tarea de procesamiento creada.\n- `400 Bad Request`: Error en el archivo (tipo o tamaño inválido).\n- `401 Unauthorized`: Falta de autenticación.",
+                "type": "text/plain"
+              },
+              "url": {
+                "path": [
+                  "api",
+                  "videos",
+                  "upload"
+                ],
+                "host": [
+                  "{{base_url}}"
+                ],
+                "query": [],
+                "variable": []
+              },
+              "method": "POST",
+              "body": {
+                "mode": "formdata",
+                "formdata": [
+                  {
+                    "key": "video_file",
+                    "type": "file",
+                    "src": "/Users/juancamilo/Universidad/DesarrolloNube/MISW-4204-desarrollo-de-software-en-la-nube/source/worker/assets/intro.mp4"
+                  },
+                  {
+                    "key": "title",
+                    "value": "Mi mejor jugada de 3 puntos",
+                    "type": "text"
+                  }
+                ]
+              },
+              "auth": {
+                "type": "bearer",
+                "bearer": [
+                  {
+                    "type": "string",
+                    "value": "{{bearer_token}}",
+                    "key": "token"
+                  }
+                ]
+              }
+            },
+            "response": [],
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "id": "76a3a3ed-b545-496b-8421-ee4e23255e1d",
+                  "type": "text/javascript",
+                  "packages": {},
+                  "exec": [
+                    "pm.test(\"Status code is 201 Created\", function () {",
+                    "    pm.response.to.have.status(201);",
+                    "});",
+                    "",
+                    "pm.test(\"Response contains a task_id\", function () {",
+                    "    var jsonData = pm.response.json();",
+                    "    pm.expect(jsonData.task_id).to.exist;",
+                    "});"
+                  ],
+                  "_lastExecutionId": "03e29773-a4b3-46ab-8ed0-82f6f68d5207"
+                }
+              }
+            ]
+          },
+          {
+            "id": "099afa0e-1148-409b-9a8f-4f7b914b685e",
+            "name": "Get My Videos",
+            "request": {
+              "description": {
+                "content": "**Consulta el listado de videos subidos por el jugador autenticado.**\n\nRetorna el estado de procesamiento (`uploaded`, `processed`) y las URLs de acceso si el procesamiento está completo.\n\n**Códigos de respuesta:**\n- `200 OK`: Lista de videos obtenida.\n- `401 Unauthorized`: Falta de autenticación.",
+                "type": "text/plain"
+              },
+              "url": {
+                "path": [
+                  "api",
+                  "videos"
+                ],
+                "host": [
+                  "{{base_url}}"
+                ],
+                "query": [],
+                "variable": []
+              },
+              "method": "GET",
+              "auth": {
+                "type": "bearer",
+                "bearer": [
+                  {
+                    "type": "string",
+                    "value": "{{bearer_token}}",
+                    "key": "token"
+                  }
+                ]
+              }
+            },
+            "response": [],
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "id": "b962f24e-8606-42d3-82a3-71b69e509418",
+                  "type": "text/javascript",
+                  "exec": [
+                    "pm.test(\"Status code is 200 OK\", function () {",
+                    "    pm.response.to.have.status(200);",
+                    "});",
+                    "",
+                    "pm.test(\"Response is an array\", function () {",
+                    "    pm.response.to.be.json;",
+                    "    const responseJson = pm.response.json();",
+                    "    pm.expect(responseJson).to.be.an('array');",
+                    "});",
+                    "",
+                    "pm.test(\"Video object has correct properties\", function () {",
+                    "    const responseJson = pm.response.json();",
+                    "    if (responseJson.length > 0) {",
+                    "        const video = responseJson[0];",
+                    "        pm.expect(video).to.have.property('video_id');",
+                    "        pm.expect(video).to.have.property('title');",
+                    "        pm.expect(video).to.have.property('status');",
+                    "    }",
+                    "});"
+                  ],
+                  "_lastExecutionId": "3f714af9-92a4-49fd-8972-7f15e89d1b92"
+                }
+              }
+            ]
+          },
+          {
+            "id": "2a20d1b4-bd61-482b-9481-1d45aff504f5",
+            "name": "Get Specific Video",
+            "request": {
+              "description": {
+                "content": "**Recupera el detalle de un video específico del jugador.**\n\nIncluye las URLs del video original y procesado, así como el conteo de votos.\n\n**Códigos de respuesta:**\n- `200 OK`: Detalle del video obtenido.\n- `401 Unauthorized`: Usuario no autenticado.\n- `403 Forbidden`: El usuario no es el propietario del video.\n- `404 Not Found`: El video no existe.",
+                "type": "text/plain"
+              },
+              "url": {
+                "path": [
+                  "api",
+                  "videos",
+                  ":video_id"
+                ],
+                "host": [
+                  "{{base_url}}"
+                ],
+                "query": [],
+                "variable": [
+                  {
+                    "type": "any",
+                    "value": "1",
+                    "key": "video_id"
+                  }
+                ]
+              },
+              "method": "GET",
+              "auth": {
+                "type": "bearer",
+                "bearer": [
+                  {
+                    "type": "string",
+                    "value": "{{bearer_token}}",
+                    "key": "token"
+                  }
+                ]
+              }
+            },
+            "response": [],
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "id": "cd2adf7f-5b60-4a60-8151-25799a69ed50",
+                  "type": "text/javascript",
+                  "exec": [
+                    "pm.test(\"Status code is 200 OK\", function () {",
+                    "    pm.response.to.have.status(200);",
+                    "});",
+                    "",
+                    "pm.test(\"Video detail has correct properties\", function () {",
+                    "    const jsonData = pm.response.json();",
+                    "    pm.expect(jsonData).to.have.property('video_id');",
+                    "    pm.expect(jsonData).to.have.property('title');",
+                    "    pm.expect(jsonData).to.have.property('status');",
+                    "    pm.expect(jsonData).to.have.property('votes');",
+                    "});"
+                  ],
+                  "_lastExecutionId": "b2f3a82e-623e-4528-979c-9aa365ff7de3"
+                }
+              }
+            ]
+          },
+          {
+            "id": "77ea0dbd-a652-4fe9-b439-d978772f3ea8",
+            "name": "Delete Video",
+            "request": {
+              "description": {
+                "content": "**Elimina uno de los videos del jugador.**\n\nSolo se puede eliminar si el video no ha sido publicado para votación o aún no ha sido procesado.\n\n**Códigos de respuesta:**\n- `200 OK`: Video eliminado correctamente.\n- `400 Bad Request`: El video no puede ser eliminado porque no cumple las condiciones.\n- `401 Unauthorized`: Usuario no autenticado.\n- `403 Forbidden`: El usuario no es el propietario.\n- `404 Not Found`: El video no existe.",
+                "type": "text/plain"
+              },
+              "url": {
+                "path": [
+                  "api",
+                  "videos",
+                  ":video_id"
+                ],
+                "host": [
+                  "{{base_url}}"
+                ],
+                "query": [],
+                "variable": [
+                  {
+                    "type": "any",
+                    "value": "1",
+                    "key": "video_id"
+                  }
+                ]
+              },
+              "method": "DELETE",
+              "auth": {
+                "type": "bearer",
+                "bearer": [
+                  {
+                    "type": "string",
+                    "value": "{{bearer_token}}",
+                    "key": "token"
+                  }
+                ]
+              }
+            },
+            "response": [],
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "id": "24f85ffe-acb4-493f-9855-038880ea4b66",
+                  "type": "text/javascript",
+                  "exec": [
+                    "pm.test(\"Status code is 200 OK\", function () {",
+                    "    pm.response.to.have.status(200);",
+                    "});",
+                    "",
+                    "pm.test(\"Response confirms deletion\", function () {",
+                    "    const jsonData = pm.response.json();",
+                    "    pm.expect(jsonData.message).to.eql(\"El video ha sido eliminado exitosamente.\");",
+                    "});"
+                  ],
+                  "_lastExecutionId": "10c4afb3-ff0e-47ee-b12d-12d015e17a6e"
+                }
+              }
+            ]
+          },
+          {
+            "id": "522a5d96-d991-47ec-94ef-4a429cf26898",
+            "name": "Get Processed Video",
+            "request": {
+              "description": {
+                "content": "**Descarga el video procesado de un jugador.**\n\nRetorna el archivo de video que ha sido procesado (recortado a 30s, con marca de agua de ANB, sin audio).\n\n**Codigos de respuesta:**\n- `200 OK`: Video procesado descargado exitosamente.\n- `401 Unauthorized`: Usuario no autenticado.\n- `403 Forbidden`: El usuario no es el propietario del video.\n- `404 Not Found`: Video no encontrado o aun no procesado.",
+                "type": "text/plain"
+              },
+              "url": {
+                "path": [
+                  "api",
+                  "videos",
+                  "processed",
+                  ":video_id"
+                ],
+                "host": [
+                  "{{base_url}}"
+                ],
+                "query": [],
+                "variable": [
+                  {
+                    "type": "any",
+                    "value": "1",
+                    "key": "video_id"
+                  }
+                ]
+              },
+              "method": "GET",
+              "auth": {
+                "type": "bearer",
+                "bearer": [
+                  {
+                    "type": "string",
+                    "value": "{{bearer_token}}",
+                    "key": "token"
+                  }
+                ]
+              }
+            },
+            "response": [],
+            "event": []
+          },
+          {
+            "id": "fa833c09-2899-45dc-bf0f-7d93df068ad9",
+            "name": "Get Original Video",
+            "request": {
+              "description": {
+                "content": "**Descarga el video original subido por el jugador.**\n\nRetorna el archivo de video sin procesar, tal como fue cargado inicialmente.\n\n**Codigos de respuesta:**\n- `200 OK`: Video original descargado exitosamente.\n- `401 Unauthorized`: Usuario no autenticado.\n- `403 Forbidden`: El usuario no es el propietario del video.\n- `404 Not Found`: Video no encontrado.",
+                "type": "text/plain"
+              },
+              "url": {
+                "path": [
+                  "api",
+                  "videos",
+                  "original",
+                  ":video_id"
+                ],
+                "host": [
+                  "{{base_url}}"
+                ],
+                "query": [],
+                "variable": [
+                  {
+                    "type": "any",
+                    "value": "1",
+                    "key": "video_id"
+                  }
+                ]
+              },
+              "method": "GET",
+              "auth": {
+                "type": "bearer",
+                "bearer": [
+                  {
+                    "type": "string",
+                    "value": "{{bearer_token}}",
+                    "key": "token"
+                  }
+                ]
+              }
+            },
+            "response": [],
+            "event": []
+          }
+        ],
+        "event": []
+      },
+      {
+        "id": "fd8bacb6-b9c5-4071-aae1-8545b68ca06f",
+        "name": "3. Endpoints Públicos",
+        "item": [
+          {
+            "id": "ca438439-418b-45aa-b209-e8e9c09de928",
+            "name": "List Videos for Voting",
+            "request": {
+              "description": {
+                "content": "**Lista todos los videos públicos habilitados para votación.**\n\nEste endpoint es público y no requiere autenticación.",
+                "type": "text/plain"
+              },
+              "url": {
+                "path": [
+                  "api",
+                  "public",
+                  "videos"
+                ],
+                "host": [
+                  "{{base_url}}"
+                ],
+                "query": [],
+                "variable": []
+              },
+              "method": "GET"
+            },
+            "response": [],
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "id": "ab700187-2acf-4f67-aa08-1f2cec10b90a",
+                  "type": "text/javascript",
+                  "exec": [
+                    "pm.test(\"Status code is 200 OK\", function () {",
+                    "    pm.response.to.have.status(200);",
+                    "});",
+                    "",
+                    "pm.test(\"Response is an array\", function () {",
+                    "    pm.response.to.be.json;",
+                    "    const responseJson = pm.response.json();",
+                    "    pm.expect(responseJson).to.be.an('array');",
+                    "});"
+                  ],
+                  "_lastExecutionId": "0f87beca-7957-4cc9-aede-4e8c88989dcf"
+                }
+              }
+            ]
+          },
+          {
+            "id": "1299d58b-23db-4b1c-ae21-3e5e26cbaf19",
+            "name": "Vote for a Video",
+            "request": {
+              "description": {
+                "content": "**Permite a un usuario registrado emitir un voto por un video.**\n\n- Requiere autenticación (JWT).\n- Un usuario solo puede votar una vez por el mismo video.\n\n**Códigos de respuesta:**\n- `200 OK`: Voto registrado exitosamente.\n- `400 Bad Request`: Ya has votado por este video.\n- `401 Unauthorized`: Falta de autenticación.\n- `404 Not Found`: Video no encontrado.",
+                "type": "text/plain"
+              },
+              "url": {
+                "path": [
+                  "api",
+                  "public",
+                  "videos",
+                  ":video_id",
+                  "vote"
+                ],
+                "host": [
+                  "{{base_url}}"
+                ],
+                "query": [],
+                "variable": [
+                  {
+                    "type": "any",
+                    "value": "1",
+                    "key": "video_id"
+                  }
+                ]
+              },
+              "method": "POST",
+              "auth": {
+                "type": "bearer",
+                "bearer": [
+                  {
+                    "type": "string",
+                    "value": "{{bearer_token}}",
+                    "key": "token"
+                  }
+                ]
+              }
+            },
+            "response": [],
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "id": "4a8b5398-3d50-4f85-9256-f9c82eeef379",
+                  "type": "text/javascript",
+                  "exec": [
+                    "pm.test(\"Status code is 200 OK\", function () {",
+                    "    pm.response.to.have.status(200);",
+                    "});",
+                    "",
+                    "pm.test(\"Response confirms vote was registered\", function () {",
+                    "    const jsonData = pm.response.json();",
+                    "    pm.expect(jsonData.message).to.eql(\"Voto registrado exitosamente.\");",
+                    "});"
+                  ],
+                  "_lastExecutionId": "3650814a-b2b1-418d-a0f8-bfc9c88b39b4"
+                }
+              }
+            ]
+          },
+          {
+            "id": "a4e863d2-a3e0-47d9-bd56-64aaebf43ec1",
+            "name": "Get Rankings",
+            "request": {
+              "description": {
+                "content": "**Provee un ranking actualizado de los jugadores.**\n\n- Organiza a los competidores por el número de votos obtenidos.\n- Puede incluir un parámetro de consulta `city` para filtrar los resultados.\n- Este endpoint es público.\n\n**Códigos de respuesta:**\n- `200 OK`: Lista de rankings obtenida.\n- `400 Bad Request`: Parámetro inválido en la consulta.",
+                "type": "text/plain"
+              },
+              "url": {
+                "path": [
+                  "api",
+                  "public",
+                  "rankings"
+                ],
+                "host": [
+                  "{{base_url}}"
+                ],
+                "query": [
+                  {
+                    "description": {
+                      "content": "(Opcional) Filtra el ranking por ciudad.",
+                      "type": "text/plain"
+                    },
+                    "key": "city",
+                    "value": "Bogotá"
+                  }
+                ],
+                "variable": []
+              },
+              "method": "GET"
+            },
+            "response": [],
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "id": "90e92c61-d88e-4c23-a2bf-3e6231cf674c",
+                  "type": "text/javascript",
+                  "exec": [
+                    "pm.test(\"Status code is 200 OK\", function () {",
+                    "    pm.response.to.have.status(200);",
+                    "});",
+                    "",
+                    "pm.test(\"Response is an array of ranking objects\", function () {",
+                    "    const jsonData = pm.response.json();",
+                    "    pm.expect(jsonData).to.be.an('array');",
+                    "    if (jsonData.length > 0) {",
+                    "        pm.expect(jsonData[0]).to.have.all.keys('position', 'username', 'city', 'votes');",
+                    "    }",
+                    "});"
+                  ],
+                  "_lastExecutionId": "7841dbb2-7cbc-4084-ab9d-e1fe9f70f32b"
+                }
+              }
+            ]
+          }
+        ],
+        "event": []
+      }
+    ],
+    "event": [],
+    "variable": [
+      {
+        "type": "any",
+        "value": "http://localhost",
+        "key": "base_url"
+      },
+      {
+        "type": "any",
+        "value": "",
+        "key": "bearer_token"
+      }
+    ],
+    "info": {
+      "_postman_id": "3312625e-a497-4ddd-a90b-7fe143590148",
+      "name": "ANB Rising Stars Showcase",
+      "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+      "description": {
+        "content": "API REST para la plataforma **ANB Rising Stars Showcase**.\n\nEsta colección contiene los endpoints para gestionar el ciclo de vida completo de la aplicación, incluyendo:\n* **Autenticación**: Registro e inicio de sesión de jugadores con JWT.\n* **Gestión de Videos**: Carga, consulta, estado y eliminación de videos de habilidades.\n* **Endpoints Públicos**: Votación por videos y consulta del ranking dinámico de jugadores.",
+        "type": "text/plain"
+      }
+    }
+  },
+  "environment": {
+    "id": "125cdd6b-e44d-4a5f-b88b-ca3b1bbf7c4f",
+    "values": []
+  },
+  "globals": {
+    "id": "68b8f1e9-58bd-4901-951e-76ee993e39f9",
+    "values": []
+  },
+  "run": {
+    "stats": {
+      "iterations": {
+        "total": 1,
+        "pending": 0,
+        "failed": 0
+      },
+      "items": {
+        "total": 11,
+        "pending": 0,
+        "failed": 0
+      },
+      "scripts": {
+        "total": 9,
+        "pending": 0,
+        "failed": 0
+      },
+      "prerequests": {
+        "total": 11,
+        "pending": 0,
+        "failed": 0
+      },
+      "requests": {
+        "total": 11,
+        "pending": 0,
+        "failed": 0
+      },
+      "tests": {
+        "total": 11,
+        "pending": 0,
+        "failed": 0
+      },
+      "assertions": {
+        "total": 20,
+        "pending": 0,
+        "failed": 3
+      },
+      "testScripts": {
+        "total": 9,
+        "pending": 0,
+        "failed": 0
+      },
+      "prerequestScripts": {
+        "total": 0,
+        "pending": 0,
+        "failed": 0
+      }
+    },
+    "timings": {
+      "responseAverage": 68.81818181818181,
+      "responseMin": 6,
+      "responseMax": 284,
+      "responseSd": 100.52120371689855,
+      "dnsAverage": 0,
+      "dnsMin": 0,
+      "dnsMax": 0,
+      "dnsSd": 0,
+      "firstByteAverage": 0,
+      "firstByteMin": 0,
+      "firstByteMax": 0,
+      "firstByteSd": 0,
+      "started": 1760923809729,
+      "completed": 1760923810642
+    },
+    "executions": [
+      {
+        "cursor": {
+          "position": 0,
+          "iteration": 0,
+          "length": 11,
+          "cycles": 1,
+          "empty": false,
+          "eof": false,
+          "bof": true,
+          "cr": false,
+          "ref": "88534ed6-120e-4d33-9ecf-5a8639dfbada",
+          "httpRequestId": "1eeb41f9-89cd-4102-83cc-e6bcd78c6578"
+        },
+        "item": {
+          "id": "e7602a68-0a6c-4db1-ba43-5027928119b2",
+          "name": "Register Player",
+          "request": {
+            "description": {
+              "content": "**Registra un nuevo jugador en la plataforma.**\n\n- Valida que el email sea único.\n- Confirma que las contraseñas coincidan.\n- Almacena la contraseña de forma segura (hash).\n\n**Códigos de respuesta:**\n- `201 Created`: Usuario creado exitosamente.\n- `400 Bad Request`: Error de validación (email duplicado, contraseñas no coinciden).",
+              "type": "text/plain"
+            },
+            "url": {
+              "path": [
+                "api",
+                "auth",
+                "signup"
+              ],
+              "host": [
+                "{{base_url}}"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"first_name\": \"Barney\",\n    \"last_name\": \"Gomez\",\n    \"email\": \"barney@example.com\",\n    \"password1\": \"StrongPass123\",\n    \"password2\": \"StrongPass123\",\n    \"city\": \"Bogotá\",\n    \"country\": \"Colombia\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "160e7422-fb21-4fc8-b9ab-02879eda70b5",
+                "type": "text/javascript",
+                "packages": {},
+                "exec": [
+                  "pm.test(\"Status code is 201 Created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test(\"Response body contains success message\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.message).to.eql(\"Usuario creado exitosamente.\");",
+                  "});"
+                ],
+                "_lastExecutionId": "9ed479ca-680c-4613-b34c-99795e79ddae"
+              }
+            }
+          ]
+        },
+        "request": {
+          "description": {
+            "content": "**Registra un nuevo jugador en la plataforma.**\n\n- Valida que el email sea único.\n- Confirma que las contraseñas coincidan.\n- Almacena la contraseña de forma segura (hash).\n\n**Códigos de respuesta:**\n- `201 Created`: Usuario creado exitosamente.\n- `400 Bad Request`: Error de validación (email duplicado, contraseñas no coinciden).",
+            "type": "text/plain"
+          },
+          "url": {
+            "protocol": "http",
+            "path": [
+              "api",
+              "auth",
+              "signup"
+            ],
+            "host": [
+              "localhost"
+            ],
+            "query": [],
+            "variable": []
+          },
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json",
+              "system": true
+            },
+            {
+              "key": "User-Agent",
+              "value": "PostmanRuntime/7.39.1",
+              "system": true
+            },
+            {
+              "key": "Accept",
+              "value": "*/*",
+              "system": true
+            },
+            {
+              "key": "Cache-Control",
+              "value": "no-cache",
+              "system": true
+            },
+            {
+              "key": "Postman-Token",
+              "value": "f4b5e572-2b93-4de9-87d2-79fbb44b3f01",
+              "system": true
+            },
+            {
+              "key": "Host",
+              "value": "localhost",
+              "system": true
+            },
+            {
+              "key": "Accept-Encoding",
+              "value": "gzip, deflate, br",
+              "system": true
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive",
+              "system": true
+            },
+            {
+              "key": "Content-Length",
+              "value": "209",
+              "system": true
+            }
+          ],
+          "method": "POST",
+          "body": {
+            "mode": "raw",
+            "raw": "{\n    \"first_name\": \"Barney\",\n    \"last_name\": \"Gomez\",\n    \"email\": \"barney@example.com\",\n    \"password1\": \"StrongPass123\",\n    \"password2\": \"StrongPass123\",\n    \"city\": \"Bogotá\",\n    \"country\": \"Colombia\"\n}",
+            "options": {
+              "raw": {
+                "language": "json"
+              }
+            }
+          }
+        },
+        "response": {
+          "id": "584ac79c-7940-4e9e-a15a-67937017c6b7",
+          "status": "Created",
+          "code": 201,
+          "header": [
+            {
+              "key": "Server",
+              "value": "nginx/1.29.2"
+            },
+            {
+              "key": "Date",
+              "value": "Mon, 20 Oct 2025 01:30:10 GMT"
+            },
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "Content-Length",
+              "value": "42"
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive"
+            }
+          ],
+          "stream": {
+            "type": "Buffer",
+            "data": [
+              123,
+              34,
+              109,
+              101,
+              115,
+              115,
+              97,
+              103,
+              101,
+              34,
+              58,
+              34,
+              85,
+              115,
+              117,
+              97,
+              114,
+              105,
+              111,
+              32,
+              99,
+              114,
+              101,
+              97,
+              100,
+              111,
+              32,
+              101,
+              120,
+              105,
+              116,
+              111,
+              115,
+              97,
+              109,
+              101,
+              110,
+              116,
+              101,
+              46,
+              34,
+              125
+            ]
+          },
+          "cookie": [],
+          "responseTime": 284,
+          "responseSize": 42
+        },
+        "id": "e7602a68-0a6c-4db1-ba43-5027928119b2",
+        "assertions": [
+          {
+            "assertion": "Status code is 201 Created",
+            "skipped": false
+          },
+          {
+            "assertion": "Response body contains success message",
+            "skipped": false
+          }
+        ]
+      },
+      {
+        "cursor": {
+          "ref": "2b996c22-61a3-4c71-bd5a-77d82de477da",
+          "length": 11,
+          "cycles": 1,
+          "position": 1,
+          "iteration": 0,
+          "httpRequestId": "c3b3bbfa-8882-4bea-bc8c-7aed9ade9d1b"
+        },
+        "item": {
+          "id": "2466d87a-d5c8-4ef8-8bb4-b7be6ef7144b",
+          "name": "Log In Player",
+          "request": {
+            "description": {
+              "content": "**Autentica a un jugador y genera un token JWT.**\n\nEl token devuelto debe ser utilizado en el encabezado `Authorization` como `Bearer <token>` para las solicitudes que requieran autenticación.\n\n**Códigos de respuesta:**\n- `200 OK`: Autenticación exitosa, retorna el token.\n- `401 Unauthorized`: Credenciales inválidas.",
+              "type": "text/plain"
+            },
+            "url": {
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ],
+              "host": [
+                "{{base_url}}"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"barney@example.com\",\n    \"password\": \"StrongPass123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "307d7168-d541-42f1-8eea-b9d81ad9e7b7",
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response includes an access_token\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.access_token).to.exist;",
+                  "});",
+                  "",
+                  "// Guarda el token en una variable de la colección para usarlo en otras solicitudes",
+                  "pm.test(\"Set bearer_token variable\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.access_token) {",
+                  "        pm.collectionVariables.set(\"bearer_token\", jsonData.access_token);",
+                  "    }",
+                  "});"
+                ],
+                "_lastExecutionId": "4f754637-a36d-4e6c-a078-e7d61dfb91c4"
+              }
+            }
+          ]
+        },
+        "request": {
+          "description": {
+            "content": "**Autentica a un jugador y genera un token JWT.**\n\nEl token devuelto debe ser utilizado en el encabezado `Authorization` como `Bearer <token>` para las solicitudes que requieran autenticación.\n\n**Códigos de respuesta:**\n- `200 OK`: Autenticación exitosa, retorna el token.\n- `401 Unauthorized`: Credenciales inválidas.",
+            "type": "text/plain"
+          },
+          "url": {
+            "protocol": "http",
+            "path": [
+              "api",
+              "auth",
+              "login"
+            ],
+            "host": [
+              "localhost"
+            ],
+            "query": [],
+            "variable": []
+          },
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json",
+              "system": true
+            },
+            {
+              "key": "User-Agent",
+              "value": "PostmanRuntime/7.39.1",
+              "system": true
+            },
+            {
+              "key": "Accept",
+              "value": "*/*",
+              "system": true
+            },
+            {
+              "key": "Cache-Control",
+              "value": "no-cache",
+              "system": true
+            },
+            {
+              "key": "Postman-Token",
+              "value": "5f36aaef-7dcf-45ff-b877-a938f6c33a07",
+              "system": true
+            },
+            {
+              "key": "Host",
+              "value": "localhost",
+              "system": true
+            },
+            {
+              "key": "Accept-Encoding",
+              "value": "gzip, deflate, br",
+              "system": true
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive",
+              "system": true
+            },
+            {
+              "key": "Content-Length",
+              "value": "70",
+              "system": true
+            }
+          ],
+          "method": "POST",
+          "body": {
+            "mode": "raw",
+            "raw": "{\n    \"email\": \"barney@example.com\",\n    \"password\": \"StrongPass123\"\n}",
+            "options": {
+              "raw": {
+                "language": "json"
+              }
+            }
+          }
+        },
+        "response": {
+          "id": "cc5f8a3b-fc47-47b0-afeb-b3bcdf2b7c6f",
+          "status": "OK",
+          "code": 200,
+          "header": [
+            {
+              "key": "Server",
+              "value": "nginx/1.29.2"
+            },
+            {
+              "key": "Date",
+              "value": "Mon, 20 Oct 2025 01:30:10 GMT"
+            },
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "Content-Length",
+              "value": "178"
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive"
+            }
+          ],
+          "stream": {
+            "type": "Buffer",
+            "data": [
+              123,
+              34,
+              97,
+              99,
+              99,
+              101,
+              115,
+              115,
+              95,
+              116,
+              111,
+              107,
+              101,
+              110,
+              34,
+              58,
+              34,
+              101,
+              121,
+              74,
+              104,
+              98,
+              71,
+              99,
+              105,
+              79,
+              105,
+              74,
+              73,
+              85,
+              122,
+              73,
+              49,
+              78,
+              105,
+              73,
+              115,
+              73,
+              110,
+              82,
+              53,
+              99,
+              67,
+              73,
+              54,
+              73,
+              107,
+              112,
+              88,
+              86,
+              67,
+              74,
+              57,
+              46,
+              101,
+              121,
+              74,
+              122,
+              100,
+              87,
+              73,
+              105,
+              79,
+              105,
+              73,
+              121,
+              73,
+              105,
+              119,
+              105,
+              90,
+              88,
+              104,
+              119,
+              73,
+              106,
+              111,
+              120,
+              78,
+              122,
+              89,
+              119,
+              79,
+              84,
+              73,
+              49,
+              78,
+              106,
+              69,
+              119,
+              102,
+              81,
+              46,
+              76,
+              108,
+              82,
+              86,
+              88,
+              56,
+              68,
+              70,
+              90,
+              102,
+              70,
+              100,
+              72,
+              115,
+              71,
+              69,
+              45,
+              70,
+              87,
+              84,
+              106,
+              66,
+              119,
+              121,
+              100,
+              99,
+              118,
+              106,
+              106,
+              100,
+              54,
+              75,
+              69,
+              85,
+              80,
+              104,
+              119,
+              116,
+              115,
+              80,
+              76,
+              103,
+              107,
+              34,
+              44,
+              34,
+              116,
+              111,
+              107,
+              101,
+              110,
+              95,
+              116,
+              121,
+              112,
+              101,
+              34,
+              58,
+              34,
+              66,
+              101,
+              97,
+              114,
+              101,
+              114,
+              34,
+              44,
+              34,
+              101,
+              120,
+              112,
+              105,
+              114,
+              101,
+              115,
+              95,
+              105,
+              110,
+              34,
+              58,
+              51,
+              54,
+              48,
+              48,
+              125
+            ]
+          },
+          "cookie": [],
+          "responseTime": 261,
+          "responseSize": 178
+        },
+        "id": "2466d87a-d5c8-4ef8-8bb4-b7be6ef7144b",
+        "assertions": [
+          {
+            "assertion": "Status code is 200 OK",
+            "skipped": false
+          },
+          {
+            "assertion": "Response includes an access_token",
+            "skipped": false
+          },
+          {
+            "assertion": "Set bearer_token variable",
+            "skipped": false
+          }
+        ]
+      },
+      {
+        "cursor": {
+          "ref": "f3b50ea0-dc13-4317-966c-597ff6b78a89",
+          "length": 11,
+          "cycles": 1,
+          "position": 2,
+          "iteration": 0,
+          "httpRequestId": "7b47bf53-09eb-4247-9608-5974c4bc6012"
+        },
+        "item": {
+          "id": "0eefcc55-beee-4f7d-b6c7-76567998a8d2",
+          "name": "Upload Video",
+          "request": {
+            "description": {
+              "content": "**Permite a un jugador subir un video de habilidades.**\n\n- La solicitud debe ser `form-data`.\n- El `video_file` debe ser un archivo MP4 de máximo 100MB.\n- Inicia una tarea de procesamiento asíncrono.\n\n**Códigos de respuesta:**\n- `201 Created`: Video subido exitosamente, tarea de procesamiento creada.\n- `400 Bad Request`: Error en el archivo (tipo o tamaño inválido).\n- `401 Unauthorized`: Falta de autenticación.",
+              "type": "text/plain"
+            },
+            "url": {
+              "path": [
+                "api",
+                "videos",
+                "upload"
+              ],
+              "host": [
+                "{{base_url}}"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "video_file",
+                  "type": "file",
+                  "src": "/Users/juancamilo/Universidad/DesarrolloNube/MISW-4204-desarrollo-de-software-en-la-nube/source/worker/assets/intro.mp4"
+                },
+                {
+                  "key": "title",
+                  "value": "Mi mejor jugada de 3 puntos",
+                  "type": "text"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "type": "string",
+                  "value": "{{bearer_token}}",
+                  "key": "token"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "76a3a3ed-b545-496b-8421-ee4e23255e1d",
+                "type": "text/javascript",
+                "packages": {},
+                "exec": [
+                  "pm.test(\"Status code is 201 Created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test(\"Response contains a task_id\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.task_id).to.exist;",
+                  "});"
+                ],
+                "_lastExecutionId": "03e29773-a4b3-46ab-8ed0-82f6f68d5207"
+              }
+            }
+          ]
+        },
+        "request": {
+          "description": {
+            "content": "**Permite a un jugador subir un video de habilidades.**\n\n- La solicitud debe ser `form-data`.\n- El `video_file` debe ser un archivo MP4 de máximo 100MB.\n- Inicia una tarea de procesamiento asíncrono.\n\n**Códigos de respuesta:**\n- `201 Created`: Video subido exitosamente, tarea de procesamiento creada.\n- `400 Bad Request`: Error en el archivo (tipo o tamaño inválido).\n- `401 Unauthorized`: Falta de autenticación.",
+            "type": "text/plain"
+          },
+          "url": {
+            "protocol": "http",
+            "path": [
+              "api",
+              "videos",
+              "upload"
+            ],
+            "host": [
+              "localhost"
+            ],
+            "query": [],
+            "variable": []
+          },
+          "header": [
+            {
+              "key": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyIiwiZXhwIjoxNzYwOTI1NjEwfQ.LlRVX8DFZfFdHsGE-FWTjBwydcvjjd6KEUPhwtsPLgk",
+              "system": true
+            },
+            {
+              "key": "User-Agent",
+              "value": "PostmanRuntime/7.39.1",
+              "system": true
+            },
+            {
+              "key": "Accept",
+              "value": "*/*",
+              "system": true
+            },
+            {
+              "key": "Cache-Control",
+              "value": "no-cache",
+              "system": true
+            },
+            {
+              "key": "Postman-Token",
+              "value": "63fad304-5f46-4f5a-b256-d7c8826d21c9",
+              "system": true
+            },
+            {
+              "key": "Host",
+              "value": "localhost",
+              "system": true
+            },
+            {
+              "key": "Accept-Encoding",
+              "value": "gzip, deflate, br",
+              "system": true
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive",
+              "system": true
+            },
+            {
+              "key": "Content-Length",
+              "value": "1921417",
+              "system": true
+            }
+          ],
+          "method": "POST",
+          "body": {
+            "mode": "formdata",
+            "formdata": [
+              {
+                "key": "video_file",
+                "type": "file",
+                "src": "/Users/juancamilo/Universidad/DesarrolloNube/MISW-4204-desarrollo-de-software-en-la-nube/source/worker/assets/intro.mp4"
+              },
+              {
+                "key": "title",
+                "value": "Mi mejor jugada de 3 puntos",
+                "type": "text"
+              }
+            ]
+          },
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "type": "string",
+                "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyIiwiZXhwIjoxNzYwOTI1NjEwfQ.LlRVX8DFZfFdHsGE-FWTjBwydcvjjd6KEUPhwtsPLgk",
+                "key": "token"
+              }
+            ]
+          }
+        },
+        "response": {
+          "id": "bf782326-3763-4bad-8b4a-8a34d964a99f",
+          "status": "Accepted",
+          "code": 202,
+          "header": [
+            {
+              "key": "Server",
+              "value": "nginx/1.29.2"
+            },
+            {
+              "key": "Date",
+              "value": "Mon, 20 Oct 2025 01:30:10 GMT"
+            },
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "Content-Length",
+              "value": "114"
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive"
+            }
+          ],
+          "stream": {
+            "type": "Buffer",
+            "data": [
+              123,
+              34,
+              109,
+              101,
+              115,
+              115,
+              97,
+              103,
+              101,
+              34,
+              58,
+              34,
+              86,
+              105,
+              100,
+              101,
+              111,
+              32,
+              115,
+              117,
+              98,
+              105,
+              100,
+              111,
+              32,
+              99,
+              111,
+              114,
+              114,
+              101,
+              99,
+              116,
+              97,
+              109,
+              101,
+              110,
+              116,
+              101,
+              46,
+              32,
+              80,
+              114,
+              111,
+              99,
+              101,
+              115,
+              97,
+              109,
+              105,
+              101,
+              110,
+              116,
+              111,
+              32,
+              101,
+              110,
+              32,
+              99,
+              117,
+              114,
+              115,
+              111,
+              46,
+              34,
+              44,
+              34,
+              116,
+              97,
+              115,
+              107,
+              95,
+              105,
+              100,
+              34,
+              58,
+              34,
+              98,
+              97,
+              55,
+              53,
+              101,
+              53,
+              100,
+              56,
+              45,
+              97,
+              56,
+              98,
+              99,
+              45,
+              52,
+              56,
+              51,
+              102,
+              45,
+              56,
+              56,
+              55,
+              50,
+              45,
+              97,
+              99,
+              55,
+              48,
+              53,
+              51,
+              100,
+              101,
+              98,
+              98,
+              100,
+              48,
+              34,
+              125
+            ]
+          },
+          "cookie": [],
+          "responseTime": 110,
+          "responseSize": 114
+        },
+        "id": "0eefcc55-beee-4f7d-b6c7-76567998a8d2",
+        "assertions": [
+          {
+            "assertion": "Status code is 201 Created",
+            "skipped": false,
+            "error": {
+              "name": "AssertionError",
+              "index": 0,
+              "test": "Status code is 201 Created",
+              "message": "expected response to have status code 201 but got 202",
+              "stack": "AssertionError: expected response to have status code 201 but got 202\n   at Object.eval sandbox-script.js:1:3)"
+            }
+          },
+          {
+            "assertion": "Response contains a task_id",
+            "skipped": false
+          }
+        ]
+      },
+      {
+        "cursor": {
+          "ref": "2fd33c43-467b-440c-ac54-1ed8142b4a81",
+          "length": 11,
+          "cycles": 1,
+          "position": 3,
+          "iteration": 0,
+          "httpRequestId": "06629682-849e-4971-b433-5c43c5d19ff7"
+        },
+        "item": {
+          "id": "099afa0e-1148-409b-9a8f-4f7b914b685e",
+          "name": "Get My Videos",
+          "request": {
+            "description": {
+              "content": "**Consulta el listado de videos subidos por el jugador autenticado.**\n\nRetorna el estado de procesamiento (`uploaded`, `processed`) y las URLs de acceso si el procesamiento está completo.\n\n**Códigos de respuesta:**\n- `200 OK`: Lista de videos obtenida.\n- `401 Unauthorized`: Falta de autenticación.",
+              "type": "text/plain"
+            },
+            "url": {
+              "path": [
+                "api",
+                "videos"
+              ],
+              "host": [
+                "{{base_url}}"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "type": "string",
+                  "value": "{{bearer_token}}",
+                  "key": "token"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "b962f24e-8606-42d3-82a3-71b69e509418",
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response is an array\", function () {",
+                  "    pm.response.to.be.json;",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson).to.be.an('array');",
+                  "});",
+                  "",
+                  "pm.test(\"Video object has correct properties\", function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    if (responseJson.length > 0) {",
+                  "        const video = responseJson[0];",
+                  "        pm.expect(video).to.have.property('video_id');",
+                  "        pm.expect(video).to.have.property('title');",
+                  "        pm.expect(video).to.have.property('status');",
+                  "    }",
+                  "});"
+                ],
+                "_lastExecutionId": "3f714af9-92a4-49fd-8972-7f15e89d1b92"
+              }
+            }
+          ]
+        },
+        "request": {
+          "description": {
+            "content": "**Consulta el listado de videos subidos por el jugador autenticado.**\n\nRetorna el estado de procesamiento (`uploaded`, `processed`) y las URLs de acceso si el procesamiento está completo.\n\n**Códigos de respuesta:**\n- `200 OK`: Lista de videos obtenida.\n- `401 Unauthorized`: Falta de autenticación.",
+            "type": "text/plain"
+          },
+          "url": {
+            "protocol": "http",
+            "path": [
+              "api",
+              "videos"
+            ],
+            "host": [
+              "localhost"
+            ],
+            "query": [],
+            "variable": []
+          },
+          "header": [
+            {
+              "key": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyIiwiZXhwIjoxNzYwOTI1NjEwfQ.LlRVX8DFZfFdHsGE-FWTjBwydcvjjd6KEUPhwtsPLgk",
+              "system": true
+            },
+            {
+              "key": "User-Agent",
+              "value": "PostmanRuntime/7.39.1",
+              "system": true
+            },
+            {
+              "key": "Accept",
+              "value": "*/*",
+              "system": true
+            },
+            {
+              "key": "Cache-Control",
+              "value": "no-cache",
+              "system": true
+            },
+            {
+              "key": "Postman-Token",
+              "value": "2f278353-68bd-4112-a909-e7b919424270",
+              "system": true
+            },
+            {
+              "key": "Host",
+              "value": "localhost",
+              "system": true
+            },
+            {
+              "key": "Accept-Encoding",
+              "value": "gzip, deflate, br",
+              "system": true
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive",
+              "system": true
+            }
+          ],
+          "method": "GET",
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "type": "string",
+                "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyIiwiZXhwIjoxNzYwOTI1NjEwfQ.LlRVX8DFZfFdHsGE-FWTjBwydcvjjd6KEUPhwtsPLgk",
+                "key": "token"
+              }
+            ]
+          }
+        },
+        "response": {
+          "id": "9c1c8c5e-b24c-456b-9ce2-397afd98e3c6",
+          "status": "OK",
+          "code": 200,
+          "header": [
+            {
+              "key": "Server",
+              "value": "nginx/1.29.2"
+            },
+            {
+              "key": "Date",
+              "value": "Mon, 20 Oct 2025 01:30:10 GMT"
+            },
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "Content-Length",
+              "value": "159"
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive"
+            }
+          ],
+          "stream": {
+            "type": "Buffer",
+            "data": [
+              91,
+              123,
+              34,
+              118,
+              105,
+              100,
+              101,
+              111,
+              95,
+              105,
+              100,
+              34,
+              58,
+              49,
+              44,
+              34,
+              116,
+              105,
+              116,
+              108,
+              101,
+              34,
+              58,
+              34,
+              77,
+              105,
+              32,
+              109,
+              101,
+              106,
+              111,
+              114,
+              32,
+              106,
+              117,
+              103,
+              97,
+              100,
+              97,
+              32,
+              100,
+              101,
+              32,
+              51,
+              32,
+              112,
+              117,
+              110,
+              116,
+              111,
+              115,
+              34,
+              44,
+              34,
+              115,
+              116,
+              97,
+              116,
+              117,
+              115,
+              34,
+              58,
+              34,
+              117,
+              112,
+              108,
+              111,
+              97,
+              100,
+              101,
+              100,
+              34,
+              44,
+              34,
+              117,
+              112,
+              108,
+              111,
+              97,
+              100,
+              101,
+              100,
+              95,
+              97,
+              116,
+              34,
+              58,
+              34,
+              50,
+              48,
+              50,
+              53,
+              45,
+              49,
+              48,
+              45,
+              50,
+              48,
+              84,
+              48,
+              49,
+              58,
+              51,
+              48,
+              58,
+              49,
+              48,
+              46,
+              51,
+              53,
+              53,
+              50,
+              55,
+              51,
+              90,
+              34,
+              44,
+              34,
+              112,
+              114,
+              111,
+              99,
+              101,
+              115,
+              115,
+              101,
+              100,
+              95,
+              97,
+              116,
+              34,
+              58,
+              110,
+              117,
+              108,
+              108,
+              44,
+              34,
+              112,
+              114,
+              111,
+              99,
+              101,
+              115,
+              115,
+              101,
+              100,
+              95,
+              117,
+              114,
+              108,
+              34,
+              58,
+              110,
+              117,
+              108,
+              108,
+              125,
+              93
+            ]
+          },
+          "cookie": [],
+          "responseTime": 8,
+          "responseSize": 159
+        },
+        "id": "099afa0e-1148-409b-9a8f-4f7b914b685e",
+        "assertions": [
+          {
+            "assertion": "Status code is 200 OK",
+            "skipped": false
+          },
+          {
+            "assertion": "Response is an array",
+            "skipped": false
+          },
+          {
+            "assertion": "Video object has correct properties",
+            "skipped": false
+          }
+        ]
+      },
+      {
+        "cursor": {
+          "ref": "39a2faeb-f8ae-41cf-873d-906ade131b54",
+          "length": 11,
+          "cycles": 1,
+          "position": 4,
+          "iteration": 0,
+          "httpRequestId": "e435f0e6-b852-4b61-ac89-2af3ed5f4d53"
+        },
+        "item": {
+          "id": "2a20d1b4-bd61-482b-9481-1d45aff504f5",
+          "name": "Get Specific Video",
+          "request": {
+            "description": {
+              "content": "**Recupera el detalle de un video específico del jugador.**\n\nIncluye las URLs del video original y procesado, así como el conteo de votos.\n\n**Códigos de respuesta:**\n- `200 OK`: Detalle del video obtenido.\n- `401 Unauthorized`: Usuario no autenticado.\n- `403 Forbidden`: El usuario no es el propietario del video.\n- `404 Not Found`: El video no existe.",
+              "type": "text/plain"
+            },
+            "url": {
+              "path": [
+                "api",
+                "videos",
+                ":video_id"
+              ],
+              "host": [
+                "{{base_url}}"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "type": "any",
+                  "value": "1",
+                  "key": "video_id"
+                }
+              ]
+            },
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "type": "string",
+                  "value": "{{bearer_token}}",
+                  "key": "token"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "cd2adf7f-5b60-4a60-8151-25799a69ed50",
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Video detail has correct properties\", function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('video_id');",
+                  "    pm.expect(jsonData).to.have.property('title');",
+                  "    pm.expect(jsonData).to.have.property('status');",
+                  "    pm.expect(jsonData).to.have.property('votes');",
+                  "});"
+                ],
+                "_lastExecutionId": "b2f3a82e-623e-4528-979c-9aa365ff7de3"
+              }
+            }
+          ]
+        },
+        "request": {
+          "description": {
+            "content": "**Recupera el detalle de un video específico del jugador.**\n\nIncluye las URLs del video original y procesado, así como el conteo de votos.\n\n**Códigos de respuesta:**\n- `200 OK`: Detalle del video obtenido.\n- `401 Unauthorized`: Usuario no autenticado.\n- `403 Forbidden`: El usuario no es el propietario del video.\n- `404 Not Found`: El video no existe.",
+            "type": "text/plain"
+          },
+          "url": {
+            "protocol": "http",
+            "path": [
+              "api",
+              "videos",
+              "1"
+            ],
+            "host": [
+              "localhost"
+            ],
+            "query": [],
+            "variable": []
+          },
+          "header": [
+            {
+              "key": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyIiwiZXhwIjoxNzYwOTI1NjEwfQ.LlRVX8DFZfFdHsGE-FWTjBwydcvjjd6KEUPhwtsPLgk",
+              "system": true
+            },
+            {
+              "key": "User-Agent",
+              "value": "PostmanRuntime/7.39.1",
+              "system": true
+            },
+            {
+              "key": "Accept",
+              "value": "*/*",
+              "system": true
+            },
+            {
+              "key": "Cache-Control",
+              "value": "no-cache",
+              "system": true
+            },
+            {
+              "key": "Postman-Token",
+              "value": "126ffa00-2a16-468a-bc95-7a13f8a43938",
+              "system": true
+            },
+            {
+              "key": "Host",
+              "value": "localhost",
+              "system": true
+            },
+            {
+              "key": "Accept-Encoding",
+              "value": "gzip, deflate, br",
+              "system": true
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive",
+              "system": true
+            }
+          ],
+          "method": "GET",
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "type": "string",
+                "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyIiwiZXhwIjoxNzYwOTI1NjEwfQ.LlRVX8DFZfFdHsGE-FWTjBwydcvjjd6KEUPhwtsPLgk",
+                "key": "token"
+              }
+            ]
+          }
+        },
+        "response": {
+          "id": "6d4b0c07-09b8-4724-9306-668c7cea8f48",
+          "status": "OK",
+          "code": 200,
+          "header": [
+            {
+              "key": "Server",
+              "value": "nginx/1.29.2"
+            },
+            {
+              "key": "Date",
+              "value": "Mon, 20 Oct 2025 01:30:10 GMT"
+            },
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "Content-Length",
+              "value": "226"
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive"
+            }
+          ],
+          "stream": {
+            "type": "Buffer",
+            "data": [
+              123,
+              34,
+              118,
+              105,
+              100,
+              101,
+              111,
+              95,
+              105,
+              100,
+              34,
+              58,
+              49,
+              44,
+              34,
+              116,
+              105,
+              116,
+              108,
+              101,
+              34,
+              58,
+              34,
+              77,
+              105,
+              32,
+              109,
+              101,
+              106,
+              111,
+              114,
+              32,
+              106,
+              117,
+              103,
+              97,
+              100,
+              97,
+              32,
+              100,
+              101,
+              32,
+              51,
+              32,
+              112,
+              117,
+              110,
+              116,
+              111,
+              115,
+              34,
+              44,
+              34,
+              115,
+              116,
+              97,
+              116,
+              117,
+              115,
+              34,
+              58,
+              34,
+              117,
+              112,
+              108,
+              111,
+              97,
+              100,
+              101,
+              100,
+              34,
+              44,
+              34,
+              118,
+              111,
+              116,
+              101,
+              115,
+              34,
+              58,
+              48,
+              44,
+              34,
+              111,
+              114,
+              105,
+              103,
+              105,
+              110,
+              97,
+              108,
+              95,
+              117,
+              114,
+              108,
+              34,
+              58,
+              34,
+              104,
+              116,
+              116,
+              112,
+              58,
+              47,
+              47,
+              108,
+              111,
+              99,
+              97,
+              108,
+              104,
+              111,
+              115,
+              116,
+              58,
+              56,
+              48,
+              47,
+              97,
+              112,
+              105,
+              47,
+              118,
+              105,
+              100,
+              101,
+              111,
+              115,
+              47,
+              111,
+              114,
+              105,
+              103,
+              105,
+              110,
+              97,
+              108,
+              47,
+              49,
+              34,
+              44,
+              34,
+              112,
+              114,
+              111,
+              99,
+              101,
+              115,
+              115,
+              101,
+              100,
+              95,
+              117,
+              114,
+              108,
+              34,
+              58,
+              110,
+              117,
+              108,
+              108,
+              44,
+              34,
+              117,
+              112,
+              108,
+              111,
+              97,
+              100,
+              101,
+              100,
+              95,
+              97,
+              116,
+              34,
+              58,
+              34,
+              50,
+              48,
+              50,
+              53,
+              45,
+              49,
+              48,
+              45,
+              50,
+              48,
+              84,
+              48,
+              49,
+              58,
+              51,
+              48,
+              58,
+              49,
+              48,
+              46,
+              51,
+              53,
+              53,
+              50,
+              55,
+              51,
+              90,
+              34,
+              44,
+              34,
+              112,
+              114,
+              111,
+              99,
+              101,
+              115,
+              115,
+              101,
+              100,
+              95,
+              97,
+              116,
+              34,
+              58,
+              110,
+              117,
+              108,
+              108,
+              125
+            ]
+          },
+          "cookie": [],
+          "responseTime": 12,
+          "responseSize": 226
+        },
+        "id": "2a20d1b4-bd61-482b-9481-1d45aff504f5",
+        "assertions": [
+          {
+            "assertion": "Status code is 200 OK",
+            "skipped": false
+          },
+          {
+            "assertion": "Video detail has correct properties",
+            "skipped": false
+          }
+        ]
+      },
+      {
+        "cursor": {
+          "ref": "c5d761ca-e89d-4a0a-ac54-ef8861460c2f",
+          "length": 11,
+          "cycles": 1,
+          "position": 5,
+          "iteration": 0,
+          "httpRequestId": "cf0ad059-1c44-41bd-963c-9321305124c6"
+        },
+        "item": {
+          "id": "77ea0dbd-a652-4fe9-b439-d978772f3ea8",
+          "name": "Delete Video",
+          "request": {
+            "description": {
+              "content": "**Elimina uno de los videos del jugador.**\n\nSolo se puede eliminar si el video no ha sido publicado para votación o aún no ha sido procesado.\n\n**Códigos de respuesta:**\n- `200 OK`: Video eliminado correctamente.\n- `400 Bad Request`: El video no puede ser eliminado porque no cumple las condiciones.\n- `401 Unauthorized`: Usuario no autenticado.\n- `403 Forbidden`: El usuario no es el propietario.\n- `404 Not Found`: El video no existe.",
+              "type": "text/plain"
+            },
+            "url": {
+              "path": [
+                "api",
+                "videos",
+                ":video_id"
+              ],
+              "host": [
+                "{{base_url}}"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "type": "any",
+                  "value": "1",
+                  "key": "video_id"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "type": "string",
+                  "value": "{{bearer_token}}",
+                  "key": "token"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "24f85ffe-acb4-493f-9855-038880ea4b66",
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response confirms deletion\", function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.message).to.eql(\"El video ha sido eliminado exitosamente.\");",
+                  "});"
+                ],
+                "_lastExecutionId": "10c4afb3-ff0e-47ee-b12d-12d015e17a6e"
+              }
+            }
+          ]
+        },
+        "request": {
+          "description": {
+            "content": "**Elimina uno de los videos del jugador.**\n\nSolo se puede eliminar si el video no ha sido publicado para votación o aún no ha sido procesado.\n\n**Códigos de respuesta:**\n- `200 OK`: Video eliminado correctamente.\n- `400 Bad Request`: El video no puede ser eliminado porque no cumple las condiciones.\n- `401 Unauthorized`: Usuario no autenticado.\n- `403 Forbidden`: El usuario no es el propietario.\n- `404 Not Found`: El video no existe.",
+            "type": "text/plain"
+          },
+          "url": {
+            "protocol": "http",
+            "path": [
+              "api",
+              "videos",
+              "1"
+            ],
+            "host": [
+              "localhost"
+            ],
+            "query": [],
+            "variable": []
+          },
+          "header": [
+            {
+              "key": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyIiwiZXhwIjoxNzYwOTI1NjEwfQ.LlRVX8DFZfFdHsGE-FWTjBwydcvjjd6KEUPhwtsPLgk",
+              "system": true
+            },
+            {
+              "key": "User-Agent",
+              "value": "PostmanRuntime/7.39.1",
+              "system": true
+            },
+            {
+              "key": "Accept",
+              "value": "*/*",
+              "system": true
+            },
+            {
+              "key": "Cache-Control",
+              "value": "no-cache",
+              "system": true
+            },
+            {
+              "key": "Postman-Token",
+              "value": "74d5d898-0d32-4ba8-a390-8c7321eb53b3",
+              "system": true
+            },
+            {
+              "key": "Host",
+              "value": "localhost",
+              "system": true
+            },
+            {
+              "key": "Accept-Encoding",
+              "value": "gzip, deflate, br",
+              "system": true
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive",
+              "system": true
+            }
+          ],
+          "method": "DELETE",
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "type": "string",
+                "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyIiwiZXhwIjoxNzYwOTI1NjEwfQ.LlRVX8DFZfFdHsGE-FWTjBwydcvjjd6KEUPhwtsPLgk",
+                "key": "token"
+              }
+            ]
+          }
+        },
+        "response": {
+          "id": "ea19b8f0-3ff1-4abd-b1af-a8427f622ea2",
+          "status": "OK",
+          "code": 200,
+          "header": [
+            {
+              "key": "Server",
+              "value": "nginx/1.29.2"
+            },
+            {
+              "key": "Date",
+              "value": "Mon, 20 Oct 2025 01:30:10 GMT"
+            },
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "Content-Length",
+              "value": "67"
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive"
+            }
+          ],
+          "stream": {
+            "type": "Buffer",
+            "data": [
+              123,
+              34,
+              109,
+              101,
+              115,
+              115,
+              97,
+              103,
+              101,
+              34,
+              58,
+              34,
+              69,
+              108,
+              32,
+              118,
+              105,
+              100,
+              101,
+              111,
+              32,
+              104,
+              97,
+              32,
+              115,
+              105,
+              100,
+              111,
+              32,
+              101,
+              108,
+              105,
+              109,
+              105,
+              110,
+              97,
+              100,
+              111,
+              32,
+              101,
+              120,
+              105,
+              116,
+              111,
+              115,
+              97,
+              109,
+              101,
+              110,
+              116,
+              101,
+              46,
+              34,
+              44,
+              34,
+              118,
+              105,
+              100,
+              101,
+              111,
+              95,
+              105,
+              100,
+              34,
+              58,
+              49,
+              125
+            ]
+          },
+          "cookie": [],
+          "responseTime": 43,
+          "responseSize": 67
+        },
+        "id": "77ea0dbd-a652-4fe9-b439-d978772f3ea8",
+        "assertions": [
+          {
+            "assertion": "Status code is 200 OK",
+            "skipped": false
+          },
+          {
+            "assertion": "Response confirms deletion",
+            "skipped": false
+          }
+        ]
+      },
+      {
+        "cursor": {
+          "ref": "9983f49b-240a-41ee-a68a-addc58a20413",
+          "length": 11,
+          "cycles": 1,
+          "position": 6,
+          "iteration": 0,
+          "httpRequestId": "e4c6b40c-0db7-4123-b28c-0308109ba64e"
+        },
+        "item": {
+          "id": "522a5d96-d991-47ec-94ef-4a429cf26898",
+          "name": "Get Processed Video",
+          "request": {
+            "description": {
+              "content": "**Descarga el video procesado de un jugador.**\n\nRetorna el archivo de video que ha sido procesado (recortado a 30s, con marca de agua de ANB, sin audio).\n\n**Codigos de respuesta:**\n- `200 OK`: Video procesado descargado exitosamente.\n- `401 Unauthorized`: Usuario no autenticado.\n- `403 Forbidden`: El usuario no es el propietario del video.\n- `404 Not Found`: Video no encontrado o aun no procesado.",
+              "type": "text/plain"
+            },
+            "url": {
+              "path": [
+                "api",
+                "videos",
+                "processed",
+                ":video_id"
+              ],
+              "host": [
+                "{{base_url}}"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "type": "any",
+                  "value": "1",
+                  "key": "video_id"
+                }
+              ]
+            },
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "type": "string",
+                  "value": "{{bearer_token}}",
+                  "key": "token"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": []
+        },
+        "request": {
+          "description": {
+            "content": "**Descarga el video procesado de un jugador.**\n\nRetorna el archivo de video que ha sido procesado (recortado a 30s, con marca de agua de ANB, sin audio).\n\n**Codigos de respuesta:**\n- `200 OK`: Video procesado descargado exitosamente.\n- `401 Unauthorized`: Usuario no autenticado.\n- `403 Forbidden`: El usuario no es el propietario del video.\n- `404 Not Found`: Video no encontrado o aun no procesado.",
+            "type": "text/plain"
+          },
+          "url": {
+            "protocol": "http",
+            "path": [
+              "api",
+              "videos",
+              "processed",
+              "1"
+            ],
+            "host": [
+              "localhost"
+            ],
+            "query": [],
+            "variable": []
+          },
+          "header": [
+            {
+              "key": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyIiwiZXhwIjoxNzYwOTI1NjEwfQ.LlRVX8DFZfFdHsGE-FWTjBwydcvjjd6KEUPhwtsPLgk",
+              "system": true
+            },
+            {
+              "key": "User-Agent",
+              "value": "PostmanRuntime/7.39.1",
+              "system": true
+            },
+            {
+              "key": "Accept",
+              "value": "*/*",
+              "system": true
+            },
+            {
+              "key": "Cache-Control",
+              "value": "no-cache",
+              "system": true
+            },
+            {
+              "key": "Postman-Token",
+              "value": "a87d5a74-cac2-4e47-8e48-950f3149f01d",
+              "system": true
+            },
+            {
+              "key": "Host",
+              "value": "localhost",
+              "system": true
+            },
+            {
+              "key": "Accept-Encoding",
+              "value": "gzip, deflate, br",
+              "system": true
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive",
+              "system": true
+            }
+          ],
+          "method": "GET",
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "type": "string",
+                "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyIiwiZXhwIjoxNzYwOTI1NjEwfQ.LlRVX8DFZfFdHsGE-FWTjBwydcvjjd6KEUPhwtsPLgk",
+                "key": "token"
+              }
+            ]
+          }
+        },
+        "response": {
+          "id": "f4c70efc-5431-4155-823d-0d151be48844",
+          "status": "Not Found",
+          "code": 404,
+          "header": [
+            {
+              "key": "Server",
+              "value": "nginx/1.29.2"
+            },
+            {
+              "key": "Date",
+              "value": "Mon, 20 Oct 2025 01:30:10 GMT"
+            },
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "Content-Length",
+              "value": "41"
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive"
+            }
+          ],
+          "stream": {
+            "type": "Buffer",
+            "data": [
+              123,
+              34,
+              100,
+              101,
+              116,
+              97,
+              105,
+              108,
+              34,
+              58,
+              34,
+              86,
+              105,
+              100,
+              101,
+              111,
+              32,
+              99,
+              111,
+              110,
+              32,
+              73,
+              68,
+              32,
+              49,
+              32,
+              110,
+              111,
+              32,
+              101,
+              110,
+              99,
+              111,
+              110,
+              116,
+              114,
+              97,
+              100,
+              111,
+              34,
+              125
+            ]
+          },
+          "cookie": [],
+          "responseTime": 9,
+          "responseSize": 41
+        },
+        "id": "522a5d96-d991-47ec-94ef-4a429cf26898"
+      },
+      {
+        "cursor": {
+          "ref": "46c1983b-80b5-40b7-90a8-67fee4f0e0ee",
+          "length": 11,
+          "cycles": 1,
+          "position": 7,
+          "iteration": 0,
+          "httpRequestId": "e5f05cf8-8898-45fe-bdc8-9478dc054d2d"
+        },
+        "item": {
+          "id": "fa833c09-2899-45dc-bf0f-7d93df068ad9",
+          "name": "Get Original Video",
+          "request": {
+            "description": {
+              "content": "**Descarga el video original subido por el jugador.**\n\nRetorna el archivo de video sin procesar, tal como fue cargado inicialmente.\n\n**Codigos de respuesta:**\n- `200 OK`: Video original descargado exitosamente.\n- `401 Unauthorized`: Usuario no autenticado.\n- `403 Forbidden`: El usuario no es el propietario del video.\n- `404 Not Found`: Video no encontrado.",
+              "type": "text/plain"
+            },
+            "url": {
+              "path": [
+                "api",
+                "videos",
+                "original",
+                ":video_id"
+              ],
+              "host": [
+                "{{base_url}}"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "type": "any",
+                  "value": "1",
+                  "key": "video_id"
+                }
+              ]
+            },
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "type": "string",
+                  "value": "{{bearer_token}}",
+                  "key": "token"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": []
+        },
+        "request": {
+          "description": {
+            "content": "**Descarga el video original subido por el jugador.**\n\nRetorna el archivo de video sin procesar, tal como fue cargado inicialmente.\n\n**Codigos de respuesta:**\n- `200 OK`: Video original descargado exitosamente.\n- `401 Unauthorized`: Usuario no autenticado.\n- `403 Forbidden`: El usuario no es el propietario del video.\n- `404 Not Found`: Video no encontrado.",
+            "type": "text/plain"
+          },
+          "url": {
+            "protocol": "http",
+            "path": [
+              "api",
+              "videos",
+              "original",
+              "1"
+            ],
+            "host": [
+              "localhost"
+            ],
+            "query": [],
+            "variable": []
+          },
+          "header": [
+            {
+              "key": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyIiwiZXhwIjoxNzYwOTI1NjEwfQ.LlRVX8DFZfFdHsGE-FWTjBwydcvjjd6KEUPhwtsPLgk",
+              "system": true
+            },
+            {
+              "key": "User-Agent",
+              "value": "PostmanRuntime/7.39.1",
+              "system": true
+            },
+            {
+              "key": "Accept",
+              "value": "*/*",
+              "system": true
+            },
+            {
+              "key": "Cache-Control",
+              "value": "no-cache",
+              "system": true
+            },
+            {
+              "key": "Postman-Token",
+              "value": "c285f03a-9baf-41b1-bcab-a4b2bc999639",
+              "system": true
+            },
+            {
+              "key": "Host",
+              "value": "localhost",
+              "system": true
+            },
+            {
+              "key": "Accept-Encoding",
+              "value": "gzip, deflate, br",
+              "system": true
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive",
+              "system": true
+            }
+          ],
+          "method": "GET",
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "type": "string",
+                "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyIiwiZXhwIjoxNzYwOTI1NjEwfQ.LlRVX8DFZfFdHsGE-FWTjBwydcvjjd6KEUPhwtsPLgk",
+                "key": "token"
+              }
+            ]
+          }
+        },
+        "response": {
+          "id": "3b8c09ae-0e81-4991-bf80-022ebb7e161b",
+          "status": "Not Found",
+          "code": 404,
+          "header": [
+            {
+              "key": "Server",
+              "value": "nginx/1.29.2"
+            },
+            {
+              "key": "Date",
+              "value": "Mon, 20 Oct 2025 01:30:10 GMT"
+            },
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "Content-Length",
+              "value": "41"
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive"
+            }
+          ],
+          "stream": {
+            "type": "Buffer",
+            "data": [
+              123,
+              34,
+              100,
+              101,
+              116,
+              97,
+              105,
+              108,
+              34,
+              58,
+              34,
+              86,
+              105,
+              100,
+              101,
+              111,
+              32,
+              99,
+              111,
+              110,
+              32,
+              73,
+              68,
+              32,
+              49,
+              32,
+              110,
+              111,
+              32,
+              101,
+              110,
+              99,
+              111,
+              110,
+              116,
+              114,
+              97,
+              100,
+              111,
+              34,
+              125
+            ]
+          },
+          "cookie": [],
+          "responseTime": 6,
+          "responseSize": 41
+        },
+        "id": "fa833c09-2899-45dc-bf0f-7d93df068ad9"
+      },
+      {
+        "cursor": {
+          "ref": "f2030b3e-a330-4bb3-9b13-b456450a718b",
+          "length": 11,
+          "cycles": 1,
+          "position": 8,
+          "iteration": 0,
+          "httpRequestId": "3dbe27b9-4dfb-4fc0-928a-e41e23f9d944"
+        },
+        "item": {
+          "id": "ca438439-418b-45aa-b209-e8e9c09de928",
+          "name": "List Videos for Voting",
+          "request": {
+            "description": {
+              "content": "**Lista todos los videos públicos habilitados para votación.**\n\nEste endpoint es público y no requiere autenticación.",
+              "type": "text/plain"
+            },
+            "url": {
+              "path": [
+                "api",
+                "public",
+                "videos"
+              ],
+              "host": [
+                "{{base_url}}"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "method": "GET"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "ab700187-2acf-4f67-aa08-1f2cec10b90a",
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response is an array\", function () {",
+                  "    pm.response.to.be.json;",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson).to.be.an('array');",
+                  "});"
+                ],
+                "_lastExecutionId": "0f87beca-7957-4cc9-aede-4e8c88989dcf"
+              }
+            }
+          ]
+        },
+        "request": {
+          "description": {
+            "content": "**Lista todos los videos públicos habilitados para votación.**\n\nEste endpoint es público y no requiere autenticación.",
+            "type": "text/plain"
+          },
+          "url": {
+            "protocol": "http",
+            "path": [
+              "api",
+              "public",
+              "videos"
+            ],
+            "host": [
+              "localhost"
+            ],
+            "query": [],
+            "variable": []
+          },
+          "header": [
+            {
+              "key": "User-Agent",
+              "value": "PostmanRuntime/7.39.1",
+              "system": true
+            },
+            {
+              "key": "Accept",
+              "value": "*/*",
+              "system": true
+            },
+            {
+              "key": "Cache-Control",
+              "value": "no-cache",
+              "system": true
+            },
+            {
+              "key": "Postman-Token",
+              "value": "6bcde626-0934-4633-ba76-f09bc07f9175",
+              "system": true
+            },
+            {
+              "key": "Host",
+              "value": "localhost",
+              "system": true
+            },
+            {
+              "key": "Accept-Encoding",
+              "value": "gzip, deflate, br",
+              "system": true
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive",
+              "system": true
+            }
+          ],
+          "method": "GET"
+        },
+        "response": {
+          "id": "841612b4-6a6d-4f0a-981c-eb00a3f4b0a2",
+          "status": "OK",
+          "code": 200,
+          "header": [
+            {
+              "key": "Server",
+              "value": "nginx/1.29.2"
+            },
+            {
+              "key": "Date",
+              "value": "Mon, 20 Oct 2025 01:30:10 GMT"
+            },
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "Content-Length",
+              "value": "2"
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive"
+            }
+          ],
+          "stream": {
+            "type": "Buffer",
+            "data": [
+              91,
+              93
+            ]
+          },
+          "cookie": [],
+          "responseTime": 9,
+          "responseSize": 2
+        },
+        "id": "ca438439-418b-45aa-b209-e8e9c09de928",
+        "assertions": [
+          {
+            "assertion": "Status code is 200 OK",
+            "skipped": false
+          },
+          {
+            "assertion": "Response is an array",
+            "skipped": false
+          }
+        ]
+      },
+      {
+        "cursor": {
+          "ref": "62e20b14-cf7e-48cf-bc4e-549c60f16f0a",
+          "length": 11,
+          "cycles": 1,
+          "position": 9,
+          "iteration": 0,
+          "httpRequestId": "0454e196-5d45-4ef0-b912-5e911bee6f00"
+        },
+        "item": {
+          "id": "1299d58b-23db-4b1c-ae21-3e5e26cbaf19",
+          "name": "Vote for a Video",
+          "request": {
+            "description": {
+              "content": "**Permite a un usuario registrado emitir un voto por un video.**\n\n- Requiere autenticación (JWT).\n- Un usuario solo puede votar una vez por el mismo video.\n\n**Códigos de respuesta:**\n- `200 OK`: Voto registrado exitosamente.\n- `400 Bad Request`: Ya has votado por este video.\n- `401 Unauthorized`: Falta de autenticación.\n- `404 Not Found`: Video no encontrado.",
+              "type": "text/plain"
+            },
+            "url": {
+              "path": [
+                "api",
+                "public",
+                "videos",
+                ":video_id",
+                "vote"
+              ],
+              "host": [
+                "{{base_url}}"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "type": "any",
+                  "value": "1",
+                  "key": "video_id"
+                }
+              ]
+            },
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "type": "string",
+                  "value": "{{bearer_token}}",
+                  "key": "token"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "4a8b5398-3d50-4f85-9256-f9c82eeef379",
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response confirms vote was registered\", function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.message).to.eql(\"Voto registrado exitosamente.\");",
+                  "});"
+                ],
+                "_lastExecutionId": "3650814a-b2b1-418d-a0f8-bfc9c88b39b4"
+              }
+            }
+          ]
+        },
+        "request": {
+          "description": {
+            "content": "**Permite a un usuario registrado emitir un voto por un video.**\n\n- Requiere autenticación (JWT).\n- Un usuario solo puede votar una vez por el mismo video.\n\n**Códigos de respuesta:**\n- `200 OK`: Voto registrado exitosamente.\n- `400 Bad Request`: Ya has votado por este video.\n- `401 Unauthorized`: Falta de autenticación.\n- `404 Not Found`: Video no encontrado.",
+            "type": "text/plain"
+          },
+          "url": {
+            "protocol": "http",
+            "path": [
+              "api",
+              "public",
+              "videos",
+              "1",
+              "vote"
+            ],
+            "host": [
+              "localhost"
+            ],
+            "query": [],
+            "variable": []
+          },
+          "header": [
+            {
+              "key": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyIiwiZXhwIjoxNzYwOTI1NjEwfQ.LlRVX8DFZfFdHsGE-FWTjBwydcvjjd6KEUPhwtsPLgk",
+              "system": true
+            },
+            {
+              "key": "User-Agent",
+              "value": "PostmanRuntime/7.39.1",
+              "system": true
+            },
+            {
+              "key": "Accept",
+              "value": "*/*",
+              "system": true
+            },
+            {
+              "key": "Cache-Control",
+              "value": "no-cache",
+              "system": true
+            },
+            {
+              "key": "Postman-Token",
+              "value": "994dceb3-0eb7-4f0f-85c6-ead3d516cda6",
+              "system": true
+            },
+            {
+              "key": "Host",
+              "value": "localhost",
+              "system": true
+            },
+            {
+              "key": "Accept-Encoding",
+              "value": "gzip, deflate, br",
+              "system": true
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive",
+              "system": true
+            },
+            {
+              "key": "Content-Length",
+              "value": "0",
+              "system": true
+            }
+          ],
+          "method": "POST",
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "type": "string",
+                "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyIiwiZXhwIjoxNzYwOTI1NjEwfQ.LlRVX8DFZfFdHsGE-FWTjBwydcvjjd6KEUPhwtsPLgk",
+                "key": "token"
+              }
+            ]
+          }
+        },
+        "response": {
+          "id": "1e256e7a-9021-4efd-b027-a519bec6dfe4",
+          "status": "Not Found",
+          "code": 404,
+          "header": [
+            {
+              "key": "Server",
+              "value": "nginx/1.29.2"
+            },
+            {
+              "key": "Date",
+              "value": "Mon, 20 Oct 2025 01:30:10 GMT"
+            },
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "Content-Length",
+              "value": "33"
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive"
+            }
+          ],
+          "stream": {
+            "type": "Buffer",
+            "data": [
+              123,
+              34,
+              100,
+              101,
+              116,
+              97,
+              105,
+              108,
+              34,
+              58,
+              34,
+              86,
+              105,
+              100,
+              101,
+              111,
+              32,
+              110,
+              111,
+              32,
+              101,
+              110,
+              99,
+              111,
+              110,
+              116,
+              114,
+              97,
+              100,
+              111,
+              46,
+              34,
+              125
+            ]
+          },
+          "cookie": [],
+          "responseTime": 8,
+          "responseSize": 33
+        },
+        "id": "1299d58b-23db-4b1c-ae21-3e5e26cbaf19",
+        "assertions": [
+          {
+            "assertion": "Status code is 200 OK",
+            "skipped": false,
+            "error": {
+              "name": "AssertionError",
+              "index": 0,
+              "test": "Status code is 200 OK",
+              "message": "expected response to have status code 200 but got 404",
+              "stack": "AssertionError: expected response to have status code 200 but got 404\n   at Object.eval sandbox-script.js:1:10)"
+            }
+          },
+          {
+            "assertion": "Response confirms vote was registered",
+            "skipped": false,
+            "error": {
+              "name": "AssertionError",
+              "index": 1,
+              "test": "Response confirms vote was registered",
+              "message": "expected undefined to deeply equal 'Voto registrado exitosamente.'",
+              "stack": "AssertionError: expected undefined to deeply equal 'Voto registrado exitosamente.'\n   at Object.eval sandbox-script.js:2:10)"
+            }
+          }
+        ]
+      },
+      {
+        "cursor": {
+          "ref": "afbc44ba-cb9b-4cec-b227-ca0785bf2423",
+          "length": 11,
+          "cycles": 1,
+          "position": 10,
+          "iteration": 0,
+          "httpRequestId": "170d7f91-f393-48e9-a053-979e5d424fab"
+        },
+        "item": {
+          "id": "a4e863d2-a3e0-47d9-bd56-64aaebf43ec1",
+          "name": "Get Rankings",
+          "request": {
+            "description": {
+              "content": "**Provee un ranking actualizado de los jugadores.**\n\n- Organiza a los competidores por el número de votos obtenidos.\n- Puede incluir un parámetro de consulta `city` para filtrar los resultados.\n- Este endpoint es público.\n\n**Códigos de respuesta:**\n- `200 OK`: Lista de rankings obtenida.\n- `400 Bad Request`: Parámetro inválido en la consulta.",
+              "type": "text/plain"
+            },
+            "url": {
+              "path": [
+                "api",
+                "public",
+                "rankings"
+              ],
+              "host": [
+                "{{base_url}}"
+              ],
+              "query": [
+                {
+                  "description": {
+                    "content": "(Opcional) Filtra el ranking por ciudad.",
+                    "type": "text/plain"
+                  },
+                  "key": "city",
+                  "value": "Bogotá"
+                }
+              ],
+              "variable": []
+            },
+            "method": "GET"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "90e92c61-d88e-4c23-a2bf-3e6231cf674c",
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response is an array of ranking objects\", function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.be.an('array');",
+                  "    if (jsonData.length > 0) {",
+                  "        pm.expect(jsonData[0]).to.have.all.keys('position', 'username', 'city', 'votes');",
+                  "    }",
+                  "});"
+                ],
+                "_lastExecutionId": "7841dbb2-7cbc-4084-ab9d-e1fe9f70f32b"
+              }
+            }
+          ]
+        },
+        "request": {
+          "description": {
+            "content": "**Provee un ranking actualizado de los jugadores.**\n\n- Organiza a los competidores por el número de votos obtenidos.\n- Puede incluir un parámetro de consulta `city` para filtrar los resultados.\n- Este endpoint es público.\n\n**Códigos de respuesta:**\n- `200 OK`: Lista de rankings obtenida.\n- `400 Bad Request`: Parámetro inválido en la consulta.",
+            "type": "text/plain"
+          },
+          "url": {
+            "protocol": "http",
+            "path": [
+              "api",
+              "public",
+              "rankings"
+            ],
+            "host": [
+              "localhost"
+            ],
+            "query": [
+              {
+                "key": "city",
+                "value": "Bogot%C3%A1"
+              }
+            ],
+            "variable": []
+          },
+          "header": [
+            {
+              "key": "User-Agent",
+              "value": "PostmanRuntime/7.39.1",
+              "system": true
+            },
+            {
+              "key": "Accept",
+              "value": "*/*",
+              "system": true
+            },
+            {
+              "key": "Cache-Control",
+              "value": "no-cache",
+              "system": true
+            },
+            {
+              "key": "Postman-Token",
+              "value": "7ac1f7b7-5e85-4935-b1ac-2cf67a3ef8d1",
+              "system": true
+            },
+            {
+              "key": "Host",
+              "value": "localhost",
+              "system": true
+            },
+            {
+              "key": "Accept-Encoding",
+              "value": "gzip, deflate, br",
+              "system": true
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive",
+              "system": true
+            }
+          ],
+          "method": "GET"
+        },
+        "response": {
+          "id": "bf118f98-104c-4270-8426-11e5cb9a607a",
+          "status": "OK",
+          "code": 200,
+          "header": [
+            {
+              "key": "Server",
+              "value": "nginx/1.29.2"
+            },
+            {
+              "key": "Date",
+              "value": "Mon, 20 Oct 2025 01:30:10 GMT"
+            },
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "Content-Length",
+              "value": "2"
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive"
+            }
+          ],
+          "stream": {
+            "type": "Buffer",
+            "data": [
+              91,
+              93
+            ]
+          },
+          "cookie": [],
+          "responseTime": 7,
+          "responseSize": 2
+        },
+        "id": "a4e863d2-a3e0-47d9-bd56-64aaebf43ec1",
+        "assertions": [
+          {
+            "assertion": "Status code is 200 OK",
+            "skipped": false
+          },
+          {
+            "assertion": "Response is an array of ranking objects",
+            "skipped": false
+          }
+        ]
+      }
+    ],
+    "transfers": {
+      "responseTotal": 905
+    },
+    "failures": [
+      {
+        "error": {
+          "name": "AssertionError",
+          "index": 0,
+          "test": "Status code is 201 Created",
+          "message": "expected response to have status code 201 but got 202",
+          "stack": "AssertionError: expected response to have status code 201 but got 202\n   at Object.eval sandbox-script.js:1:3)",
+          "checksum": "f0c76740ea18483d8e1ab71880ea9011",
+          "id": "ba05f8c9-2dbc-4954-b82d-8b356cc2d087",
+          "timestamp": 1760923810433,
+          "stacktrace": [
+            {
+              "fileName": "sandbox-script.js",
+              "lineNumber": 1,
+              "functionName": "Object.eval",
+              "typeName": "Object",
+              "methodName": "eval",
+              "columnNumber": 3,
+              "native": false
+            }
+          ]
+        },
+        "at": "assertion:0 in test-script",
+        "source": {
+          "id": "0eefcc55-beee-4f7d-b6c7-76567998a8d2",
+          "name": "Upload Video",
+          "request": {
+            "description": {
+              "content": "**Permite a un jugador subir un video de habilidades.**\n\n- La solicitud debe ser `form-data`.\n- El `video_file` debe ser un archivo MP4 de máximo 100MB.\n- Inicia una tarea de procesamiento asíncrono.\n\n**Códigos de respuesta:**\n- `201 Created`: Video subido exitosamente, tarea de procesamiento creada.\n- `400 Bad Request`: Error en el archivo (tipo o tamaño inválido).\n- `401 Unauthorized`: Falta de autenticación.",
+              "type": "text/plain"
+            },
+            "url": {
+              "path": [
+                "api",
+                "videos",
+                "upload"
+              ],
+              "host": [
+                "{{base_url}}"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "video_file",
+                  "type": "file",
+                  "src": "/Users/juancamilo/Universidad/DesarrolloNube/MISW-4204-desarrollo-de-software-en-la-nube/source/worker/assets/intro.mp4"
+                },
+                {
+                  "key": "title",
+                  "value": "Mi mejor jugada de 3 puntos",
+                  "type": "text"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "type": "string",
+                  "value": "{{bearer_token}}",
+                  "key": "token"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "76a3a3ed-b545-496b-8421-ee4e23255e1d",
+                "type": "text/javascript",
+                "packages": {},
+                "exec": [
+                  "pm.test(\"Status code is 201 Created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test(\"Response contains a task_id\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.task_id).to.exist;",
+                  "});"
+                ],
+                "_lastExecutionId": "03e29773-a4b3-46ab-8ed0-82f6f68d5207"
+              }
+            }
+          ]
+        },
+        "parent": {
+          "id": "990804f1-b97b-43b2-840a-b490a115fc45",
+          "name": "2. Gestión de Videos",
+          "item": [
+            {
+              "id": "0eefcc55-beee-4f7d-b6c7-76567998a8d2",
+              "name": "Upload Video",
+              "request": {
+                "description": {
+                  "content": "**Permite a un jugador subir un video de habilidades.**\n\n- La solicitud debe ser `form-data`.\n- El `video_file` debe ser un archivo MP4 de máximo 100MB.\n- Inicia una tarea de procesamiento asíncrono.\n\n**Códigos de respuesta:**\n- `201 Created`: Video subido exitosamente, tarea de procesamiento creada.\n- `400 Bad Request`: Error en el archivo (tipo o tamaño inválido).\n- `401 Unauthorized`: Falta de autenticación.",
+                  "type": "text/plain"
+                },
+                "url": {
+                  "path": [
+                    "api",
+                    "videos",
+                    "upload"
+                  ],
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "query": [],
+                  "variable": []
+                },
+                "method": "POST",
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "video_file",
+                      "type": "file",
+                      "src": "/Users/juancamilo/Universidad/DesarrolloNube/MISW-4204-desarrollo-de-software-en-la-nube/source/worker/assets/intro.mp4"
+                    },
+                    {
+                      "key": "title",
+                      "value": "Mi mejor jugada de 3 puntos",
+                      "type": "text"
+                    }
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "type": "string",
+                      "value": "{{bearer_token}}",
+                      "key": "token"
+                    }
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "id": "76a3a3ed-b545-496b-8421-ee4e23255e1d",
+                    "type": "text/javascript",
+                    "packages": {},
+                    "exec": [
+                      "pm.test(\"Status code is 201 Created\", function () {",
+                      "    pm.response.to.have.status(201);",
+                      "});",
+                      "",
+                      "pm.test(\"Response contains a task_id\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.task_id).to.exist;",
+                      "});"
+                    ],
+                    "_lastExecutionId": "03e29773-a4b3-46ab-8ed0-82f6f68d5207"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "099afa0e-1148-409b-9a8f-4f7b914b685e",
+              "name": "Get My Videos",
+              "request": {
+                "description": {
+                  "content": "**Consulta el listado de videos subidos por el jugador autenticado.**\n\nRetorna el estado de procesamiento (`uploaded`, `processed`) y las URLs de acceso si el procesamiento está completo.\n\n**Códigos de respuesta:**\n- `200 OK`: Lista de videos obtenida.\n- `401 Unauthorized`: Falta de autenticación.",
+                  "type": "text/plain"
+                },
+                "url": {
+                  "path": [
+                    "api",
+                    "videos"
+                  ],
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "query": [],
+                  "variable": []
+                },
+                "method": "GET",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "type": "string",
+                      "value": "{{bearer_token}}",
+                      "key": "token"
+                    }
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "id": "b962f24e-8606-42d3-82a3-71b69e509418",
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status code is 200 OK\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Response is an array\", function () {",
+                      "    pm.response.to.be.json;",
+                      "    const responseJson = pm.response.json();",
+                      "    pm.expect(responseJson).to.be.an('array');",
+                      "});",
+                      "",
+                      "pm.test(\"Video object has correct properties\", function () {",
+                      "    const responseJson = pm.response.json();",
+                      "    if (responseJson.length > 0) {",
+                      "        const video = responseJson[0];",
+                      "        pm.expect(video).to.have.property('video_id');",
+                      "        pm.expect(video).to.have.property('title');",
+                      "        pm.expect(video).to.have.property('status');",
+                      "    }",
+                      "});"
+                    ],
+                    "_lastExecutionId": "3f714af9-92a4-49fd-8972-7f15e89d1b92"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "2a20d1b4-bd61-482b-9481-1d45aff504f5",
+              "name": "Get Specific Video",
+              "request": {
+                "description": {
+                  "content": "**Recupera el detalle de un video específico del jugador.**\n\nIncluye las URLs del video original y procesado, así como el conteo de votos.\n\n**Códigos de respuesta:**\n- `200 OK`: Detalle del video obtenido.\n- `401 Unauthorized`: Usuario no autenticado.\n- `403 Forbidden`: El usuario no es el propietario del video.\n- `404 Not Found`: El video no existe.",
+                  "type": "text/plain"
+                },
+                "url": {
+                  "path": [
+                    "api",
+                    "videos",
+                    ":video_id"
+                  ],
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "type": "any",
+                      "value": "1",
+                      "key": "video_id"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "type": "string",
+                      "value": "{{bearer_token}}",
+                      "key": "token"
+                    }
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "id": "cd2adf7f-5b60-4a60-8151-25799a69ed50",
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status code is 200 OK\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Video detail has correct properties\", function () {",
+                      "    const jsonData = pm.response.json();",
+                      "    pm.expect(jsonData).to.have.property('video_id');",
+                      "    pm.expect(jsonData).to.have.property('title');",
+                      "    pm.expect(jsonData).to.have.property('status');",
+                      "    pm.expect(jsonData).to.have.property('votes');",
+                      "});"
+                    ],
+                    "_lastExecutionId": "b2f3a82e-623e-4528-979c-9aa365ff7de3"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "77ea0dbd-a652-4fe9-b439-d978772f3ea8",
+              "name": "Delete Video",
+              "request": {
+                "description": {
+                  "content": "**Elimina uno de los videos del jugador.**\n\nSolo se puede eliminar si el video no ha sido publicado para votación o aún no ha sido procesado.\n\n**Códigos de respuesta:**\n- `200 OK`: Video eliminado correctamente.\n- `400 Bad Request`: El video no puede ser eliminado porque no cumple las condiciones.\n- `401 Unauthorized`: Usuario no autenticado.\n- `403 Forbidden`: El usuario no es el propietario.\n- `404 Not Found`: El video no existe.",
+                  "type": "text/plain"
+                },
+                "url": {
+                  "path": [
+                    "api",
+                    "videos",
+                    ":video_id"
+                  ],
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "type": "any",
+                      "value": "1",
+                      "key": "video_id"
+                    }
+                  ]
+                },
+                "method": "DELETE",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "type": "string",
+                      "value": "{{bearer_token}}",
+                      "key": "token"
+                    }
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "id": "24f85ffe-acb4-493f-9855-038880ea4b66",
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status code is 200 OK\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Response confirms deletion\", function () {",
+                      "    const jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.message).to.eql(\"El video ha sido eliminado exitosamente.\");",
+                      "});"
+                    ],
+                    "_lastExecutionId": "10c4afb3-ff0e-47ee-b12d-12d015e17a6e"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "522a5d96-d991-47ec-94ef-4a429cf26898",
+              "name": "Get Processed Video",
+              "request": {
+                "description": {
+                  "content": "**Descarga el video procesado de un jugador.**\n\nRetorna el archivo de video que ha sido procesado (recortado a 30s, con marca de agua de ANB, sin audio).\n\n**Codigos de respuesta:**\n- `200 OK`: Video procesado descargado exitosamente.\n- `401 Unauthorized`: Usuario no autenticado.\n- `403 Forbidden`: El usuario no es el propietario del video.\n- `404 Not Found`: Video no encontrado o aun no procesado.",
+                  "type": "text/plain"
+                },
+                "url": {
+                  "path": [
+                    "api",
+                    "videos",
+                    "processed",
+                    ":video_id"
+                  ],
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "type": "any",
+                      "value": "1",
+                      "key": "video_id"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "type": "string",
+                      "value": "{{bearer_token}}",
+                      "key": "token"
+                    }
+                  ]
+                }
+              },
+              "response": [],
+              "event": []
+            },
+            {
+              "id": "fa833c09-2899-45dc-bf0f-7d93df068ad9",
+              "name": "Get Original Video",
+              "request": {
+                "description": {
+                  "content": "**Descarga el video original subido por el jugador.**\n\nRetorna el archivo de video sin procesar, tal como fue cargado inicialmente.\n\n**Codigos de respuesta:**\n- `200 OK`: Video original descargado exitosamente.\n- `401 Unauthorized`: Usuario no autenticado.\n- `403 Forbidden`: El usuario no es el propietario del video.\n- `404 Not Found`: Video no encontrado.",
+                  "type": "text/plain"
+                },
+                "url": {
+                  "path": [
+                    "api",
+                    "videos",
+                    "original",
+                    ":video_id"
+                  ],
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "type": "any",
+                      "value": "1",
+                      "key": "video_id"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "type": "string",
+                      "value": "{{bearer_token}}",
+                      "key": "token"
+                    }
+                  ]
+                }
+              },
+              "response": [],
+              "event": []
+            }
+          ],
+          "event": []
+        },
+        "cursor": {
+          "ref": "f3b50ea0-dc13-4317-966c-597ff6b78a89",
+          "length": 11,
+          "cycles": 1,
+          "position": 2,
+          "iteration": 0,
+          "httpRequestId": "7b47bf53-09eb-4247-9608-5974c4bc6012",
+          "scriptId": "76a3a3ed-b545-496b-8421-ee4e23255e1d",
+          "execution": "03e29773-a4b3-46ab-8ed0-82f6f68d5207"
+        }
+      },
+      {
+        "error": {
+          "name": "AssertionError",
+          "index": 0,
+          "test": "Status code is 200 OK",
+          "message": "expected response to have status code 200 but got 404",
+          "stack": "AssertionError: expected response to have status code 200 but got 404\n   at Object.eval sandbox-script.js:1:10)",
+          "checksum": "5b7726cec0f442119118c78774eaee77",
+          "id": "7654b9ba-336a-44e0-8279-d2dc76857879",
+          "timestamp": 1760923810616,
+          "stacktrace": [
+            {
+              "fileName": "sandbox-script.js",
+              "lineNumber": 1,
+              "functionName": "Object.eval",
+              "typeName": "Object",
+              "methodName": "eval",
+              "columnNumber": 10,
+              "native": false
+            }
+          ]
+        },
+        "at": "assertion:0 in test-script",
+        "source": {
+          "id": "1299d58b-23db-4b1c-ae21-3e5e26cbaf19",
+          "name": "Vote for a Video",
+          "request": {
+            "description": {
+              "content": "**Permite a un usuario registrado emitir un voto por un video.**\n\n- Requiere autenticación (JWT).\n- Un usuario solo puede votar una vez por el mismo video.\n\n**Códigos de respuesta:**\n- `200 OK`: Voto registrado exitosamente.\n- `400 Bad Request`: Ya has votado por este video.\n- `401 Unauthorized`: Falta de autenticación.\n- `404 Not Found`: Video no encontrado.",
+              "type": "text/plain"
+            },
+            "url": {
+              "path": [
+                "api",
+                "public",
+                "videos",
+                ":video_id",
+                "vote"
+              ],
+              "host": [
+                "{{base_url}}"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "type": "any",
+                  "value": "1",
+                  "key": "video_id"
+                }
+              ]
+            },
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "type": "string",
+                  "value": "{{bearer_token}}",
+                  "key": "token"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "4a8b5398-3d50-4f85-9256-f9c82eeef379",
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response confirms vote was registered\", function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.message).to.eql(\"Voto registrado exitosamente.\");",
+                  "});"
+                ],
+                "_lastExecutionId": "3650814a-b2b1-418d-a0f8-bfc9c88b39b4"
+              }
+            }
+          ]
+        },
+        "parent": {
+          "id": "fd8bacb6-b9c5-4071-aae1-8545b68ca06f",
+          "name": "3. Endpoints Públicos",
+          "item": [
+            {
+              "id": "ca438439-418b-45aa-b209-e8e9c09de928",
+              "name": "List Videos for Voting",
+              "request": {
+                "description": {
+                  "content": "**Lista todos los videos públicos habilitados para votación.**\n\nEste endpoint es público y no requiere autenticación.",
+                  "type": "text/plain"
+                },
+                "url": {
+                  "path": [
+                    "api",
+                    "public",
+                    "videos"
+                  ],
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "query": [],
+                  "variable": []
+                },
+                "method": "GET"
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "id": "ab700187-2acf-4f67-aa08-1f2cec10b90a",
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status code is 200 OK\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Response is an array\", function () {",
+                      "    pm.response.to.be.json;",
+                      "    const responseJson = pm.response.json();",
+                      "    pm.expect(responseJson).to.be.an('array');",
+                      "});"
+                    ],
+                    "_lastExecutionId": "0f87beca-7957-4cc9-aede-4e8c88989dcf"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "1299d58b-23db-4b1c-ae21-3e5e26cbaf19",
+              "name": "Vote for a Video",
+              "request": {
+                "description": {
+                  "content": "**Permite a un usuario registrado emitir un voto por un video.**\n\n- Requiere autenticación (JWT).\n- Un usuario solo puede votar una vez por el mismo video.\n\n**Códigos de respuesta:**\n- `200 OK`: Voto registrado exitosamente.\n- `400 Bad Request`: Ya has votado por este video.\n- `401 Unauthorized`: Falta de autenticación.\n- `404 Not Found`: Video no encontrado.",
+                  "type": "text/plain"
+                },
+                "url": {
+                  "path": [
+                    "api",
+                    "public",
+                    "videos",
+                    ":video_id",
+                    "vote"
+                  ],
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "type": "any",
+                      "value": "1",
+                      "key": "video_id"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "type": "string",
+                      "value": "{{bearer_token}}",
+                      "key": "token"
+                    }
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "id": "4a8b5398-3d50-4f85-9256-f9c82eeef379",
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status code is 200 OK\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Response confirms vote was registered\", function () {",
+                      "    const jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.message).to.eql(\"Voto registrado exitosamente.\");",
+                      "});"
+                    ],
+                    "_lastExecutionId": "3650814a-b2b1-418d-a0f8-bfc9c88b39b4"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "a4e863d2-a3e0-47d9-bd56-64aaebf43ec1",
+              "name": "Get Rankings",
+              "request": {
+                "description": {
+                  "content": "**Provee un ranking actualizado de los jugadores.**\n\n- Organiza a los competidores por el número de votos obtenidos.\n- Puede incluir un parámetro de consulta `city` para filtrar los resultados.\n- Este endpoint es público.\n\n**Códigos de respuesta:**\n- `200 OK`: Lista de rankings obtenida.\n- `400 Bad Request`: Parámetro inválido en la consulta.",
+                  "type": "text/plain"
+                },
+                "url": {
+                  "path": [
+                    "api",
+                    "public",
+                    "rankings"
+                  ],
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "query": [
+                    {
+                      "description": {
+                        "content": "(Opcional) Filtra el ranking por ciudad.",
+                        "type": "text/plain"
+                      },
+                      "key": "city",
+                      "value": "Bogotá"
+                    }
+                  ],
+                  "variable": []
+                },
+                "method": "GET"
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "id": "90e92c61-d88e-4c23-a2bf-3e6231cf674c",
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status code is 200 OK\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Response is an array of ranking objects\", function () {",
+                      "    const jsonData = pm.response.json();",
+                      "    pm.expect(jsonData).to.be.an('array');",
+                      "    if (jsonData.length > 0) {",
+                      "        pm.expect(jsonData[0]).to.have.all.keys('position', 'username', 'city', 'votes');",
+                      "    }",
+                      "});"
+                    ],
+                    "_lastExecutionId": "7841dbb2-7cbc-4084-ab9d-e1fe9f70f32b"
+                  }
+                }
+              ]
+            }
+          ],
+          "event": []
+        },
+        "cursor": {
+          "ref": "62e20b14-cf7e-48cf-bc4e-549c60f16f0a",
+          "length": 11,
+          "cycles": 1,
+          "position": 9,
+          "iteration": 0,
+          "httpRequestId": "0454e196-5d45-4ef0-b912-5e911bee6f00",
+          "scriptId": "4a8b5398-3d50-4f85-9256-f9c82eeef379",
+          "execution": "3650814a-b2b1-418d-a0f8-bfc9c88b39b4"
+        }
+      },
+      {
+        "error": {
+          "name": "AssertionError",
+          "index": 1,
+          "test": "Response confirms vote was registered",
+          "message": "expected undefined to deeply equal 'Voto registrado exitosamente.'",
+          "stack": "AssertionError: expected undefined to deeply equal 'Voto registrado exitosamente.'\n   at Object.eval sandbox-script.js:2:10)",
+          "checksum": "4d6ae868d9fc91c724722f0baeb12dc3",
+          "id": "0ddadb37-0fb6-47c2-b81c-ac77046f06ed",
+          "timestamp": 1760923810617,
+          "stacktrace": [
+            {
+              "fileName": "sandbox-script.js",
+              "lineNumber": 2,
+              "functionName": "Object.eval",
+              "typeName": "Object",
+              "methodName": "eval",
+              "columnNumber": 10,
+              "native": false
+            }
+          ]
+        },
+        "at": "assertion:1 in test-script",
+        "source": {
+          "id": "1299d58b-23db-4b1c-ae21-3e5e26cbaf19",
+          "name": "Vote for a Video",
+          "request": {
+            "description": {
+              "content": "**Permite a un usuario registrado emitir un voto por un video.**\n\n- Requiere autenticación (JWT).\n- Un usuario solo puede votar una vez por el mismo video.\n\n**Códigos de respuesta:**\n- `200 OK`: Voto registrado exitosamente.\n- `400 Bad Request`: Ya has votado por este video.\n- `401 Unauthorized`: Falta de autenticación.\n- `404 Not Found`: Video no encontrado.",
+              "type": "text/plain"
+            },
+            "url": {
+              "path": [
+                "api",
+                "public",
+                "videos",
+                ":video_id",
+                "vote"
+              ],
+              "host": [
+                "{{base_url}}"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "type": "any",
+                  "value": "1",
+                  "key": "video_id"
+                }
+              ]
+            },
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "type": "string",
+                  "value": "{{bearer_token}}",
+                  "key": "token"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "4a8b5398-3d50-4f85-9256-f9c82eeef379",
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response confirms vote was registered\", function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.message).to.eql(\"Voto registrado exitosamente.\");",
+                  "});"
+                ],
+                "_lastExecutionId": "3650814a-b2b1-418d-a0f8-bfc9c88b39b4"
+              }
+            }
+          ]
+        },
+        "parent": {
+          "id": "fd8bacb6-b9c5-4071-aae1-8545b68ca06f",
+          "name": "3. Endpoints Públicos",
+          "item": [
+            {
+              "id": "ca438439-418b-45aa-b209-e8e9c09de928",
+              "name": "List Videos for Voting",
+              "request": {
+                "description": {
+                  "content": "**Lista todos los videos públicos habilitados para votación.**\n\nEste endpoint es público y no requiere autenticación.",
+                  "type": "text/plain"
+                },
+                "url": {
+                  "path": [
+                    "api",
+                    "public",
+                    "videos"
+                  ],
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "query": [],
+                  "variable": []
+                },
+                "method": "GET"
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "id": "ab700187-2acf-4f67-aa08-1f2cec10b90a",
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status code is 200 OK\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Response is an array\", function () {",
+                      "    pm.response.to.be.json;",
+                      "    const responseJson = pm.response.json();",
+                      "    pm.expect(responseJson).to.be.an('array');",
+                      "});"
+                    ],
+                    "_lastExecutionId": "0f87beca-7957-4cc9-aede-4e8c88989dcf"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "1299d58b-23db-4b1c-ae21-3e5e26cbaf19",
+              "name": "Vote for a Video",
+              "request": {
+                "description": {
+                  "content": "**Permite a un usuario registrado emitir un voto por un video.**\n\n- Requiere autenticación (JWT).\n- Un usuario solo puede votar una vez por el mismo video.\n\n**Códigos de respuesta:**\n- `200 OK`: Voto registrado exitosamente.\n- `400 Bad Request`: Ya has votado por este video.\n- `401 Unauthorized`: Falta de autenticación.\n- `404 Not Found`: Video no encontrado.",
+                  "type": "text/plain"
+                },
+                "url": {
+                  "path": [
+                    "api",
+                    "public",
+                    "videos",
+                    ":video_id",
+                    "vote"
+                  ],
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "type": "any",
+                      "value": "1",
+                      "key": "video_id"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "type": "string",
+                      "value": "{{bearer_token}}",
+                      "key": "token"
+                    }
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "id": "4a8b5398-3d50-4f85-9256-f9c82eeef379",
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status code is 200 OK\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Response confirms vote was registered\", function () {",
+                      "    const jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.message).to.eql(\"Voto registrado exitosamente.\");",
+                      "});"
+                    ],
+                    "_lastExecutionId": "3650814a-b2b1-418d-a0f8-bfc9c88b39b4"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "a4e863d2-a3e0-47d9-bd56-64aaebf43ec1",
+              "name": "Get Rankings",
+              "request": {
+                "description": {
+                  "content": "**Provee un ranking actualizado de los jugadores.**\n\n- Organiza a los competidores por el número de votos obtenidos.\n- Puede incluir un parámetro de consulta `city` para filtrar los resultados.\n- Este endpoint es público.\n\n**Códigos de respuesta:**\n- `200 OK`: Lista de rankings obtenida.\n- `400 Bad Request`: Parámetro inválido en la consulta.",
+                  "type": "text/plain"
+                },
+                "url": {
+                  "path": [
+                    "api",
+                    "public",
+                    "rankings"
+                  ],
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "query": [
+                    {
+                      "description": {
+                        "content": "(Opcional) Filtra el ranking por ciudad.",
+                        "type": "text/plain"
+                      },
+                      "key": "city",
+                      "value": "Bogotá"
+                    }
+                  ],
+                  "variable": []
+                },
+                "method": "GET"
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "id": "90e92c61-d88e-4c23-a2bf-3e6231cf674c",
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status code is 200 OK\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Response is an array of ranking objects\", function () {",
+                      "    const jsonData = pm.response.json();",
+                      "    pm.expect(jsonData).to.be.an('array');",
+                      "    if (jsonData.length > 0) {",
+                      "        pm.expect(jsonData[0]).to.have.all.keys('position', 'username', 'city', 'votes');",
+                      "    }",
+                      "});"
+                    ],
+                    "_lastExecutionId": "7841dbb2-7cbc-4084-ab9d-e1fe9f70f32b"
+                  }
+                }
+              ]
+            }
+          ],
+          "event": []
+        },
+        "cursor": {
+          "ref": "62e20b14-cf7e-48cf-bc4e-549c60f16f0a",
+          "length": 11,
+          "cycles": 1,
+          "position": 9,
+          "iteration": 0,
+          "httpRequestId": "0454e196-5d45-4ef0-b912-5e911bee6f00",
+          "scriptId": "4a8b5398-3d50-4f85-9256-f9c82eeef379",
+          "execution": "3650814a-b2b1-418d-a0f8-bfc9c88b39b4"
+        }
+      }
+    ],
+    "error": null
+  }
+}

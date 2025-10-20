@@ -1,4 +1,43 @@
 services:
+  setup-jwt:
+    build:
+      context: .
+      dockerfile: Dockerfile.setup
+    container_name: setup-jwt
+    environment:
+      - API_BASE_URL=http://host.docker.internal:80
+      - TEST_USER_EMAIL=performance_test@example.com
+      - TEST_USER_PASSWORD=PerformanceTest123!
+    volumes:
+      - ./web-api-tests/scenarios/scenarios:/scripts
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - app-network
+    restart: "no"
+
+  renew-jwt:
+    build:
+      context: .
+      dockerfile: Dockerfile.setup
+    container_name: renew-jwt
+    command: ["/app/renew_jwt.py"]
+    environment:
+      - API_BASE_URL=http://host.docker.internal:80
+      - TEST_USER_EMAIL=performance_test@example.com
+      - TEST_USER_PASSWORD=PerformanceTest123!
+      - RENEWAL_INTERVAL=1800  # 30 minutos
+    volumes:
+      - ./web-api-tests/scenarios/scenarios:/scripts
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - app-network
+    depends_on:
+      setup-jwt:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus
@@ -13,6 +52,9 @@ services:
     networks:
       - app-network
     restart: unless-stopped
+    depends_on:
+      setup-jwt:
+        condition: service_completed_successfully
 
   grafana:
     image: grafana/grafana:latest
@@ -25,6 +67,7 @@ services:
     environment:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_LOG_LEVEL=warn
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
@@ -40,6 +83,9 @@ services:
       - "host.docker.internal:host-gateway"
     networks:
       - app-network
+    depends_on:
+      setup-jwt:
+        condition: service_completed_successfully
     entrypoint: tail -f /dev/null
 
   producer:

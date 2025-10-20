@@ -1,20 +1,24 @@
 """Aplicación FastAPI para tests"""
 
-from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
-from fastapi.middleware.cors import CORSMiddleware
 import os
 
-# Configurar variables de entorno para tests
+# IMPORTANTE: Configurar variables de entorno ANTES de cualquier importación
+# que use settings, ya que settings se evalúa al momento de la importación
 os.environ["UPLOAD_DIR"] = os.path.join(os.getcwd(), "test_uploads")
 os.environ["DATABASE_URL"] = "sqlite:///./test.db"
 os.environ["FILE_STORAGE_TYPE"] = "local"
+os.environ["TEST_MODE"] = "true"
 
 # Crear el directorio de uploads para tests
 test_upload_dir = os.path.join(os.getcwd(), "test_uploads")
 os.makedirs(test_upload_dir, exist_ok=True)
 os.makedirs(os.path.join(test_upload_dir, "original"), exist_ok=True)
 os.makedirs(os.path.join(test_upload_dir, "processed"), exist_ok=True)
+
+# Ahora importar después de configurar las variables de entorno
+from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 
 # Importar configuración del contenedor
 from app.config.container_config import configure_container

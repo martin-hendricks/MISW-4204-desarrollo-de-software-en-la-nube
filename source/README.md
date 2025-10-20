@@ -8,7 +8,7 @@ La aplicacion esta construida siguiendo una arquitectura de microservicios con l
 
 ### Componentes Principales
 
-- **Backend API** ([backend/](backend/README.md)): API REST desarrollada en FastAPI (Python) que gestiona la logica de negocio, autenticacion y persistencia de datos.
+- **Backend API** ([backend/](backend/README.md)): API REST desarrollada en FastAPI (Python) que gestiona la logica de negocio, autenticacion y persistencia de datos.Para instrucciones detalladas de ejecucion, configuracion y analisis de resultados, consulte:[backend/](backend/README.md)
 - **Worker** ([worker/](worker/)): Servicio de procesamiento asincrono de videos utilizando Celery para el procesamiento batch.
 - **Base de Datos** ([database/](database/)): PostgreSQL para almacenamiento persistente de informacion de jugadores, videos y votaciones.
 - **Message Broker**: RabbitMQ para la comunicacion asincrona entre servicios.

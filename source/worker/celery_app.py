@@ -3,9 +3,10 @@ Configuración de Celery para Worker ANB Rising Stars
 Broker: Redis (sin result backend - PostgreSQL es la fuente de verdad)
 """
 from celery import Celery
-from celery.signals import task_failure, task_success, task_retry, worker_ready
+from celery.signals import task_failure, task_success, task_retry, task_prerun, task_postrun, worker_ready
 from config import config
 import logging
+import time
 
 # Configurar logging
 logging.basicConfig(
@@ -13,6 +14,11 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+# ===== MÉTRICAS DE PROMETHEUS =====
+# Importar las métricas definidas en main.py para usarlas en los signals
+# Esto permite que los signals de Celery actualicen las métricas
+task_start_times = {}  # Diccionario para trackear tiempos de inicio
 
 # Crear aplicación Celery
 app = Celery('anb_video_processor')
@@ -77,7 +83,7 @@ app.conf.update(
     task_send_sent_event=True,  # Enviar evento cuando se encola
 )
 
-# ===== SIGNALS (HOOKS PARA LOGGING) =====
+# ===== SIGNALS (HOOKS PARA LOGGING Y MÉTRICAS) =====
 
 @worker_ready.connect
 def worker_ready_handler(sender=None, **kwargs):
@@ -91,19 +97,59 @@ def worker_ready_handler(sender=None, **kwargs):
     logger.info("=" * 60)
 
 
+@task_prerun.connect
+def task_prerun_handler(task_id=None, task=None, **kwargs):
+    """Hook antes de ejecutar una tarea - trackear tiempo de inicio"""
+    task_start_times[task_id] = time.time()
+
+
+@task_postrun.connect
+def task_postrun_handler(task_id=None, task=None, state=None, **kwargs):
+    """Hook después de ejecutar una tarea - calcular duración"""
+    if task_id in task_start_times:
+        duration = time.time() - task_start_times[task_id]
+        task_name = task.name.split('.')[-1]
+
+        # Importar métricas del módulo centralizado
+        try:
+            from metrics import celery_task_duration
+            celery_task_duration.labels(task_name=task_name).observe(duration)
+        except ImportError as e:
+            logger.warning(f"Could not import metrics: {e}")
+
+        del task_start_times[task_id]
+
+
 @task_success.connect
 def task_success_handler(sender=None, result=None, **kwargs):
     """Hook cuando una tarea se completa exitosamente"""
     task_name = sender.name.split('.')[-1]
     logger.info(f"✅ Tarea exitosa: {task_name}")
 
+    # Incrementar contador de métricas
+    try:
+        from metrics import celery_tasks_total
+        celery_tasks_total.labels(task_name=task_name, status='success').inc()
+    except ImportError as e:
+        logger.warning(f"Could not import metrics: {e}")
+
 
 @task_failure.connect
 def task_failure_handler(sender=None, task_id=None, exception=None, traceback=None, **kwargs):
     """Hook cuando una tarea falla"""
     task_name = sender.name.split('.')[-1]
+    error_type = type(exception).__name__ if exception else 'Unknown'
+
     logger.error(f"❌ Tarea fallida: {task_name} (ID: {task_id})")
     logger.error(f"   Error: {exception}")
+
+    # Incrementar contadores de métricas
+    try:
+        from metrics import celery_tasks_total, celery_tasks_failed
+        celery_tasks_total.labels(task_name=task_name, status='failed').inc()
+        celery_tasks_failed.labels(task_name=task_name, error_type=error_type).inc()
+    except ImportError as e:
+        logger.warning(f"Could not import metrics: {e}")
 
 
 @task_retry.connect
@@ -112,6 +158,13 @@ def task_retry_handler(sender=None, reason=None, **kwargs):
     task_name = sender.name.split('.')[-1]
     logger.warning(f"🔄 Reintentando tarea: {task_name}")
     logger.warning(f"   Razón: {reason}")
+
+    # Incrementar contador de métricas
+    try:
+        from metrics import celery_tasks_total
+        celery_tasks_total.labels(task_name=task_name, status='retry').inc()
+    except ImportError as e:
+        logger.warning(f"Could not import metrics: {e}")
 
 
 # ===== IMPORTAR TAREAS =====
