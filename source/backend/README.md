@@ -274,12 +274,7 @@ docker run -p 8000:8000 anb-rising-stars-api
 4. Push a la rama (`git push origin feature/AmazingFeature`)
 5. Abre un Pull Request
 
-## 📄 Licencia
-
-Este proyecto está bajo la Licencia MIT - ver el archivo [LICENSE](LICENSE) para detalles.
 
 ## 📚 Documentación Adicional
 
 - [Arquitectura DDD](ARCHITECTURE.md) - Explicación detallada de la arquitectura
-- [Patrones de Diseño](docs/design-patterns.md) - Patrones implementados
-- [Guía de Testing](docs/testing-guide.md) - Cómo hacer testing
