@@ -245,21 +245,13 @@ ANB Rising Stars Showcase
   ✓  Status code is 200 OK
   ✓  Response confirms deletion
 
-┌─────────────────────────┬───────────────────┬───────────────────┐
-│                         │          executed │            failed │
-├─────────────────────────┼───────────────────┼───────────────────┤
-│              iterations │                 1 │                 0 │
-├─────────────────────────┼───────────────────┼───────────────────┤
-│                requests │                15 │                 0 │
-├─────────────────────────┼───────────────────┼───────────────────┤
-│            test-scripts │                14 │                 0 │
-├─────────────────────────┼───────────────────┼───────────────────┤
-│      prerequest-scripts │                 1 │                 0 │
-├─────────────────────────┼───────────────────┼───────────────────┤
-│              assertions │                34 │                 0 │
-├─────────────────────────┴───────────────────┴───────────────────┤
-│ total run duration: 6.4s                                        │
-├─────────────────────────────────────────────────────────────────┤
-│ total data received: 1.58MB (approx)                            │
-├─────────────────────────────────────────────────────────────────┤
-│ average response time: 81ms [min: 5ms, max: 312ms, s.d.: 117ms] │
+||          executed |            failed |
+|--- |----|----|
+|              iterations |                 1 |                 0 |
+|                requests |                15 |                 0 |
+|            test-scripts |                14 |                 0 |
+|      prerequest-scripts |                 1 |                 0 |
+|              assertions |                34 |                 0 |
+| total run duration: 6.4s                                        |
+| total data received: 1.58MB (approx)                            |
+| average response time: 81ms [min: 5ms, max: 312ms, s.d.: 117ms] |
