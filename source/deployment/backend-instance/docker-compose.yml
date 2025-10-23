@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  # ===== NGINX API GATEWAY =====
+  nginx:
+    image: nginx:alpine
+    container_name: anb-nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - backend
+    networks:
+      - app-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ===== REDIS BROKER =====
+  redis:
+    image: redis:7-alpine
+    container_name: anb-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - app-network
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ===== BACKEND API =====
+  backend:
+    build:
+      context: ../../backend
+      dockerfile: Dockerfile
+    container_name: anb-backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      # Montaje NFS - se monta desde el host
+      - /mnt/nfs_uploads:/app/uploads
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - app-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  app-network:
+    name: anb-network
+    driver: bridge
+
+volumes:
+  redis_data:
+    name: anb-redis-data
