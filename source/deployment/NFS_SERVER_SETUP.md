@@ -104,15 +104,15 @@ df -h | grep nfs_share
 
 ```bash
 # Crear directorios
-sudo mkdir -p /mnt/nfs_share/uploads/original
-sudo mkdir -p /mnt/nfs_share/uploads/processed
-sudo mkdir -p /mnt/nfs_share/uploads/temp
+sudo mkdir -p /var/nfs/shared_folder/uploads/original
+sudo mkdir -p /var/nfs/shared_folder/uploads/processed
+sudo mkdir -p /var/nfs/shared_folder/uploads/temp
 
 # Dar permisos amplios (importante para que Backend y Worker puedan escribir)
-sudo chmod -R 777 /mnt/nfs_share/uploads
+sudo chmod -R 777 /var/nfs/shared_folder/uploads
 
 # Verificar
-ls -la /mnt/nfs_share/
+ls -la /var/nfs/shared_folder/
 ```
 
 ### Paso 2.8: Configurar las exportaciones NFS
@@ -125,10 +125,10 @@ sudo nano /etc/exports
 # IMPORTANTE: Obtén las IPs privadas de tus instancias Backend y Worker desde la consola AWS
 
 # Ejemplo (reemplaza con TUS IPs privadas):
-/mnt/nfs_share/uploads 172.31.10.5(rw,sync,no_subtree_check,no_root_squash) 172.31.10.6(rw,sync,no_subtree_check,no_root_squash)
+/var/nfs/shared_folder/uploads 172.31.XXX.XXX(rw,sync,no_subtree_check,no_root_squash) 172.31.YYY.YYY(rw,sync,no_subtree_check,no_root_squash)
 
 # Formato:
-# /mnt/nfs_share/uploads <BACKEND_PRIVATE_IP>(rw,sync,no_subtree_check,no_root_squash) <WORKER_PRIVATE_IP>(rw,sync,no_subtree_check,no_root_squash)
+# /var/nfs/shared_folder/uploads <BACKEND_PRIVATE_IP>(rw,sync,no_subtree_check,no_root_squash) <WORKER_PRIVATE_IP>(rw,sync,no_subtree_check,no_root_squash)
 
 # Opciones explicadas:
 # rw                  - Lectura/escritura
@@ -188,7 +188,7 @@ sudo journalctl -u nfs-kernel-server -f
 showmount -e localhost
 # Deberías ver:
 # Export list for localhost:
-# /mnt/nfs_share/uploads 172.31.10.5,172.31.10.6
+# /var/nfs/shared_folder/uploads 172.31.XXX.XXX,172.31.YYY.YYY
 ```
 
 ---
@@ -200,17 +200,17 @@ showmount -e localhost
 ```bash
 # 1. IP PRIVADA del servidor NFS
 hostname -I
-# Ejemplo: 172.31.10.10
+# Ejemplo: 172.31.XXX.XXX
 
 # 2. Ruta del export
-# /mnt/nfs_share/uploads
+# /var/nfs/shared_folder/uploads
 ```
 
 ### Guardar esta información:
 
 ```
-NFS_SERVER_PRIVATE_IP=172.31.10.10
-NFS_EXPORT_PATH=/mnt/nfs_share/uploads
+NFS_SERVER_PRIVATE_IP=172.31.XXX.XXX
+NFS_EXPORT_PATH=/var/nfs/shared_folder/uploads
 ```
 
 ---

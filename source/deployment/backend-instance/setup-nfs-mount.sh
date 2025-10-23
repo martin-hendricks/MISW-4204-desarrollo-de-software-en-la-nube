@@ -14,7 +14,7 @@ echo "=========================================="
 # ===== CONFIGURACIÓN =====
 # IMPORTANTE: Reemplazar con la IP privada de tu servidor NFS
 NFS_SERVER_IP="REPLACE_WITH_NFS_PRIVATE_IP"
-NFS_EXPORT_PATH="/mnt/nfs_share/uploads"
+NFS_EXPORT_PATH="/var/nfs/shared_folder/uploads"
 LOCAL_MOUNT_POINT="/mnt/nfs_uploads"
 
 # Colores para output
