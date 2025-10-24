@@ -170,10 +170,8 @@ Storage:
 # Conectarse
 ssh -i "your-key.pem" ubuntu@<NFS_PUBLIC_IP>
 
-# Seguir la guía completa
 ```
 
-📄 **Guía detallada:** [NFS_SERVER_SETUP.md](./NFS_SERVER_SETUP.md)
 
 **Comandos rápidos:**
 
@@ -181,29 +179,25 @@ ssh -i "your-key.pem" ubuntu@<NFS_PUBLIC_IP>
 # Instalar NFS
 sudo apt update && sudo apt install -y nfs-kernel-server
 
-# Formatear disco (SOLO SI ES NUEVO)
-sudo mkfs.ext4 /dev/xvdf
-
-# Montar (o usar la ruta que ya tenga tu compañero)
-sudo mkdir -p /var/nfs/shared_folder
-sudo mount /dev/xvdf /var/nfs/shared_folder
-
 # Crear directorios
-sudo mkdir -p /var/nfs/shared_folder/uploads/{original,processed,temp}
-sudo chmod -R 777 /var/nfs/shared_folder/uploads
+sudo mkdir /var/nfs/shared_folder -p
+
+#Verificar la creacion del folder
+ls -la /var/nfs/shared_folder
 
 # Configurar exports
 sudo nano /etc/exports
+
 # Agregar (reemplaza con las IPs PRIVADAS de Backend y Worker):
-/var/nfs/shared_folder/uploads 172.31.XXX.XXX(rw,sync,no_subtree_check,no_root_squash) 172.31.YYY.YYY(rw,sync,no_subtree_check,no_root_squash)
+/var/nfs/shared_folder *(rw,sync,no_subtree_check)
+
+#Ajustar permisos al folder
+sudo chown nobody:nogroup /var/nfs/shared_folder
 
 # Aplicar
 sudo exportfs -a
 sudo systemctl restart nfs-kernel-server
 
-# Verificar
-sudo exportfs -v
-showmount -e localhost
 ```
 
 **Anotar IP privada:**
@@ -211,12 +205,35 @@ showmount -e localhost
 hostname -I
 # Ejemplo: 172.31.XXX.XXX
 ```
-_____________________________________________
+
+### 3.3 Verificación desde el Servidor NFS
+
+**Verificar que NFS está escuchando:**
+
+```bash
+sudo netstat -tuln | grep 2049
+# Deberías ver: tcp  0  0 0.0.0.0:2049  0.0.0.0:*  LISTEN
 ```
+
+**Ver logs en caso de problemas:**
+
+```bash
+sudo journalctl -u nfs-kernel-server -f
+```
+
+**Verificar montajes:**
+
+```bash
+showmount -e localhost
+# Deberías ver:
+# Export list for localhost:
+# /var/nfs/shared_folder/uploads 172.31.XXX.XXX,172.31.YYY.YYY
+```
+_____________________________________________
 
 ---
 
-## Paso 4: Crear Instancia Backend (15 min)
+### Paso 4: Crear Instancia Backend (15 min)
 
 ### 4.1 Crear Instancia EC2
 
@@ -506,7 +523,6 @@ PGPASSWORD='TU_PASSWORD' psql \
 
 Si necesitas más detalles:
 - [README.md](./README.md) - Guía completa paso a paso
-- [NFS_SERVER_SETUP.md](./NFS_SERVER_SETUP.md) - Servidor NFS detallado
 - [SECURITY_GROUPS.md](./SECURITY_GROUPS.md) - Security Groups completos
 - [backend-instance/DEPLOY.md](./backend-instance/DEPLOY.md) - Backend detallado
 - [worker-instance/DEPLOY.md](./worker-instance/DEPLOY.md) - Worker detallado
