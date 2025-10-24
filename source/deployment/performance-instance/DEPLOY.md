@@ -273,9 +273,83 @@ ls -lh ~/backend-key.pem
 
 ---
 
-## Paso 7: Configurar SSH Tunnel a Redis (20 min)
+## Paso 7: Configurar Prometheus (5 min)
 
-### 7.1 Crear script de túnel SSH
+Prometheus necesita saber las IPs del backend y worker para recolectar métricas.
+
+### 7.1 Editar prometheus.yml
+
+```bash
+cd ~/performance-instance
+nano prometheus.yml
+```
+
+**Busca estas líneas y reemplaza con las IPs reales:**
+
+```yaml
+# Antes (línea 13):
+      - targets: ['BACKEND_PUBLIC_IP:8000']
+
+# Después (ejemplo):
+      - targets: ['3.XXX.XXX.XXX:8000']
+
+# Antes (línea 20):
+      - targets: ['WORKER_PUBLIC_IP:8001']
+
+# Después (ejemplo):
+      - targets: ['3.YYY.YYY.YYY:8001']
+```
+
+**Archivo completo debería verse así:**
+
+```yaml
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # Scrape de métricas del backend (API)
+  - job_name: 'backend'
+    static_configs:
+      - targets: ['3.XXX.XXX.XXX:8000']  # ← Reemplaza con IP real del backend
+        labels:
+          instance: 'backend-api'
+          environment: 'production'
+
+  # Scrape de métricas del worker
+  - job_name: 'worker'
+    static_configs:
+      - targets: ['3.YYY.YYY.YYY:8001']  # ← Reemplaza con IP real del worker
+        labels:
+          instance: 'celery-worker'
+          environment: 'production'
+```
+
+**Guardar:** `Ctrl + O`, `Enter`, `Ctrl + X`
+
+### 7.2 Verificar configuración
+
+```bash
+# Ver el archivo configurado
+cat prometheus.yml
+
+# Asegurarte de que no queden placeholders
+grep -i "PUBLIC_IP" prometheus.yml
+# Este comando NO debe devolver nada (si devuelve algo, aún hay placeholders)
+```
+
+**⚠️ IMPORTANTE:** Si el worker está en la misma instancia que el backend, usa la misma IP para ambos:
+
+```yaml
+- targets: ['3.XXX.XXX.XXX:8000']  # Backend
+- targets: ['3.XXX.XXX.XXX:8001']  # Worker (misma IP, diferente puerto)
+```
+
+---
+
+## Paso 8: Configurar SSH Tunnel a Redis (20 min)
+
+### 8.1 Crear script de túnel SSH
 
 ```bash
 cd ~/performance-instance
@@ -383,7 +457,7 @@ echo "=========================================="
 chmod +x setup-ssh-tunnel.sh
 ```
 
-### 7.2 Ejecutar el script de túnel SSH
+### 8.2 Ejecutar el script de túnel SSH
 
 ```bash
 ./setup-ssh-tunnel.sh
@@ -397,7 +471,7 @@ Túnel SSH configurado correctamente
 ==========================================
 ```
 
-### 7.3 Verificar el túnel SSH
+### 8.3 Verificar el túnel SSH
 
 ```bash
 # Verificar que el puerto 6379 está escuchando localmente
@@ -413,9 +487,9 @@ ps aux | grep 'ssh.*6379'
 
 ---
 
-## Paso 8: Desplegar Performance Testing (15 min)
+## Paso 9: Desplegar Performance Testing (15 min)
 
-### 8.1 Levantar servicios con Docker Compose
+### 9.1 Levantar servicios con Docker Compose
 
 ```bash
 cd ~/performance-instance
@@ -436,7 +510,7 @@ docker-compose logs -f
 5. **jmeter**: Ejecutor de pruebas HTTP
 6. **producer**: Cliente para inyectar tareas en Redis
 
-### 8.2 Verificar que los servicios están corriendo
+### 9.2 Verificar que los servicios están corriendo
 
 ```bash
 docker ps
@@ -453,7 +527,7 @@ xxxxx          producer                  Up 1 minute
 xxxxx          renew-jwt                 Up 1 minute
 ```
 
-### 8.3 Verificar logs iniciales
+### 9.3 Verificar logs iniciales
 
 ```bash
 # Ver logs del setup JWT
@@ -469,9 +543,9 @@ docker logs producer
 
 ---
 
-## Paso 9: Verificación End-to-End (20 min)
+## Paso 10: Verificación End-to-End (20 min)
 
-### 9.1 Verificar acceso a Grafana
+### 10.1 Verificar acceso a Grafana
 
 **Desde tu navegador local:**
 
@@ -486,7 +560,7 @@ http://<PERFORMANCE_PUBLIC_IP>:3000
 - Dashboard del Worker: [http://localhost:3000/d/worker-perf/worker-performance-video-processing](http://localhost:3000/d/worker-perf/worker-performance-video-processing)
 - Dashboard del Backend: [http://localhost:3000/d/backend-api-perf/backend-api-performance](http://localhost:3000/d/backend-api-perf/backend-api-performance)
 
-### 9.2 Verificar conexión a Redis
+### 10.2 Verificar conexión a Redis
 
 ```bash
 # Desde tu instancia de performance
@@ -498,7 +572,7 @@ docker exec producer redis-cli -h localhost -p 6379 LLEN video_processing
 # Debería responder: (integer) 0
 ```
 
-### 9.3 Verificar acceso a la API del backend
+### 10.3 Verificar acceso a la API del backend
 
 ```bash
 # Verificar health check
@@ -508,7 +582,7 @@ curl http://<BACKEND_PUBLIC_IP>/health
 # {"status":"healthy"}
 ```
 
-### 9.4 Ejecutar prueba de sanidad con JMeter
+### 10.4 Ejecutar prueba de sanidad con JMeter
 
 ```bash
 # Ejecutar smoke test
@@ -518,7 +592,7 @@ docker exec jmeter /bin/bash -c "jmeter -n -t /scripts/smoke_test.jmx -l /script
 cat ~/performance-testing/web-api-tests/scenarios/scenarios/smoke_results.jtl
 ```
 
-### 9.5 Ejecutar prueba básica con el Producer
+### 10.5 Ejecutar prueba básica con el Producer
 
 ```bash
 # Encolar 5 tareas de prueba
@@ -538,9 +612,9 @@ docker exec producer redis-cli -h localhost -p 6379 LLEN video_processing
 
 ---
 
-## Paso 10: Ejecutar Escenarios de Prueba
+## Paso 11: Ejecutar Escenarios de Prueba
 
-### 10.1 Pruebas de API con JMeter
+### 11.1 Pruebas de API con JMeter
 
 **Smoke Test (Validación básica):**
 
@@ -568,7 +642,7 @@ docker exec jmeter /bin/bash -c "jmeter -n -t /scripts/ramp_up_test.jmx -l /scri
 docker exec jmeter /bin/bash -c "jmeter -n -t /scripts/sustained_test.jmx -l /scripts/sustained_116_users_results.jtl -Jusers=116"
 ```
 
-### 10.2 Pruebas de Worker con Producer
+### 11.2 Pruebas de Worker con Producer
 
 **Prueba básica (20 videos):**
 
