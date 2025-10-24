@@ -96,6 +96,56 @@ Outbound Rules:
 ```
 
 **Esperar 15-20 minutos a que esté "Available".**
+
+**Anotar datos de RDS:**
+```
+RDS Endpoint: _______________________________________________
+Usuario: postgres (o el que configuraste)
+Password: _______________________________________________
+Database: anbdb
+```
+
+### 2.1 Inicializar Base de Datos (IMPORTANTE)
+
+⚠️ **Este proyecto NO usa Alembic** - debes ejecutar el script `init.sql` para crear las tablas.
+
+**Opciones para ejecutar init.sql:**
+
+#### **Opción 1: Script Automatizado** (Recomendado - se ejecuta más tarde)
+
+El script `init-database.sh` ya está incluido en `backend-instance/`. Lo ejecutarás después de crear la instancia Backend en el **Paso 4.3**.
+
+#### **Opción 2: Desde tu máquina local** (Ahora mismo)
+
+Si tienes PostgreSQL instalado localmente:
+
+```bash
+# Instalar cliente PostgreSQL (si no lo tienes)
+# macOS: brew install postgresql
+# Ubuntu/WSL: sudo apt install postgresql-client
+# Windows: Descargar desde postgresql.org
+
+# Ejecutar init.sql
+psql -h anb-database.ctxmjxakbtby.us-east-1.rds.amazonaws.com \
+     -U postgres \
+     -d anbdb \
+     -p 5432 \
+     -f ./source/database/init.sql
+
+# Te pedirá la password de RDS
+```
+
+#### **¿Qué crea el init.sql?**
+
+```sql
+✅ ENUM: video_status ('uploaded', 'processed')
+✅ Tabla: players (jugadores - id, email, password, etc.)
+✅ Tabla: videos (videos - id, player_id, title, status, urls, etc.)
+✅ Tabla: votes (votos - id, player_id, video_id, etc.)
+```
+
+**📝 Nota:** Si decides esperar, ejecutarás esto en el Paso 4.3 desde la instancia Backend.
+
 ---
 
 ## Paso 3: Crear y Configurar Servidor NFS (45 min)
@@ -211,10 +261,12 @@ Esta guía incluye:
 - Copiar archivos del proyecto
 - Configurar variables de entorno (.env)
 - Montar NFS
+- **🗄️ Inicializar Base de Datos (ejecutar init.sql)** ← IMPORTANTE
 - Desplegar servicios con Docker Compose
-- Ejecutar migraciones de base de datos
 - Verificar endpoints y health checks
 - Troubleshooting
+
+**⚠️ RECORDATORIO:** Si no ejecutaste el `init.sql` en el Paso 2.1, deberás hacerlo en el Paso 5 del DEPLOY.md usando el script `init-database.sh`.
 
 **Tiempo estimado:** 45-60 minutos
 
@@ -346,6 +398,7 @@ curl -X GET http://<BACKEND_PUBLIC_IP>/api/videos \
 
 - [ ] Security Groups creados (4)
 - [ ] RDS PostgreSQL funcionando
+- [ ] **Base de datos inicializada (init.sql ejecutado)** ← CRÍTICO
 - [ ] NFS Server montado y exportando
 - [ ] Backend desplegado y respondiendo en puerto 80
 - [ ] Worker desplegado y procesando tareas
@@ -353,15 +406,77 @@ curl -X GET http://<BACKEND_PUBLIC_IP>/api/videos \
 
 ---
 
+## 🗄️ Referencia Rápida: Inicializar Base de Datos
+
+Si olvidaste ejecutar el `init.sql` o necesitas hacerlo nuevamente:
+
+### **Opción 1: Desde instancia Backend (Recomendado)**
+
+```bash
+# Conectar a la instancia Backend
+ssh -i "your-key.pem" ubuntu@<BACKEND_PUBLIC_IP>
+
+# Ir a la carpeta de deployment
+cd ~/anb-backend/source/deployment/backend-instance
+
+# Ejecutar script automatizado
+chmod +x init-database.sh
+./init-database.sh
+```
+
+### **Opción 2: Manual desde Backend**
+
+```bash
+# Conectar a Backend
+ssh -i "your-key.pem" ubuntu@<BACKEND_PUBLIC_IP>
+
+# Instalar postgresql-client
+sudo apt install -y postgresql-client
+
+# Ejecutar init.sql (reemplaza con tus valores)
+PGPASSWORD='TU_PASSWORD' psql \
+  -h anb-database.ctxmjxakbtby.us-east-1.rds.amazonaws.com \
+  -U postgres \
+  -d anbdb \
+  -p 5432 \
+  -f ~/anb-backend/source/database/init.sql
+```
+
+### **Opción 3: Desde tu máquina local**
+
+```bash
+# En tu máquina local (requiere postgresql-client instalado)
+psql -h <RDS_ENDPOINT> \
+     -U postgres \
+     -d anbdb \
+     -p 5432 \
+     -f ./source/database/init.sql
+```
+
+### **Verificar que se crearon las tablas:**
+
+```bash
+PGPASSWORD='TU_PASSWORD' psql \
+  -h <RDS_ENDPOINT> \
+  -U postgres \
+  -d anbdb \
+  -c "\dt"
+
+# Deberías ver:
+#  players | videos | votes
+```
+
+---
 
 ## 🐛 Troubleshooting Rápido
 
 | Problema | Solución |
 |----------|----------|
-| Backend no conecta a RDS | Verificar SG `anb-rds-sg` permite desde `anb-backend-sg` |
-| Worker no ve Redis | Usar IP PRIVADA del Backend en `REDIS_URL` |
+| **Backend: relation "players" does not exist** | ❌ No ejecutaste `init.sql` - Ver sección "Referencia Rápida" arriba |
+| Backend no conecta a RDS | Verificar SG `anb-rds-sg` permite puerto 5432 desde `anb-backend-sg` |
+| Worker no ve Redis | Usar IP **PRIVADA** del Backend en `REDIS_URL` del `.env` |
 | NFS mount failed | Verificar SG `anb-nfs-sg` puerto 2049 desde las instancias |
-| Worker no procesa | Verificar assets en `/app/assets` del contenedor |
+| Worker no procesa | Verificar assets en `/app/assets` del contenedor: `docker exec -it anb-worker ls /app/assets` |
 | 502 Bad Gateway | Backend caído, ver logs: `docker-compose logs backend` |
 
 ---

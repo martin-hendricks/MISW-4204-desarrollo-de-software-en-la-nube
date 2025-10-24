@@ -170,7 +170,50 @@ drwxrwxrwx 2 root root 4096 Jan 15 10:30 processed
 drwxrwxrwx 2 root root 4096 Jan 15 10:30 temp
 ```
 
-### Paso 5: Construir y levantar los servicios
+### Paso 5: Inicializar Base de Datos (IMPORTANTE - Solo primera vez)
+
+**⚠️ EJECUTAR ANTES de levantar docker-compose**
+
+Este proyecto NO usa Alembic. Debes ejecutar el script `init.sql` manualmente:
+
+```bash
+cd ~/anb-backend/deployment/backend-instance
+
+# Dar permisos de ejecución al script
+chmod +x init-database.sh
+
+# Ejecutar el script de inicialización
+./init-database.sh
+```
+
+**¿Qué hace este script?**
+- Verifica que postgresql-client esté instalado
+- Conecta a tu RDS PostgreSQL
+- Ejecuta el archivo `init.sql` que crea las tablas:
+  - `players` (jugadores)
+  - `videos` (videos)
+  - `votes` (votos)
+
+**Si ya ejecutaste este script antes:**
+- Puedes saltar este paso
+- Las tablas ya existen en RDS
+
+**Alternativa manual (si prefieres hacerlo tú mismo):**
+
+```bash
+# Instalar cliente PostgreSQL
+sudo apt install -y postgresql-client
+
+# Ejecutar init.sql directamente
+PGPASSWORD='TU_PASSWORD' psql \
+  -h anb-database.ctxmjxakbtby.us-east-1.rds.amazonaws.com \
+  -U admin \
+  -d anbdb \
+  -p 5432 \
+  -f ~/anb-backend/source/database/init.sql
+```
+
+### Paso 6: Construir y levantar los servicios
 
 ```bash
 cd ~/anb-backend/deployment/backend-instance
@@ -185,7 +228,7 @@ docker-compose up -d
 docker-compose logs -f
 ```
 
-### Paso 6: Verificar que los servicios están corriendo
+### Paso 7: Verificar que los servicios están corriendo
 
 ```bash
 # Ver estado de contenedores
@@ -196,19 +239,6 @@ docker-compose ps
 # anb-nginx           nginx:alpine             Up (healthy)
 # anb-redis           redis:7-alpine           Up (healthy)
 # anb-backend         backend-instance-backend Up (healthy)
-```
-
-### Paso 7: Ejecutar migraciones de base de datos
-
-```bash
-# Entrar al contenedor del backend
-docker exec -it anb-backend bash
-
-# Ejecutar migraciones de Alembic
-alembic upgrade head
-
-# Salir del contenedor
-exit
 ```
 
 ### Paso 8: Verificar endpoints
