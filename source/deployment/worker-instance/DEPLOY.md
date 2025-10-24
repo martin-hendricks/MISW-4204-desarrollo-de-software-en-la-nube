@@ -54,6 +54,51 @@ Esta instancia EC2 contiene:
 
 ---
 
+## ⚠️ IMPORTANTE: Configuración Previa al Despliegue
+
+**Antes de ejecutar `docker-compose up`**, debes configurar estos 2 archivos con las IPs correctas:
+
+### 📝 Archivos que DEBES editar:
+
+| Archivo | Qué configurar | Tipo de IP |
+|---------|----------------|------------|
+| **`.env`** | `DATABASE_URL` (RDS endpoint) | Endpoint RDS |
+| **`.env`** | `REDIS_URL` (Redis en Backend) | **IP PRIVADA** del Backend |
+| **`.env`** | `BASE_PATH` (URL pública del Backend) | **IP PÚBLICA** del Backend |
+| **`setup-nfs-mount.sh`** | `NFS_SERVER_IP` (línea 17) | **IP PRIVADA** del servidor NFS |
+
+### 🔄 ¿Necesitas recrear contenedores después de cambiar configuración?
+
+**SÍ, debes recrear** si cambias cualquiera de estos valores después del primer despliegue:
+
+```bash
+# Detener y eliminar contenedores actuales
+docker-compose down
+
+# Editar archivos de configuración
+nano .env
+nano setup-nfs-mount.sh
+
+# Si cambiaste setup-nfs-mount.sh, remontar NFS
+sudo umount /mnt/nfs_uploads
+./setup-nfs-mount.sh
+
+# Reconstruir y levantar con nueva configuración
+docker-compose up -d --build
+```
+
+**NO necesitas recrear** si solo cambias:
+- Logs
+- Concurrencia de Celery (`CELERY_CONCURRENCY`)
+- Variables de configuración que no afectan conectividad
+
+**NOTA:** Si cambias `CELERY_CONCURRENCY`, solo necesitas reiniciar:
+```bash
+docker-compose restart worker
+```
+
+---
+
 ## Pasos de Despliegue
 
 ### Paso 1: Conectarse a la instancia
@@ -121,10 +166,10 @@ nano .env
 DATABASE_URL=postgresql://admin:YourPassword@anb-db.xxx.us-east-1.rds.amazonaws.com:5432/anbdb
 
 # Redis en Backend (usar IP PRIVADA del Backend)
-REDIS_URL=redis://172.31.10.5:6379/0
+REDIS_URL=redis://172.xx.xx.xx:6xxx/0
 
 # Base Path (IP PÚBLICA del Backend)
-BASE_PATH=http://54.123.45.67/api/videos
+BASE_PATH=http://172.xx.xx.xx/api/videos
 ```
 
 ### Paso 5: Verificar conectividad con Redis (Backend)
@@ -153,7 +198,7 @@ nano setup-nfs-mount.sh
 # Cambiar esta línea:
 # NFS_SERVER_IP="REPLACE_WITH_NFS_PRIVATE_IP"
 # Por ejemplo:
-# NFS_SERVER_IP="172.31.10.10"
+# NFS_SERVER_IP="172.xx.xx.xx"
 
 # Dar permisos de ejecución
 chmod +x setup-nfs-mount.sh
@@ -221,11 +266,14 @@ curl http://localhost:8001/health
 # }
 ```
 
-### Paso 10: Verificar desde Flower (en Backend)
+### Paso 10: Verificar tareas de Celery
 
-Abre en tu navegador:
-```
-http://<BACKEND_PUBLIC_IP>:5555
+```bash
+# Ver workers activos
+docker exec -it anb-worker celery -A celery_app inspect active
+
+# Ver estadísticas
+docker exec -it anb-worker celery -A celery_app inspect stats
 ```
 
 Deberías ver:
@@ -248,11 +296,14 @@ curl -X POST http://<BACKEND_PUBLIC_IP>/api/videos/upload \
   -F "file=@test_video.mp4"
 ```
 
-2. **Ver el progreso en Flower:**
+2. **Ver el progreso en los logs:**
 
-Abrir: `http://<BACKEND_PUBLIC_IP>:5555`
+```bash
+# En la instancia Worker
+docker-compose logs -f worker | grep process_video
+```
 
-Deberías ver la tarea `process_video` en estado:
+Deberías ver la tarea `process_video` progresando:
 - `PENDING` → `STARTED` → `SUCCESS`
 
 3. **Verificar en el NFS:**
@@ -265,11 +316,14 @@ ls -lh /mnt/nfs_share/uploads/processed/
 # Deberías ver el video original y el procesado
 ```
 
-4. **Verificar logs del Worker:**
+4. **Consultar estado en la API:**
 
 ```bash
-# En la instancia Worker
-docker-compose logs -f worker | grep process_video
+# Verificar estado del video
+curl -X GET http://<BACKEND_PUBLIC_IP>/api/videos \
+  -H "Authorization: Bearer <JWT_TOKEN>"
+
+# El video debería tener status: "processed"
 ```
 
 ---
@@ -424,7 +478,8 @@ docker exec -it anb-worker celery -A celery_app inspect active_queues
 ### Tareas quedan en estado PENDING
 
 ```bash
-# Ver tareas en Flower: http://<BACKEND_PUBLIC_IP>:5555
+# Ver tareas activas
+docker exec -it anb-worker celery -A celery_app inspect active
 
 # Verificar routing de tareas
 docker exec -it anb-worker celery -A celery_app inspect registered

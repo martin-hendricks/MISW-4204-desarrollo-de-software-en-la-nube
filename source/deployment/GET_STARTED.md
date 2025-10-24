@@ -1,15 +1,6 @@
-# 🚀 Comenzar - Pasos Rápidos
+# 🚀 Guía de Instalación en AWS EC2
 
-## Tu Situación Actual
-
-✅ **Ya tienes:**
-- Instancia Backend EC2 (Ubuntu + Docker + Docker Compose)
-- Instancia Worker EC2 (Ubuntu + Docker + Docker Compose)
-
-⏳ **Aún necesitas crear:**
-1. Servidor NFS
-2. RDS PostgreSQL
-3. Configurar Security Groups
+Esta guía te llevará paso a paso para desplegar el proyecto ANB Rising Stars en AWS EC2 con una arquitectura distribuida de microservicios.
 
 ---
 
@@ -105,13 +96,6 @@ Outbound Rules:
 ```
 
 **Esperar 15-20 minutos a que esté "Available".**
-
-**Anotar:**
-```
-RDS_ENDPOINT: _____________________________________________
-RDS_PASSWORD: _____________________________________________
-```
-
 ---
 
 ## Paso 3: Crear y Configurar Servidor NFS (45 min)
@@ -150,18 +134,18 @@ sudo apt update && sudo apt install -y nfs-kernel-server
 # Formatear disco (SOLO SI ES NUEVO)
 sudo mkfs.ext4 /dev/xvdf
 
-# Montar
-sudo mkdir -p /mnt/nfs_share
-sudo mount /dev/xvdf /mnt/nfs_share
+# Montar (o usar la ruta que ya tenga tu compañero)
+sudo mkdir -p /var/nfs/shared_folder
+sudo mount /dev/xvdf /var/nfs/shared_folder
 
 # Crear directorios
-sudo mkdir -p /mnt/nfs_share/uploads/{original,processed,temp}
-sudo chmod -R 777 /mnt/nfs_share/uploads
+sudo mkdir -p /var/nfs/shared_folder/uploads/{original,processed,temp}
+sudo chmod -R 777 /var/nfs/shared_folder/uploads
 
 # Configurar exports
 sudo nano /etc/exports
-# Agregar (reemplaza IPs con las PRIVADAS de Backend y Worker):
-/mnt/nfs_share/uploads 172.31.X.X(rw,sync,no_subtree_check,no_root_squash) 172.31.Y.Y(rw,sync,no_subtree_check,no_root_squash)
+# Agregar (reemplaza con las IPs PRIVADAS de Backend y Worker):
+/var/nfs/shared_folder/uploads 172.31.XXX.XXX(rw,sync,no_subtree_check,no_root_squash) 172.31.YYY.YYY(rw,sync,no_subtree_check,no_root_squash)
 
 # Aplicar
 sudo exportfs -a
@@ -175,189 +159,125 @@ showmount -e localhost
 **Anotar IP privada:**
 ```bash
 hostname -I
-# Ejemplo: 172.31.10.10
+# Ejemplo: 172.31.XXX.XXX
 ```
-
-```
-NFS_PRIVATE_IP: _____________________________________________
-```
-
----
-
-## Paso 4: Configurar Backend (YA TIENES LA INSTANCIA) (30 min)
-
-### 4.1 Copiar archivos al servidor
-
-**Opción A: Git**
-```bash
-ssh -i "key.pem" ubuntu@<BACKEND_PUBLIC_IP>
-git clone <REPO_URL> ~/anb-backend
-cd ~/anb-backend/source/deployment/backend-instance
-```
-
-**Opción B: SCP desde tu PC**
-```bash
-# Desde tu máquina local
-scp -i "key.pem" -r ./source/deployment/backend-instance ubuntu@<BACKEND_IP>:~/
-scp -i "key.pem" -r ./source/backend ubuntu@<BACKEND_IP>:~/
-scp -i "key.pem" -r ./source/api-gateway ubuntu@<BACKEND_IP>:~/
-```
-
-### 4.2 Configurar .env
-
-```bash
-cd ~/anb-backend/source/deployment/backend-instance
-cp .env.example .env
-nano .env
-```
-
-**Completar:**
-```bash
-DATABASE_URL=postgresql://postgres:TU_PASSWORD@anb-database.xxx.us-east-1.rds.amazonaws.com:5432/anbdb
-REDIS_URL=redis://redis:6379/0
-SECRET_KEY=<generar-clave-aleatoria-minimo-32-caracteres>
-BASE_PATH=http://<BACKEND_PUBLIC_IP>/api/videos
-FILE_STORAGE_TYPE=local
-UPLOAD_DIR=/app/uploads
-```
-
-### 4.3 Montar NFS
-
-```bash
-# Editar script
-nano setup-nfs-mount.sh
-# Cambiar línea 17:
-# NFS_SERVER_IP="172.31.10.10"  ← Tu IP privada del NFS
-
-chmod +x setup-nfs-mount.sh
-./setup-nfs-mount.sh
-
-# Verificar
-df -h | grep nfs
-ls -la /mnt/nfs_uploads
-```
-
-### 4.4 Desplegar
-
-```bash
-docker-compose up -d
-
-# Ver logs
-docker-compose logs -f
-
-# Verificar contenedores
-docker-compose ps
-```
-
-### 4.5 Ejecutar migraciones
-
-```bash
-docker exec -it anb-backend alembic upgrade head
-```
-
-### 4.6 Verificar
-
-```bash
-# Health check
-curl http://localhost/health
-
-# Desde tu PC
-curl http://<BACKEND_PUBLIC_IP>/health
-
-# Swagger Docs (navegador)
-http://<BACKEND_PUBLIC_IP>/docs
-```
-
-**Anotar IPs:**
-```
-BACKEND_PUBLIC_IP: _____________________________________________
-BACKEND_PRIVATE_IP (hostname -I): _________________________________
+_____________________________________________
 ```
 
 ---
 
-## Paso 5: Configurar Worker (YA TIENES LA INSTANCIA) (30 min)
+## Paso 4: Crear Instancia Backend (15 min)
 
-### 5.1 Copiar archivos
+### 4.1 Crear Instancia EC2
 
-```bash
-ssh -i "key.pem" ubuntu@<WORKER_PUBLIC_IP>
+**En AWS Console > EC2 > Launch Instance:**
 
-# Opción A: Git
-git clone <REPO_URL> ~/anb-worker
-cd ~/anb-worker/source/deployment/worker-instance
-
-# Opción B: SCP (desde tu PC)
-# scp -i "key.pem" -r ./source/deployment/worker-instance ubuntu@<WORKER_IP>:~/
-# scp -i "key.pem" -r ./source/worker ubuntu@<WORKER_IP>:~/
+```
+Name: anb-backend
+AMI: Ubuntu Server 22.04 LTS
+Instance type: t2.medium
+Key pair: <tu-key>
+Security group: anb-backend-sg
+Storage: 20 GB (gp3)
 ```
 
-### 5.2 Copiar assets de video
-
-**Desde tu PC:**
-```bash
-scp -i "key.pem" anb_logo.png ubuntu@<WORKER_IP>:~/
-scp -i "key.pem" intro.mp4 ubuntu@<WORKER_IP>:~/
-scp -i "key.pem" outro.mp4 ubuntu@<WORKER_IP>:~/
-```
-
-**En el Worker:**
-```bash
-mkdir -p ~/anb-worker/source/deployment/worker-instance/assets
-mv ~/*.png ~/*.mp4 ~/anb-worker/source/deployment/worker-instance/assets/
-```
-
-### 5.3 Configurar .env
+### 4.2 Instalar Docker y Docker Compose
 
 ```bash
-cd ~/anb-worker/source/deployment/worker-instance
-cp .env.example .env
-nano .env
-```
+# Conectarse
+ssh -i "your-key.pem" ubuntu@<BACKEND_PUBLIC_IP>
 
-**Completar:**
-```bash
-DATABASE_URL=postgresql://postgres:TU_PASSWORD@anb-database.xxx.us-east-1.rds.amazonaws.com:5432/anbdb
-REDIS_URL=redis://172.31.X.X:6379/0  ← IP PRIVADA del Backend
-BASE_PATH=http://54.X.X.X/api/videos  ← IP PÚBLICA del Backend
-UPLOAD_DIR=/app/uploads
-```
+# Instalar Docker
+sudo apt update
+sudo apt install -y docker.io docker-compose
+sudo usermod -aG docker ubuntu
 
-### 5.4 Verificar conectividad a Redis
-
-```bash
-sudo apt install -y redis-tools
-redis-cli -h <BACKEND_PRIVATE_IP> ping
-# Debe retornar: PONG
-```
-
-### 5.5 Montar NFS
-
-```bash
-nano setup-nfs-mount.sh
-# Cambiar: NFS_SERVER_IP="172.31.10.10"  ← Tu IP privada del NFS
-
-chmod +x setup-nfs-mount.sh
-./setup-nfs-mount.sh
+# Cerrar sesión y volver a entrar para aplicar permisos
+exit
+ssh -i "your-key.pem" ubuntu@<BACKEND_PUBLIC_IP>
 
 # Verificar
-df -h | grep nfs
-ls -la /mnt/nfs_uploads
-# Deberías ver los mismos archivos que en Backend
+docker --version
+docker-compose --version
 ```
 
-### 5.6 Desplegar
+### 4.3 Configurar y Desplegar Backend
+
+📄 **Para los pasos detallados de configuración y despliegue, sigue la guía completa:**
+
+➡️ **[backend-instance/DEPLOY.md](./backend-instance/DEPLOY.md)**
+
+Esta guía incluye:
+- Copiar archivos del proyecto
+- Configurar variables de entorno (.env)
+- Montar NFS
+- Desplegar servicios con Docker Compose
+- Ejecutar migraciones de base de datos
+- Verificar endpoints y health checks
+- Troubleshooting
+
+**Tiempo estimado:** 45-60 minutos
+
+---
+
+## Paso 5: Crear Instancia Worker (30 min)
+
+### 5.1 Crear Instancia EC2
+
+**En AWS Console > EC2 > Launch Instance:**
+
+```
+Name: anb-worker
+AMI: Ubuntu Server 22.04 LTS
+Instance type: t2.large (para procesamiento de video)
+Key pair: <tu-key>
+Security group: anb-worker-sg
+Storage: 20 GB (gp3)
+```
+
+### 5.2 Instalar Docker y Docker Compose
 
 ```bash
-docker-compose up -d
+# Conectarse
+ssh -i "your-key.pem" ubuntu@<WORKER_PUBLIC_IP>
 
-# Ver logs
-docker-compose logs -f worker
+# Instalar Docker
+sudo apt update
+sudo apt install -y docker.io docker-compose redis-tools
+sudo usermod -aG docker ubuntu
+
+# Cerrar sesión y volver a entrar
+exit
+ssh -i "your-key.pem" ubuntu@<WORKER_PUBLIC_IP>
 
 # Verificar
-docker-compose ps
-curl http://localhost:8001/health
+docker --version
+docker-compose --version
 ```
+
+**Anotar IP:**
+```
+WORKER_PUBLIC_IP: _____________________________________________
+WORKER_PRIVATE_IP (hostname -I): _________________________________
+```
+
+### 5.3 Configurar y Desplegar Worker
+
+📄 **Para los pasos detallados de configuración y despliegue, sigue la guía completa:**
+
+➡️ **[worker-instance/DEPLOY.md](./worker-instance/DEPLOY.md)**
+
+Esta guía incluye:
+- Copiar archivos del proyecto
+- Preparar assets de video (logo, intro, outro)
+- Configurar variables de entorno (.env)
+- Verificar conectividad con Redis (Backend)
+- Montar NFS
+- Desplegar servicios con Docker Compose
+- Verificar health checks y procesamiento
+- Troubleshooting
+
+**Tiempo estimado:** 60-75 minutos
 
 ---
 
@@ -433,29 +353,6 @@ curl -X GET http://<BACKEND_PUBLIC_IP>/api/videos \
 
 ---
 
-## 📊 Información Recopilada
-
-```
-# RDS
-RDS_ENDPOINT = _____________________________________________
-RDS_PASSWORD = _____________________________________________
-
-# NFS
-NFS_PRIVATE_IP = _____________________________________________
-
-# Backend
-BACKEND_PUBLIC_IP = _____________________________________________
-BACKEND_PRIVATE_IP = _____________________________________________
-
-# Worker
-WORKER_PUBLIC_IP = _____________________________________________
-WORKER_PRIVATE_IP = _____________________________________________
-
-# JWT
-SECRET_KEY = _____________________________________________
-```
-
----
 
 ## 🐛 Troubleshooting Rápido
 

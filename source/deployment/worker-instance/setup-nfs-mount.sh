@@ -40,19 +40,6 @@ sudo apt install -y nfs-common
 echo -e "${YELLOW}[2/5] Creando punto de montaje: $LOCAL_MOUNT_POINT${NC}"
 sudo mkdir -p $LOCAL_MOUNT_POINT
 
-# ===== PROBAR CONECTIVIDAD CON EL SERVIDOR NFS =====
-echo -e "${YELLOW}[3/5] Probando conectividad con servidor NFS: $NFS_SERVER_IP${NC}"
-if ping -c 2 $NFS_SERVER_IP > /dev/null 2>&1; then
-    echo -e "${GREEN}✓ Servidor NFS alcanzable${NC}"
-else
-    echo -e "${RED}✗ No se puede alcanzar el servidor NFS${NC}"
-    echo "Verifica:"
-    echo "  1. Que la IP es correcta"
-    echo "  2. Que el Security Group permite tráfico desde esta instancia"
-    echo "  3. Que el servidor NFS está en ejecución"
-    exit 1
-fi
-
 # ===== VERIFICAR QUE EL EXPORT ESTÁ DISPONIBLE =====
 echo -e "${YELLOW}[4/5] Verificando exports NFS disponibles...${NC}"
 if showmount -e $NFS_SERVER_IP > /dev/null 2>&1; then

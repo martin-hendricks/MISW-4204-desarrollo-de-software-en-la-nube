@@ -45,6 +45,44 @@ Esta instancia EC2 contiene:
 
 ---
 
+## ⚠️ IMPORTANTE: Configuración Previa al Despliegue
+
+**Antes de ejecutar `docker-compose up`**, debes configurar estos 2 archivos con las IPs correctas:
+
+### 📝 Archivos que DEBES editar:
+
+| Archivo | Qué configurar | Tipo de IP |
+|---------|----------------|------------|
+| **`.env`** | `DATABASE_URL` (RDS endpoint) | Endpoint RDS |
+| **`.env`** | `BASE_PATH` (URL pública del Backend) | **IP PÚBLICA** de esta instancia |
+| **`setup-nfs-mount.sh`** | `NFS_SERVER_IP` (línea 17) | **IP PRIVADA** del servidor NFS |
+
+### 🔄 ¿Necesitas recrear contenedores después de cambiar configuración?
+
+**SÍ, debes recrear** si cambias cualquiera de estos valores después del primer despliegue:
+
+```bash
+# Detener y eliminar contenedores actuales
+docker-compose down
+
+# Editar archivos de configuración
+nano .env
+nano setup-nfs-mount.sh
+
+# Si cambiaste setup-nfs-mount.sh, remontar NFS
+sudo umount /mnt/nfs_uploads
+./setup-nfs-mount.sh
+
+# Reconstruir y levantar con nueva configuración
+docker-compose up -d --build
+```
+
+**NO necesitas recrear** si solo cambias:
+- Logs
+- Variables de configuración que no afectan conectividad (como `LOG_LEVEL`, `CORS_ORIGINS`)
+
+---
+
 ## Pasos de Despliegue
 
 ### Paso 1: Conectarse a la instancia
@@ -92,7 +130,7 @@ DATABASE_URL=postgresql://admin:YourPassword@anb-db.xxx.us-east-1.rds.amazonaws.
 SECRET_KEY=tu-clave-secreta-super-segura-minimo-32-caracteres
 
 # Base Path (IP pública de esta instancia)
-BASE_PATH=http://54.123.45.67/api/videos
+BASE_PATH=http://<BACKEND_PUBLIC_IP>/api/videos
 ```
 
 ### Paso 4: Configurar montaje NFS
@@ -104,7 +142,7 @@ nano setup-nfs-mount.sh
 # Cambiar esta línea:
 # NFS_SERVER_IP="REPLACE_WITH_NFS_PRIVATE_IP"
 # Por ejemplo:
-# NFS_SERVER_IP="172.31.10.10"
+# NFS_SERVER_IP="172.xx.xx.xx"
 
 # Dar permisos de ejecución
 chmod +x setup-nfs-mount.sh
