@@ -179,25 +179,40 @@ ssh -i "your-key.pem" ubuntu@<NFS_PUBLIC_IP>
 # Instalar NFS
 sudo apt update && sudo apt install -y nfs-kernel-server
 
-# Crear directorios
-sudo mkdir /var/nfs/shared_folder -p
+# Formatear y montar disco adicional (SOLO SI ES NUEVO)
+sudo mkfs.ext4 /dev/xvdf
+sudo mkdir -p /var/nfs/shared_folder
+sudo mount /dev/xvdf /var/nfs/shared_folder
 
-#Verificar la creacion del folder
-ls -la /var/nfs/shared_folder
+# Hacer permanente (agregar a /etc/fstab)
+echo "/dev/xvdf /var/nfs/shared_folder ext4 defaults,nofail 0 2" | sudo tee -a /etc/fstab
+
+# Crear estructura de carpetas para videos
+sudo mkdir -p /var/nfs/shared_folder/uploads/{original,processed,temp}
+
+# Verificar estructura creada
+ls -la /var/nfs/shared_folder/uploads
+
+# IMPORTANTE: Configurar permisos (777 para permitir escritura)
+sudo chmod -R 777 /var/nfs/shared_folder/uploads
+sudo chown -R nobody:nogroup /var/nfs/shared_folder/uploads
+
+# Verificar permisos
+ls -la /var/nfs/shared_folder/uploads
+# Deberías ver: drwxrwxrwx para todas las carpetas
 
 # Configurar exports
 sudo nano /etc/exports
+# Agregar esta línea (reemplaza con las IPs PRIVADAS de Backend y Worker):
+# /var/nfs/shared_folder/uploads 172.31.XXX.XXX(rw,sync,no_subtree_check,no_root_squash) 172.31.YYY.YYY(rw,sync,no_subtree_check,no_root_squash)
 
-# Agregar (reemplaza con las IPs PRIVADAS de Backend y Worker):
-/var/nfs/shared_folder *(rw,sync,no_subtree_check)
-
-#Ajustar permisos al folder
-sudo chown nobody:nogroup /var/nfs/shared_folder
-
-# Aplicar
-sudo exportfs -a
+# Aplicar configuración
+sudo exportfs -ra
 sudo systemctl restart nfs-kernel-server
 
+# Verificar exports
+sudo exportfs -v
+showmount -e localhost
 ```
 
 **Anotar IP privada:**
@@ -229,11 +244,45 @@ showmount -e localhost
 # Export list for localhost:
 # /var/nfs/shared_folder/uploads 172.31.XXX.XXX,172.31.YYY.YYY
 ```
-_____________________________________________
+
+### 3.4 ⚠️ CRÍTICO: Verificar Permisos
+
+**Este es el error más común - sin permisos 777 no podrás guardar videos:**
+
+```bash
+# En el servidor NFS, verificar permisos
+ls -la /var/nfs/shared_folder/uploads
+
+# DEBES ver esto (nota los permisos drwxrwxrwx):
+# drwxrwxrwx 5 nobody nogroup 4096 ... .
+# drwxrwxrwx 2 nobody nogroup 4096 ... original
+# drwxrwxrwx 2 nobody nogroup 4096 ... processed
+# drwxrwxrwx 2 nobody nogroup 4096 ... temp
+```
+
+❌ **Si los permisos NO son 777 (rwxrwxrwx), ARREGLARLOS:**
+
+```bash
+# En el servidor NFS
+sudo chmod -R 777 /var/nfs/shared_folder/uploads
+sudo chown -R nobody:nogroup /var/nfs/shared_folder/uploads
+
+# Reiniciar NFS
+sudo exportfs -ra
+sudo systemctl restart nfs-kernel-server
+
+# Verificar de nuevo
+ls -la /var/nfs/shared_folder/uploads
+```
+
+**Anotar IP privada del NFS:**
+```
+NFS_PRIVATE_IP: _____________________________________________
+```
 
 ---
 
-### Paso 4: Crear Instancia Backend (15 min)
+## Paso 4: Crear Instancia Backend (15 min)
 
 ### 4.1 Crear Instancia EC2
 
@@ -510,12 +559,71 @@ PGPASSWORD='TU_PASSWORD' psql \
 
 | Problema | Solución |
 |----------|----------|
+| **Permission denied al guardar videos** | ❌ Permisos NFS incorrectos - En servidor NFS: `sudo chmod -R 777 /var/nfs/shared_folder/uploads` |
 | **Backend: relation "players" does not exist** | ❌ No ejecutaste `init.sql` - Ver sección "Referencia Rápida" arriba |
 | Backend no conecta a RDS | Verificar SG `anb-rds-sg` permite puerto 5432 desde `anb-backend-sg` |
 | Worker no ve Redis | Usar IP **PRIVADA** del Backend en `REDIS_URL` del `.env` |
 | NFS mount failed | Verificar SG `anb-nfs-sg` puerto 2049 desde las instancias |
+| Videos no se guardan en NFS | Ver Paso 3.4 - Verificar permisos 777 en servidor NFS |
 | Worker no procesa | Verificar assets en `/app/assets` del contenedor: `docker exec -it anb-worker ls /app/assets` |
 | 502 Bad Gateway | Backend caído, ver logs: `docker-compose logs backend` |
+
+---
+
+## Paso 7 (Opcional): Performance Testing (45 min)
+
+Si necesitas ejecutar pruebas de rendimiento desde una cuenta de AWS diferente:
+
+### 7.1 Crear Instancia de Performance Testing
+
+**En AWS Console > EC2 > Launch Instance:**
+
+```
+Name: anb-performance-testing
+AMI: Ubuntu Server 22.04 LTS
+Instance type: t2.medium
+Key pair: <tu-key>
+Security group: anb-performance-sg (ver paso 7.2)
+Storage: 20 GB (gp3)
+```
+
+### 7.2 Configurar Security Group para Performance Testing
+
+```
+Name: anb-performance-sg
+Description: Security group for Performance Testing
+
+Inbound Rules:
+- SSH (22) from Your IP
+- Custom TCP (3000) from Your IP [Grafana]
+
+Outbound Rules:
+- All traffic to 0.0.0.0/0
+```
+
+### 7.3 Configurar Acceso al Backend
+
+La instancia de performance testing se conectará vía SSH al backend para acceder a Redis.
+
+**Pasos:**
+
+1. Copiar la clave SSH del backend a la instancia de performance
+2. Crear túnel SSH para acceder a Redis (puerto 6379)
+3. Configurar Prometheus para recolectar métricas del backend
+4. Ejecutar pruebas con JMeter (API) y Producer (Worker)
+
+📄 **Para los pasos detallados de configuración y despliegue:**
+
+➡️ **[performance-instance/DEPLOY.md](./performance-instance/DEPLOY.md)**
+
+Esta guía incluye:
+- Configuración de túnel SSH a Redis
+- Deployment de Prometheus y Grafana
+- Ejecución de pruebas de carga con JMeter
+- Ejecución de pruebas de worker con Producer
+- Monitoreo de métricas y troubleshooting
+
+**Tiempo estimado:** 45-60 minutos
 
 ---
 
@@ -526,9 +634,10 @@ Si necesitas más detalles:
 - [SECURITY_GROUPS.md](./SECURITY_GROUPS.md) - Security Groups completos
 - [backend-instance/DEPLOY.md](./backend-instance/DEPLOY.md) - Backend detallado
 - [worker-instance/DEPLOY.md](./worker-instance/DEPLOY.md) - Worker detallado
+- [performance-instance/DEPLOY.md](./performance-instance/DEPLOY.md) - Performance Testing detallado
 
 ---
 
-**Tiempo estimado total: 2.5 - 3 horas**
+**Tiempo estimado total (con Performance Testing): 3.5 - 4 horas**
 
 ¡Éxito! 🎉
