@@ -105,12 +105,15 @@ Usa este checklist para asegurarte de que todos los pasos estén completos.
 
 ## 📊 Paso 6: Configurar Prometheus
 
-- [ ] Archivo `prometheus.yml` editado
-- [ ] IP del backend reemplazada en `prometheus.yml`
-- [ ] IP del worker reemplazada en `prometheus.yml`
+**Nota:** El script `setup-ssh-tunnel.sh` configura automáticamente `prometheus.yml` usando los valores del `.env`.
+
+- [ ] Verificar que `prometheus.yml` está configurado correctamente
   ```bash
   cat prometheus.yml | grep -v "^#" | grep targets
+  # No deberían aparecer placeholders como "BACKEND_PUBLIC_IP" o "WORKER_PUBLIC_IP"
   ```
+
+- [ ] Si hay placeholders, el script los reemplazará automáticamente al ejecutar `./setup-ssh-tunnel.sh`
 
 ---
 

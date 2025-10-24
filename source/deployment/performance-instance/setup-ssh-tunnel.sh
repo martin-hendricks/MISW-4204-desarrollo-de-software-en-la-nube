@@ -217,6 +217,53 @@ if ssh -f -N \
         echo "  Cerrar el túnel:"
         echo "    pkill -f 'ssh.*6379'"
         echo ""
+
+        # ===== CONFIGURAR PROMETHEUS.YML =====
+        echo ""
+        log_info "Configurando prometheus.yml con las IPs del .env..."
+        echo ""
+
+        # Verificar que existe prometheus.yml
+        if [ -f "prometheus.yml" ]; then
+            # Verificar si hay placeholders que reemplazar
+            if grep -q "BACKEND_PUBLIC_IP\|WORKER_PUBLIC_IP" prometheus.yml; then
+                log_info "Encontrados placeholders en prometheus.yml, reemplazando..."
+
+                # Crear backup
+                BACKUP_FILE="prometheus.yml.backup.$(date +%Y%m%d_%H%M%S)"
+                cp prometheus.yml "$BACKUP_FILE"
+                log_info "Backup creado: $BACKUP_FILE"
+
+                # Obtener los targets del .env
+                if [ -n "$PROMETHEUS_BACKEND_TARGET" ] && [ -n "$PROMETHEUS_WORKER_TARGET" ]; then
+                    log_info "Usando targets del .env:"
+                    echo "  - Backend: $PROMETHEUS_BACKEND_TARGET"
+                    echo "  - Worker: $PROMETHEUS_WORKER_TARGET"
+
+                    # Reemplazar placeholders
+                    sed -i.tmp "s|BACKEND_PUBLIC_IP:8000|${PROMETHEUS_BACKEND_TARGET}|g" prometheus.yml
+                    sed -i.tmp "s|WORKER_PUBLIC_IP:8001|${PROMETHEUS_WORKER_TARGET}|g" prometheus.yml
+                    rm -f prometheus.yml.tmp
+
+                    # Verificar que no queden placeholders
+                    if grep -qi "PUBLIC_IP" prometheus.yml; then
+                        log_warning "Aún quedan placeholders en prometheus.yml"
+                        log_warning "Por favor configúralo manualmente"
+                    else
+                        log_success "prometheus.yml configurado correctamente"
+                    fi
+                else
+                    log_warning "PROMETHEUS_BACKEND_TARGET o PROMETHEUS_WORKER_TARGET no están en .env"
+                    log_warning "Por favor configura prometheus.yml manualmente"
+                fi
+            else
+                log_success "prometheus.yml ya está configurado (no hay placeholders)"
+            fi
+        else
+            log_warning "prometheus.yml no encontrado en esta carpeta"
+        fi
+
+        echo ""
     else
         log_error "El puerto 6379 no está escuchando"
         log_error "El túnel SSH puede no haberse creado correctamente"

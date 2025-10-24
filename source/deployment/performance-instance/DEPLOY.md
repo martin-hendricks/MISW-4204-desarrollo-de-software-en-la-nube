@@ -1,6 +1,111 @@
-# Guía de Deployment: Instancia de Performance Testing
+# Guía de Despliegue - Instancia de Performance Testing
 
-Esta guía te ayudará a configurar una instancia EC2 en AWS dedicada exclusivamente para ejecutar pruebas de rendimiento contra la infraestructura de tu compañero.
+## Resumen
+Esta instancia EC2 contiene:
+- ✅ Producer (Python + Celery Client) - Inyecta tareas en Redis
+- ✅ JMeter - Pruebas de carga HTTP
+- ✅ Prometheus - Recolección de métricas
+- ✅ Grafana - Visualización de métricas (Puerto 3000)
+
+**Conexión:** Esta instancia se conecta vía SSH tunnel a Redis del backend de tu compañero para inyectar tareas y recolectar métricas.
+
+---
+
+## Requisitos Previos
+
+### 1. Instancia EC2 configurada
+- ✅ Ubuntu Server 22.04 LTS
+- ✅ Tipo: t2.medium o superior
+- ✅ Docker y Docker Compose instalados
+- ✅ Security Group configurado (ver abajo)
+
+### 2. Servicios externos funcionando (Backend de tu compañero)
+- ✅ Backend desplegado y funcionando (con Redis en puerto 6379)
+- ✅ Worker desplegado y funcionando
+- ✅ Puertos 8000 (backend) y 8001 (worker) accesibles para métricas
+
+### 3. Información que necesitas de tu compañero
+- IP pública del Backend
+- Clave SSH (`.pem`) para acceder al Backend
+- Usuario SSH del Backend (generalmente `ubuntu`)
+- Confirmación de que Redis está corriendo en el Backend
+
+---
+
+## Security Group - Performance Testing Instance
+
+### Inbound Rules
+
+| Type | Protocol | Port | Source | Description |
+|------|----------|------|--------|-------------|
+| SSH | TCP | 22 | Your IP | Administración SSH |
+| Custom TCP | TCP | 3000 | Your IP | Grafana - Visualización de métricas |
+| Custom TCP | TCP | 9090 | Your IP | Prometheus (opcional, para debug) |
+
+### Outbound Rules
+- All traffic (default)
+
+**IMPORTANTE:** Esta instancia necesita poder conectarse a:
+- Backend de tu compañero (puerto 80 para API, 8000 para métricas, 22 para SSH tunnel)
+- Worker de tu compañero (puerto 8001 para métricas)
+
+---
+
+## ⚠️ IMPORTANTE: Configuración Previa al Despliegue
+
+**Si ya tienes la instancia configurada**, solo necesitas:
+
+```bash
+# 1. Editar .env con las IPs correctas
+cd ~/performance-instance
+nano .env
+
+# 2. Ejecutar script de túnel SSH (configura túnel + prometheus.yml automáticamente)
+chmod +x setup-ssh-tunnel.sh
+./setup-ssh-tunnel.sh
+
+# 3. Levantar servicios
+docker-compose up -d
+
+# 4. Verificar
+docker ps
+curl http://localhost:3000  # Grafana
+```
+
+**Archivos que DEBES editar antes de desplegar:**
+
+| Archivo | Qué configurar | Valor |
+|---------|----------------|-------|
+| **`.env`** | `BACKEND_PUBLIC_IP` | **IP PÚBLICA** del backend de tu compañero |
+| **`.env`** | `BACKEND_SSH_KEY` | Ruta a la clave SSH del backend (ej: `/home/ubuntu/backend-key.pem`) |
+| **`.env`** | `API_BASE_URL` | URL de la API del backend (ej: `http://3.XXX.XXX.XXX`) |
+| **`.env`** | `PROMETHEUS_BACKEND_TARGET` | IP y puerto del backend para métricas (ej: `3.XXX.XXX.XXX:8000`) |
+| **`.env`** | `PROMETHEUS_WORKER_TARGET` | IP y puerto del worker para métricas (ej: `3.YYY.YYY.YYY:8001`) |
+
+**Nota:** El script `setup-ssh-tunnel.sh` configurará automáticamente `prometheus.yml` usando los valores del `.env`.
+
+### 🔄 ¿Necesitas recrear contenedores después de cambiar configuración?
+
+**SÍ, debes recrear** si cambias cualquiera de estos valores después del primer despliegue:
+
+```bash
+# Detener servicios
+docker-compose down
+
+# Editar configuración
+nano .env
+
+# Recrear túnel SSH
+pkill -f 'ssh.*6379'
+./setup-ssh-tunnel.sh
+
+# Reconstruir y levantar con nueva configuración
+docker-compose up -d --build
+```
+
+**NO necesitas recrear** si solo cambias:
+- Credenciales de Grafana (`GF_SECURITY_ADMIN_USER`, `GF_SECURITY_ADMIN_PASSWORD`)
+- Intervalo de renovación JWT (`RENEWAL_INTERVAL`)
 
 ---
 

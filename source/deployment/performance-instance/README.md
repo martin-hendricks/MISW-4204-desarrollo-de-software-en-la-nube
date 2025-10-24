@@ -120,14 +120,10 @@ Completa los valores:
 - `BACKEND_PUBLIC_IP` - IP pública del backend de tu compañero
 - `API_BASE_URL` - URL de la API (http://IP_BACKEND)
 - `BACKEND_SSH_KEY` - Ruta a la clave SSH del backend
+- `PROMETHEUS_BACKEND_TARGET` - IP y puerto del backend para métricas (ej: `3.XXX.XXX.XXX:8000`)
+- `PROMETHEUS_WORKER_TARGET` - IP y puerto del worker para métricas (ej: `3.YYY.YYY.YYY:8001`)
 
-### 3. Configurar Prometheus
-
-```bash
-nano prometheus.yml
-```
-
-Reemplaza `BACKEND_PUBLIC_IP` y `WORKER_PUBLIC_IP` con las IPs reales.
+**Nota:** No necesitas editar `prometheus.yml` manualmente. El script `setup-ssh-tunnel.sh` lo configurará automáticamente usando los valores del `.env`.
 
 ### 4. Copiar clave SSH del backend
 
@@ -142,13 +138,17 @@ ssh -i "your-key.pem" ubuntu@<PERFORMANCE_IP>
 chmod 400 ~/backend-key.pem
 ```
 
-### 5. Crear túnel SSH a Redis
+### 5. Crear túnel SSH a Redis y configurar Prometheus
 
 ```bash
 cd ~/performance-instance
 chmod +x setup-ssh-tunnel.sh
 ./setup-ssh-tunnel.sh
 ```
+
+**Este script hace dos cosas:**
+1. Crea el túnel SSH a Redis del backend
+2. Configura automáticamente `prometheus.yml` con las IPs del `.env`
 
 ### 6. Levantar servicios
 
