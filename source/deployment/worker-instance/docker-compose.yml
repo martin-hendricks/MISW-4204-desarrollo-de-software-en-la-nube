@@ -14,8 +14,8 @@ services:
     volumes:
       # Montaje NFS - se monta desde el host
       - /mnt/nfs_uploads:/app/uploads
-      # Assets locales (logo, intro, outro)
-      - ./assets:/app/assets:ro
+      # Assets locales (logo, intro, outro) - apuntar a la carpeta source
+      - ../../worker/assets:/app/assets:ro
     networks:
       - worker-network
     restart: unless-stopped
