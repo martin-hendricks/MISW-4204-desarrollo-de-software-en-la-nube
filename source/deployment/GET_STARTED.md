@@ -502,7 +502,6 @@ PGPASSWORD='TU_PASSWORD' psql \
 
 Si necesitas más detalles:
 - [README.md](./README.md) - Guía completa paso a paso
-- [NFS_SERVER_SETUP.md](./NFS_SERVER_SETUP.md) - Servidor NFS detallado
 - [SECURITY_GROUPS.md](./SECURITY_GROUPS.md) - Security Groups completos
 - [backend-instance/DEPLOY.md](./backend-instance/DEPLOY.md) - Backend detallado
 - [worker-instance/DEPLOY.md](./worker-instance/DEPLOY.md) - Worker detallado
