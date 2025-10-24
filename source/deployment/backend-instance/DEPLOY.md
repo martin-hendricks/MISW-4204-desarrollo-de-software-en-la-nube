@@ -457,25 +457,31 @@ Una vez que el Backend esté funcionando correctamente:
 ## Comandos Rápidos de Referencia
 
 ```bash
-# Montaje NFS
+# 1. Configurar archivos (ANTES de desplegar)
+nano .env                    # DATABASE_URL, SECRET_KEY, BASE_PATH
+nano setup-nfs-mount.sh      # NFS_SERVER_IP
+
+# 2. Montaje NFS
+chmod +x setup-nfs-mount.sh
 ./setup-nfs-mount.sh
 
-# Levantar servicios
+# 3. Inicializar base de datos (SOLO PRIMERA VEZ)
+chmod +x init-database.sh
+./init-database.sh
+
+# 4. Levantar servicios
 docker-compose up -d
 
-# Ver logs
+# 5. Ver logs
 docker-compose logs -f
 
-# Verificar salud
+# 6. Verificar salud
 docker-compose ps
 curl http://localhost/health
 
-# Migraciones
-docker exec -it anb-backend alembic upgrade head
-
-# Reiniciar
+# Reiniciar servicios
 docker-compose restart
 
-# Detener
+# Detener servicios
 docker-compose down
 ```

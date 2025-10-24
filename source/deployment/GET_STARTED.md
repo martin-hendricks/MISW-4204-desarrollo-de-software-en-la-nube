@@ -424,6 +424,27 @@ chmod +x init-database.sh
 ./init-database.sh
 ```
 
+**📋 Orden completo de comandos en Backend (primera vez):**
+```bash
+# 1. Configurar archivos
+nano .env                    # DATABASE_URL, SECRET_KEY, BASE_PATH
+nano setup-nfs-mount.sh      # NFS_SERVER_IP
+
+# 2. Montar NFS
+chmod +x setup-nfs-mount.sh
+./setup-nfs-mount.sh
+
+# 3. Inicializar base de datos (SOLO PRIMERA VEZ)
+chmod +x init-database.sh
+./init-database.sh
+
+# 4. Levantar servicios
+docker-compose up -d
+
+# 5. Verificar
+curl http://localhost/health
+```
+
 ### **Opción 2: Manual desde Backend**
 
 ```bash
