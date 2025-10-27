@@ -25,7 +25,7 @@ El diagrama de componentes muestra la estructura interna del Backend API, detall
 5. Se retorna un task_id al jugador
 
 ### Etapa de Procesamiento Asincrono
-1. El Worker consume la tarea desde RabbitMQ
+1. El Worker consume la tarea desde redes
 2. Descarga el video original del almacenamiento
 3. Procesa el video con FFmpeg:
    - Recorta a maximo 30 segundos
