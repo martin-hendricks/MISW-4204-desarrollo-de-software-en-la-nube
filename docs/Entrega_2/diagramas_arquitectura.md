@@ -1,12 +1,13 @@
-# Diagramas de Arquitectura - ANB Rising Stars Showcase
+# Diagramas de Arquitectura - ANB Rising Stars Showcase - AWS
 
-Este documento presenta los diagramas de arquitectura del sistema ANB Rising Stars Showcase, que se instalaron en AWS mostrando diferentes niveles de abstraccion y detalle de los componentes y sus interacciones.
+Este documento presenta el diagrama de arquitectura del sistema ANB Rising Stars Showcase, actualizado de acuerdo a las instancias levantasdas en AWS mostrando diferentes niveles de abstraccion y detalle de los componentes y sus interacciones.
 
 ## 1. Diagrama de Componentes
 
 El diagrama de componentes muestra la estructura interna del Backend API, detallando los modulos y capas que lo componen siguiendo los principios de Domain-Driven Design (DDD). Los cuales se instalaron en las 4 instancias de AWS.   
 
-<img width="1721" height="689" alt="C3-componentes" src="" />
+![Deployment Diagram with Components](https://github.com/user-attachments/assets/b20aea3b-7adf-4a5a-a943-5ed76882498f)
+
 
 **Capas principales:**
 - **Routers**: Definicion de endpoints de la API REST
