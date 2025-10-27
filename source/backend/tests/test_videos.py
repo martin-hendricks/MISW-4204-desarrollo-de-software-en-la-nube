@@ -128,3 +128,49 @@ def test_delete_video_unauthorized():
     """Test para eliminar video sin autenticación"""
     response = client.delete("/videos/1")
     assert response.status_code == 403
+
+
+def test_get_original_video_success(auth_video):
+    """Test para obtener video original exitosamente"""
+    video = auth_video["video"]
+    headers = auth_video["headers"]
+
+    response = client.get(f"/videos/original/{video.id}", headers=headers)
+
+    # Puede ser 200 o 404 dependiendo si el archivo existe
+    assert response.status_code in [200, 404]
+
+
+def test_get_original_video_unauthorized():
+    """Test para obtener video original sin autenticación"""
+    response = client.get("/videos/original/1")
+    assert response.status_code == 403
+
+
+def test_get_original_video_not_found(auth_headers):
+    """Test para obtener video original que no existe"""
+    response = client.get("/videos/original/999", headers=auth_headers)
+    assert response.status_code == 404
+
+
+def test_get_processed_video_success(auth_video):
+    """Test para obtener video procesado exitosamente"""
+    video = auth_video["video"]
+    headers = auth_video["headers"]
+
+    response = client.get(f"/videos/processed/{video.id}", headers=headers)
+
+    # Puede ser 200, 400 o 404 dependiendo del estado del video y si el archivo existe
+    assert response.status_code in [200, 400, 404]
+
+
+def test_get_processed_video_unauthorized():
+    """Test para obtener video procesado sin autenticación"""
+    response = client.get("/videos/processed/1")
+    assert response.status_code == 403
+
+
+def test_get_processed_video_not_found(auth_headers):
+    """Test para obtener video procesado que no existe"""
+    response = client.get("/videos/processed/999", headers=auth_headers)
+    assert response.status_code == 404

@@ -97,6 +97,7 @@ services:
       - REDIS_URL=${REDIS_URL}
     volumes:
       - ../../performance-testing/worker-tests/assets:/app/assets
+      - /mnt/nfs_uploads:/app/uploads  # Montaje NFS para acceder a videos
     network_mode: host  # Usar host network para acceder a localhost:6379 (túnel SSH)
     depends_on:
       - prometheus

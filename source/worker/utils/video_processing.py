@@ -50,12 +50,13 @@ class VideoProcessor:
             Diccionario con info del video
 
         Raises:
+            FileNotFoundError: Si el archivo no existe
             VideoProcessingError: Si no se puede leer el video
         """
-        try:
-            if not os.path.exists(video_path):
-                raise FileNotFoundError(f"Video no encontrado: {video_path}")
+        if not os.path.exists(video_path):
+            raise FileNotFoundError(f"Video no encontrado: {video_path}")
 
+        try:
             probe = ffmpeg.probe(video_path)
             video_info = next(
                 (s for s in probe["streams"] if s["codec_type"] == "video"), None
@@ -122,14 +123,15 @@ class VideoProcessor:
             Ruta del video procesado
 
         Raises:
+            FileNotFoundError: Si el archivo de entrada no existe
             VideoProcessingError: Si falla el procesamiento
         """
+        # Validar archivo de entrada antes del try
+        if not os.path.exists(input_path):
+            raise FileNotFoundError(f"Video de entrada no encontrado: {input_path}")
+
         try:
             logger.info(f"🎬 Procesando video: {input_path}")
-
-            # Validar archivo de entrada
-            if not os.path.exists(input_path):
-                raise FileNotFoundError(f"Video de entrada no encontrado: {input_path}")
 
             # Log antes de obtener info del video
             logger.info(f"🔍 Llamando a get_video_info para: {input_path}")
