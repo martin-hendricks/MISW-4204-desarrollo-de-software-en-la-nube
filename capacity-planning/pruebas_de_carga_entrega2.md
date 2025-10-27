@@ -101,7 +101,8 @@
 - **Evidencias**:
   - [Pruebas de saturacion Worker]()
  <img width="2144" height="1106" alt="image (17)" src="https://github.com/user-attachments/assets/e96d591e-13bd-442a-9ecb-9a8edddfaeab" />
-<img width="2144" height="1106" alt="image (18)" src="https://github.com/user-attachments/assets/7aaf9ab2-393a-4bf6-99ee-cfe968c0bdaf" />
+
+<img width="1385" height="1483" alt="screencapture-ec2-50-19-149-165-compute-1-amazonaws-3000-d-worker-perf-worker-performance-video-processing-2025-10-27-00_22_31" src="https://github.com/user-attachments/assets/5e5db233-7499-4a0b-8e04-d2d22530e4c2" />
 
  # Concluciones
 
