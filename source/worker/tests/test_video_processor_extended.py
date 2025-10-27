@@ -33,7 +33,7 @@ class TestGetVideoInfoExtended:
         }
 
         info = processor.get_video_info('/fake/video.mp4')
-        assert info['fps'] == 30.0
+        assert abs(info['fps'] - 30.0) < 0.001
 
     @patch('os.path.exists', return_value=True)
     @patch('ffmpeg.probe')
@@ -75,7 +75,7 @@ class TestGetVideoInfoExtended:
         }
 
         info = processor.get_video_info('/fake/video.mp4')
-        assert info['fps'] == 30
+        assert abs(info['fps'] - 30.0) < 0.001
 
     @patch('os.path.exists', return_value=True)
     @patch('ffmpeg.probe')
@@ -96,7 +96,7 @@ class TestGetVideoInfoExtended:
         }
 
         info = processor.get_video_info('/fake/video.mp4')
-        assert info['fps'] == 25.0
+        assert abs(info['fps'] - 25.0) < 0.001
 
     @patch('os.path.exists', return_value=True)
     @patch('ffmpeg.probe')
@@ -170,16 +170,17 @@ class TestProcessVideoExtended:
         self, mock_run, mock_output, mock_input, mock_get_info, mock_exists, processor
     ):
         """Test procesamiento con logo personalizado"""
-        # Input y logo existen, output se crea después
+        # Contador para controlar las llamadas a os.path.exists
+        call_count = {'output_checks': 0}
+
         def exists_side_effect(path):
             if 'input' in path or 'logo' in path:
                 return True
             if 'output' in path:
-                # Primera llamada False (antes de procesar), segunda True (después)
-                if not hasattr(exists_side_effect, 'output_called'):
-                    exists_side_effect.output_called = True
-                    return False
-                return True
+                # Primera verificación: False (antes de crear)
+                # Segunda verificación: True (después de ffmpeg.run)
+                call_count['output_checks'] += 1
+                return call_count['output_checks'] > 1
             return False
 
         mock_exists.side_effect = exists_side_effect
@@ -632,7 +633,7 @@ class TestEdgeCasesAndIntegration:
         }
 
         info = processor.get_video_info('/fake/short.mp4')
-        assert info['duration'] == 0.5
+        assert abs(info['duration'] - 0.5) < 0.001
         assert info['size_bytes'] == 102400
 
     @patch('os.path.exists', return_value=True)
