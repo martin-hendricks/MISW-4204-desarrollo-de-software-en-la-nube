@@ -15,8 +15,9 @@
 - **Objetivo**: Validar que el sistema responde correctamente y la telemetría está activa
 - **Comando**: en la instancia de AWS `docker exec jmeter /bin/bash -c "jmeter -n -t /scripts/smoke_test.jmx -l /scripts/smoke_results.jtl"`
 - **Evidencias**: 
-  - [Smoke Test](https://uniandes-my.sharepoint.com/:i:/r/personal/am_rodriguezs1_uniandes_edu_co1/Documents/Desarrollo%20de%20Software%20en%20la%20Nube/Semana%201-2/Evidencias%20pruebas%20de%20carga/Captura%20de%20pantalla%202025-10-19%20104146.jpg?csf=1&web=1&e=C57rsM)
+  - [Smoke Test](https://github.com/user-attachments/assets/2c667969-5672-48a4-8c69-2352482e0ce1)
   - [Grafana](https://uniandes-my.sharepoint.com/:i:/r/personal/am_rodriguezs1_uniandes_edu_co1/Documents/Desarrollo%20de%20Software%20en%20la%20Nube/Semana%201-2/Evidencias%20pruebas%20de%20carga/Captura%20de%20pantalla%202025-10-19%20121438.jpg?csf=1&web=1&e=HfT6R2)
+<img width="1385" height="1141" alt="smocke-test-5 usuario-grafa" src="https://github.com/user-attachments/assets/3393adf4-aa48-45fa-af0f-65ac2c9f3bb0" />
 
 **Prueba de Escalamiento (Ramp-up)**
 - **Estrategia**: Iniciar en 0 usuarios y aumentar gradualmente hasta X usuarios en 3 minutos, mantener 5 minutos
