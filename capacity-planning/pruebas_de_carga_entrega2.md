@@ -118,5 +118,9 @@
 
 -En las pruebas de Jmeter se evidencio inastibilidad del sistema en la ejecucion de 300 usuario, esto debido a la cantidad de trafico que estaba recibiendo el backend.
 
--Em la prueba sostenida evidenciamos que llevamos las maquinas al limite pewro sin generar error
-  
+-En la prueba sostenida evidenciamos que llevamos las maquinas al limite pewro sin generar error
+
+-Se evidencia que la instancia del worker, bajo la carga de saturación presento bloqueos consumiendo la totalidad de recuros asigandos al docker, donde evidenciamos un incremento subito en la cpu bloquenado procesos.
+
+<img width="3250" height="2030" alt="image (19)" src="https://github.com/user-attachments/assets/d1e4ec35-ae9b-4f67-ab81-5817e7d82b55" />
+
