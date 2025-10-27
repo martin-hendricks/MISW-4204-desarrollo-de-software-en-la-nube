@@ -75,7 +75,7 @@ Contiene el analisis detallado de capacidad de la aplicacion, realizado sobre AW
 - Analisis de capacidad maxima encontrada
 - Metricas de rendimiento y estabilidad del sistema
 
-**[Ver plan de pruebas de capacidad →](../../capacity-planning/plan_de_pruebas_entrega2.md)**
+**[Ver plan de pruebas de capacidad →](../../capacity-planning/pruebas_de_carga_entrega2.md)**
 
 ### 🎥 Video de Sustentacion
 **Ubicacion:** `sustentacion/Entrega_2/`
