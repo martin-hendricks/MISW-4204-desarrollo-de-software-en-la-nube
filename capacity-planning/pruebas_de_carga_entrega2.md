@@ -87,7 +87,7 @@
 #### 4.2.2 Escenarios de Prueba
 
 **Pruebas de Saturación**
-- **Objetivo**: Encontrar el punto de quiebre del sistema
+- **Objetivo**: Envio de 20 videos
 - **Estrategia**: Aumentar progresivamente la cantidad de tareas en la cola
 - **Comandos**:
   ```bash
@@ -97,10 +97,12 @@
 #### 4.2.3 Configuraciones de Prueba
 - **Tamaños de Video**: 50MB
 - **Concurrencia de Worker**: 1, 2, 4 procesos/hilos por nodo
-- **Tiempo de Espera**: 600 segundos máximo por lote
+- **Tiempo de Espera**: Envio de 20 videos
 - **Evidencias**:
-  - [Pruebas de saturacion Worker](https://uniandes-my.sharepoint.com/:i:/r/personal/am_rodriguezs1_uniandes_edu_co1/Documents/Desarrollo%20de%20Software%20en%20la%20Nube/Semana%201-2/Evidencias%20pruebas%20de%20carga/Captura%20de%20pantalla_19-10-2025_11947_localhost.jpeg?csf=1&web=1&e=xOhcXk)
- 
+  - [Pruebas de saturacion Worker]()
+ <img width="2144" height="1106" alt="image (17)" src="https://github.com/user-attachments/assets/e96d591e-13bd-442a-9ecb-9a8edddfaeab" />
+<img width="2144" height="1106" alt="image (18)" src="https://github.com/user-attachments/assets/7aaf9ab2-393a-4bf6-99ee-cfe968c0bdaf" />
+
  # Concluciones
 
   - Se evidencio que la capacidad de 50 Gigas para la instacia del NFS se vio superada en la prueba de saturacion del worker, esto debido al tamaño de cada video, esto no solo afecto a la instacia del worker si no que afecto la estabilidad de todo el sistema.
