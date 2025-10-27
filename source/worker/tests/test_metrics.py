@@ -33,13 +33,13 @@ class TestCeleryMetrics:
         """Test que existe el contador de tareas totales"""
         from metrics import celery_tasks_total
         assert celery_tasks_total is not None
-        assert celery_tasks_total._name == 'celery_tasks_total'
+        assert celery_tasks_total._name == 'celery_tasks'
 
     def test_celery_tasks_failed_counter_exists(self):
         """Test que existe el contador de tareas fallidas"""
         from metrics import celery_tasks_failed
         assert celery_tasks_failed is not None
-        assert celery_tasks_failed._name == 'celery_tasks_failed_total'
+        assert celery_tasks_failed._name == 'celery_tasks_failed'
 
     def test_celery_task_duration_histogram_exists(self):
         """Test que existe el histograma de duración de tareas"""

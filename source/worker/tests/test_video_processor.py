@@ -246,9 +246,10 @@ class TestProcessVideoErrors:
     @patch('os.path.exists')
     @patch('utils.video_processing.VideoProcessor.get_video_info')
     @patch('ffmpeg.input')
+    @patch('ffmpeg.output')
     @patch('ffmpeg.run')
     def test_process_video_output_not_created(
-        self, mock_run, mock_input, mock_get_info, mock_exists, processor
+        self, mock_run, mock_output, mock_input, mock_get_info, mock_exists, processor
     ):
         """Test cuando el procesamiento no genera el archivo de salida"""
         # Input existe, output no
@@ -262,8 +263,12 @@ class TestProcessVideoErrors:
             'size_bytes': 1024 * 1024
         }
 
+        # Mock the ffmpeg stream pipeline
         mock_stream = MagicMock()
+        mock_stream.filter.return_value = mock_stream
+        mock_stream.overlay.return_value = mock_stream
         mock_input.return_value = mock_stream
+        mock_output.return_value = mock_stream
 
         with patch('os.makedirs'):
             with pytest.raises(VideoProcessingError, match="No se generó el video procesado"):
