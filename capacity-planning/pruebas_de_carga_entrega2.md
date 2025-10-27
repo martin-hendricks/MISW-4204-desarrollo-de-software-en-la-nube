@@ -112,7 +112,7 @@
 
   <img width="1265" height="816" alt="image (13)" src="https://github.com/user-attachments/assets/bad4988a-ef5a-4001-a178-fa5d42014c9c" />
 
-- Se evidencia que no solo se debe levantar la instancia con las configuraciones de memoria si no adicional se debe otorgar memoria al Docker para si ejecucion, debido a que se alcanbaba muy rapido y presentabla problemas.
+- Se evidencia que no solo se debe levantar la instancia con las configuraciones de memoria si no adicional se debe otorgar memoria al Docker para su ejecucion, debido a que se alcanzaba muy rapido y presentabla problemas.
 
 <img width="1421" height="230" alt="image (14)" src="https://github.com/user-attachments/assets/66233f43-500d-4b1a-99a0-355a6dabecb4" />
 
