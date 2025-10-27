@@ -46,16 +46,18 @@
 
    <img width="1385" height="1141" alt="rtamup-200-grafana-2" src="https://github.com/user-attachments/assets/c5acf368-12fe-4b56-be2a-fbc5eea3aa25" />
    
-    - [NFS-](https://github.com/user-attachments/assets/b0136313-1132-450f-9ffd-74d99ac19909)
-<img width="1265" height="816" alt="Captura de pantalla 2025-10-26 205750" src="" />
+    - [NFS](https://github.com/user-attachments/assets/4703dae9-18a8-4a4c-87a1-2fc05fd19291)
+<img width="2996" height="1182" alt="rtamup-200-logs" src="https://github.com/user-attachments/assets/4703dae9-18a8-4a4c-87a1-2fc05fd19291" />
 
+  - [300 Usuarios](https://github.com/user-attachments/assets/aedd275f-76fb-49f9-a1ce-b3a9e412a578)
+    <img width="2992" height="854" alt="image (11)" src="https://github.com/user-attachments/assets/aedd275f-76fb-49f9-a1ce-b3a9e412a578" />
 
-  - [300 Usuarios]()
-    - [Grafana]()
+    - [Grafana](https://github.com/user-attachments/assets/e4dddd04-c77d-4e6e-ab9a-063c27e04e6d)
+<img width="1385" height="1141" alt="rtamup-300-grafana" src="https://github.com/user-attachments/assets/e4dddd04-c77d-4e6e-ab9a-063c27e04e6d" />
 
 **Prueba Sostenida**
 
-- **Usuarios**: 80% de la capacidad máxima encontrada (cap maxima 160 usuarios, se realizo prueba con 200 usuarios)
+- **Usuarios**: 80% de la capacidad máxima encontrada (cap maxima 175 usuarios, se realizo prueba con 219 usuarios)
 - **Duración**: 5 minutos
 - **Objetivo**: Confirmar estabilidad del sistema bajo carga sostenida
 
@@ -92,3 +94,18 @@
 - **Tiempo de Espera**: 600 segundos máximo por lote
 - **Evidencias**:
   - [Pruebas de saturacion Worker](https://uniandes-my.sharepoint.com/:i:/r/personal/am_rodriguezs1_uniandes_edu_co1/Documents/Desarrollo%20de%20Software%20en%20la%20Nube/Semana%201-2/Evidencias%20pruebas%20de%20carga/Captura%20de%20pantalla_19-10-2025_11947_localhost.jpeg?csf=1&web=1&e=xOhcXk)
+ 
+  Concluciones
+
+  - Se evidencio que la capacidad de 50 Gigas para la instacia del NFS se vio superada en la prueba de saturacion del worker, esto debido al tamaño de cada video, esto no solo afecto a la instacia del worker si no que afecto la estabilidad de todo el sistema.
+
+  <img width="650" height="412" alt="image (12)" src="https://github.com/user-attachments/assets/6543a9e9-0f1c-4872-ae44-8b9a6b144889" />
+
+  <img width="1265" height="816" alt="image (13)" src="https://github.com/user-attachments/assets/bad4988a-ef5a-4001-a178-fa5d42014c9c" />
+
+- Se evidencia que no solo se debe levantar la instancia con las configuraciones de memoria si no adicional se debe otorgar memoria al Docker para si ejecucion, debido a que se alcanbaba muy rapido y presentabla problemas.
+
+<img width="1421" height="230" alt="image (14)" src="https://github.com/user-attachments/assets/66233f43-500d-4b1a-99a0-355a6dabecb4" />
+
+-En las pruebas de Jmeter se evidencio inastibilidad del sistema en la ejecucion de 300 usuario, esto debido a la cantidad de trafico que estaba recibiendo el backend.
+  
