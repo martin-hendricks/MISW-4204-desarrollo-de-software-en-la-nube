@@ -95,7 +95,7 @@
 - **Evidencias**:
   - [Pruebas de saturacion Worker](https://uniandes-my.sharepoint.com/:i:/r/personal/am_rodriguezs1_uniandes_edu_co1/Documents/Desarrollo%20de%20Software%20en%20la%20Nube/Semana%201-2/Evidencias%20pruebas%20de%20carga/Captura%20de%20pantalla_19-10-2025_11947_localhost.jpeg?csf=1&web=1&e=xOhcXk)
  
-  Concluciones
+ # Concluciones
 
   - Se evidencio que la capacidad de 50 Gigas para la instacia del NFS se vio superada en la prueba de saturacion del worker, esto debido al tamaño de cada video, esto no solo afecto a la instacia del worker si no que afecto la estabilidad de todo el sistema.
 
