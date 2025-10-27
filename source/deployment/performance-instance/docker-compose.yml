@@ -1,0 +1,112 @@
+version: '3.8'
+
+services:
+  setup-jwt:
+    build:
+      context: ../../performance-testing
+      dockerfile: Dockerfile.setup
+    container_name: setup-jwt
+    env_file:
+      - .env
+    environment:
+      - API_BASE_URL=${API_BASE_URL}
+      - TEST_USER_EMAIL=${TEST_USER_EMAIL}
+      - TEST_USER_PASSWORD=${TEST_USER_PASSWORD}
+    volumes:
+      - ../../performance-testing/web-api-tests/scenarios/scenarios:/scripts
+    networks:
+      - performance-network
+    restart: "no"
+
+  renew-jwt:
+    build:
+      context: ../../performance-testing
+      dockerfile: Dockerfile.setup
+    container_name: renew-jwt
+    command: ["/app/renew_jwt.py"]
+    env_file:
+      - .env
+    environment:
+      - API_BASE_URL=${API_BASE_URL}
+      - TEST_USER_EMAIL=${TEST_USER_EMAIL}
+      - TEST_USER_PASSWORD=${TEST_USER_PASSWORD}
+      - RENEWAL_INTERVAL=1800  # 30 minutos
+    volumes:
+      - ../../performance-testing/web-api-tests/scenarios/scenarios:/scripts
+    networks:
+      - performance-network
+    depends_on:
+      setup-jwt:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    networks:
+      - performance-network
+    restart: unless-stopped
+    depends_on:
+      setup-jwt:
+        condition: service_completed_successfully
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - ../../performance-testing/grafana/provisioning/:/etc/grafana/provisioning/
+      - grafana-storage:/var/lib/grafana
+    env_file:
+      - .env
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD:-admin}
+      - GF_LOG_LEVEL=warn
+    networks:
+      - performance-network
+    restart: unless-stopped
+
+  jmeter:
+    image: justb4/jmeter:latest
+    container_name: jmeter
+    volumes:
+      - ../../performance-testing/web-api-tests/scenarios/scenarios:/scripts
+    networks:
+      - performance-network
+    depends_on:
+      setup-jwt:
+        condition: service_completed_successfully
+    entrypoint: tail -f /dev/null
+
+  producer:
+    build:
+      context: ../../performance-testing/worker-tests
+      dockerfile: Dockerfile
+    container_name: producer
+    env_file:
+      - .env
+    environment:
+      - REDIS_URL=${REDIS_URL}
+    volumes:
+      - ../../performance-testing/worker-tests/assets:/app/assets
+      - /mnt/nfs_uploads:/app/uploads  # Montaje NFS para acceder a videos
+    network_mode: host  # Usar host network para acceder a localhost:6379 (túnel SSH)
+    depends_on:
+      - prometheus
+      - grafana
+    entrypoint: tail -f /dev/null
+
+networks:
+  performance-network:
+    driver: bridge
+
+volumes:
+  grafana-storage:

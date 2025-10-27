@@ -4,7 +4,7 @@ Script de inicialización automática para pruebas de performance.
 Este script:
 1. Crea un usuario de prueba (si no existe)
 2. Obtiene un JWT token válido
-3. Actualiza los archivos JMeter (.jmx) con el token
+3. Actualiza los archivos JMeter (.jmx) con el token y la URL del API
 """
 
 import os
@@ -13,6 +13,7 @@ import time
 import requests
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from urllib.parse import urlparse
 
 # Configuración
 API_BASE_URL = os.getenv("API_BASE_URL", "http://host.docker.internal:80")
@@ -118,8 +119,8 @@ def get_jwt_token():
         return None
 
 
-def update_jmeter_file(file_path, jwt_token):
-    """Actualiza un archivo JMeter con el JWT token"""
+def update_jmeter_file(file_path, jwt_token, api_domain, api_port, api_protocol):
+    """Actualiza un archivo JMeter con el JWT token, dominio, puerto y protocolo"""
     print(f"\nActualizando archivo: {file_path}")
 
     if not os.path.exists(file_path):
@@ -131,26 +132,65 @@ def update_jmeter_file(file_path, jwt_token):
         tree = ET.parse(file_path)
         root = tree.getroot()
 
-        # Buscar y actualizar el header de Authorization
-        updated = False
+        # Contadores de actualizaciones
+        token_updated = False
+        domain_updated = False
+        port_updated = False
+        protocol_updated = False
+
+        # Buscar y actualizar todos los elementos necesarios
         for elem in root.iter('stringProp'):
+            # Actualizar el header de Authorization
             if elem.get('name') == 'Header.value' and elem.text and 'Bearer' in elem.text:
                 old_value = elem.text
                 elem.text = f"Bearer {jwt_token}"
-                print(f"  Token actualizado exitosamente")
-                print(f"  Valor anterior: {old_value[:30]}...")
-                print(f"  Valor nuevo: Bearer {jwt_token[:20]}...")
-                updated = True
-                break
+                print(f"  ✓ Token actualizado")
+                print(f"    Anterior: {old_value[:30]}...")
+                print(f"    Nuevo: Bearer {jwt_token[:20]}...")
+                token_updated = True
 
-        if updated:
+            # Actualizar el dominio
+            elif elem.get('name') == 'HTTPSampler.domain':
+                old_domain = elem.text
+                elem.text = api_domain
+                print(f"  ✓ Dominio actualizado")
+                print(f"    Anterior: {old_domain}")
+                print(f"    Nuevo: {api_domain}")
+                domain_updated = True
+
+            # Actualizar el puerto
+            elif elem.get('name') == 'HTTPSampler.port':
+                old_port = elem.text
+                elem.text = str(api_port)
+                print(f"  ✓ Puerto actualizado")
+                print(f"    Anterior: {old_port}")
+                print(f"    Nuevo: {api_port}")
+                port_updated = True
+
+            # Actualizar el protocolo
+            elif elem.get('name') == 'HTTPSampler.protocol':
+                old_protocol = elem.text
+                elem.text = api_protocol
+                print(f"  ✓ Protocolo actualizado")
+                print(f"    Anterior: {old_protocol}")
+                print(f"    Nuevo: {api_protocol}")
+                protocol_updated = True
+
+        # Verificar que se actualizaron todos los campos necesarios
+        if token_updated and domain_updated and port_updated and protocol_updated:
             # Guardar el archivo actualizado
             tree.write(file_path, encoding='UTF-8', xml_declaration=True)
-            print(f"  Archivo guardado: {file_path}")
+            print(f"  ✓ Archivo guardado: {file_path}")
             return True
         else:
-            print(f"  ADVERTENCIA: No se encontró el header Authorization en el archivo")
-            return False
+            print(f"  ⚠ ADVERTENCIA: No se actualizaron todos los campos")
+            print(f"    Token: {'✓' if token_updated else '✗'}")
+            print(f"    Dominio: {'✓' if domain_updated else '✗'}")
+            print(f"    Puerto: {'✓' if port_updated else '✗'}")
+            print(f"    Protocolo: {'✓' if protocol_updated else '✗'}")
+            # Aún así guardamos el archivo con los cambios parciales
+            tree.write(file_path, encoding='UTF-8', xml_declaration=True)
+            return token_updated  # Consideramos éxito si al menos se actualizó el token
 
     except Exception as e:
         print(f"ERROR al actualizar archivo {file_path}: {e}")
@@ -179,14 +219,29 @@ def main():
         print("\nERROR: No se pudo obtener el JWT token")
         sys.exit(1)
 
-    # Paso 4: Actualizar archivos JMeter
+    # Paso 4: Extraer dominio, puerto y protocolo de API_BASE_URL
+    print("\n" + "=" * 80)
+    print("CONFIGURACIÓN DE LA API")
+    print("=" * 80)
+
+    parsed_url = urlparse(API_BASE_URL)
+    api_protocol = parsed_url.scheme or 'http'
+    api_domain = parsed_url.hostname or parsed_url.netloc.split(':')[0]
+    api_port = parsed_url.port or (443 if api_protocol == 'https' else 80)
+
+    print(f"Protocolo: {api_protocol}")
+    print(f"Dominio: {api_domain}")
+    print(f"Puerto: {api_port}")
+    print(f"URL completa: {API_BASE_URL}")
+
+    # Paso 5: Actualizar archivos JMeter
     print("\n" + "=" * 80)
     print("ACTUALIZANDO ARCHIVOS JMETER")
     print("=" * 80)
 
     success_count = 0
     for jmeter_file in JMETER_FILES:
-        if update_jmeter_file(jmeter_file, jwt_token):
+        if update_jmeter_file(jmeter_file, jwt_token, api_domain, api_port, api_protocol):
             success_count += 1
 
     # Resultado final
