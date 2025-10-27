@@ -45,7 +45,7 @@ El diagrama de componentes muestra la estructura interna del Backend API, detall
 ## Patrones de Diseno Implementados
 
 ### 1. API Gateway Pattern
-- NGINX actua como punto de entrada unico
+- NGNIX actua como punto de entrada unico
 - Centraliza autenticacion, logging y routing
 
 ### 2. Message Queue Pattern
