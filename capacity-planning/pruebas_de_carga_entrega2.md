@@ -62,8 +62,12 @@
 - **Objetivo**: Confirmar estabilidad del sistema bajo carga sostenida
 
 - **Evidencias**:
-  - [Prueba sostenida](https://uniandes-my.sharepoint.com/:i:/r/personal/am_rodriguezs1_uniandes_edu_co1/Documents/Desarrollo%20de%20Software%20en%20la%20Nube/Semana%201-2/Evidencias%20pruebas%20de%20carga/Captura%20de%20pantalla%202025-10-19%20121438.jpg?csf=1&web=1&e=HfT6R2)
-  - [Grafana](https://uniandes-my.sharepoint.com/:i:/r/personal/am_rodriguezs1_uniandes_edu_co1/Documents/Desarrollo%20de%20Software%20en%20la%20Nube/Semana%201-2/Evidencias%20pruebas%20de%20carga/Captura%20de%20pantalla_19-10-2025_11947_localhost.jpeg?csf=1&web=1&e=xOhcXk)
+  - [Prueba sostenida](https://github.com/user-attachments/assets/1aa8e913-d210-40fc-be2f-6a449c48af45)
+  - <img width="3052" height="844" alt="image (15)" src="https://github.com/user-attachments/assets/1aa8e913-d210-40fc-be2f-6a449c48af45" />
+
+  - [Grafana](https://github.com/user-attachments/assets/a6eb91e7-e343-4a72-8bdb-7b6de3755199)
+  - <img width="1385" height="1141" alt="screencapture-ec2-54-147-163-25-compute-1-amazonaws-3000-d-backend-api-perf-backend-api-performance-2025-10-26-23_21_06" src="https://github.com/user-attachments/assets/a6eb91e7-e343-4a72-8bdb-7b6de3755199" />
+
 #### 4.1.3 Endpoints a Probar
 - `POST /auth/login` - Autenticación
 - `POST /videos/upload` - Subida de videos
@@ -108,4 +112,6 @@
 <img width="1421" height="230" alt="image (14)" src="https://github.com/user-attachments/assets/66233f43-500d-4b1a-99a0-355a6dabecb4" />
 
 -En las pruebas de Jmeter se evidencio inastibilidad del sistema en la ejecucion de 300 usuario, esto debido a la cantidad de trafico que estaba recibiendo el backend.
+
+-Em la prueba sostenida evidenciamos que llevamos las maquinas al limite pewro sin generar error
   
