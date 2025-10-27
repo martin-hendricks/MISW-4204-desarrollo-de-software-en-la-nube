@@ -16,6 +16,8 @@ Contiene los archivos necesarios para el despliegue en las instancias de aws,tam
 - `nginx.conf` - Configuracion del servidor Nginx
 - `setup-nfs-mount.sh` - Script de montaje de NFS
 
+**[Ver documentacion tecnica completa →](../../source/deployment/backend-instance/DEPLOY.md)**
+
 ### 📄 Codigo Fuente del Worker para subir en la instancia de AWS
 **Ubicacion:** `source/deployment/worker-instance/`
 
