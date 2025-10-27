@@ -41,6 +41,10 @@ Este repositorio contiene todos los componentes del proyecto ANB Rising Stars Sh
 Contiene todos los archivos entregables de la primera entrega del proyecto, incluyendo diagramas de arquitectura, documentación técnica, y reportes de las pruebas realizadas.
 
 **[Ver documentación de la Entrega 1 →](docs/Entrega_1/)**
+
+### 📁 [docs/Entrega_2/](docs/Entrega_1/)
+Contiene todos los archivos entregables de la segunda entrega del proyecto, incluyendo diagramas de arquitectura, documentación técnica, y reportes de las pruebas realizadas de la segunda entrega.
+
 **[Ver documentación de la Entrega 2 →](docs/Entrega_2/)**
 
 ## Licencia
