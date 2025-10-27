@@ -118,7 +118,7 @@ class TestGetVideoInfoExtended:
 
         info = processor.get_video_info('/fake/video.mp4')
         assert info['codec'] == 'unknown'
-        assert info['fps'] == 30.0
+        assert abs(info['fps'] - 30.0) < 0.001
         assert info['duration'] == 0
         assert info['size_bytes'] == 0
 
@@ -170,29 +170,28 @@ class TestProcessVideoExtended:
         self, mock_run, mock_output, mock_input, mock_get_info, mock_exists, processor
     ):
         """Test procesamiento con logo personalizado"""
-        # Contador para controlar las llamadas a os.path.exists
-        call_count = {'output_checks': 0}
+        # Input y logo existen siempre, output existe después de ffmpeg.run
+        mock_exists.side_effect = lambda path: 'input' in path or 'logo' in path or 'output' in path
 
-        def exists_side_effect(path):
-            if 'input' in path or 'logo' in path:
-                return True
-            if 'output' in path:
-                # Primera verificación: False (antes de crear)
-                # Segunda verificación: True (después de ffmpeg.run)
-                call_count['output_checks'] += 1
-                return call_count['output_checks'] > 1
-            return False
-
-        mock_exists.side_effect = exists_side_effect
-
-        mock_get_info.return_value = {
-            'duration': 25,
-            'width': 1920,
-            'height': 1080,
-            'codec': 'h264',
-            'fps': 30.0,
-            'size_bytes': 5242880
-        }
+        # Mock get_video_info para ser llamado dos veces: antes y después del procesamiento
+        mock_get_info.side_effect = [
+            {
+                'duration': 25,
+                'width': 1920,
+                'height': 1080,
+                'codec': 'h264',
+                'fps': 30.0,
+                'size_bytes': 5242880
+            },
+            {
+                'duration': 25,
+                'width': 1280,
+                'height': 720,
+                'codec': 'h264',
+                'fps': 30.0,
+                'size_bytes': 3145728
+            }
+        ]
 
         # Mock the ffmpeg stream pipeline
         mock_stream = MagicMock()
@@ -210,6 +209,8 @@ class TestProcessVideoExtended:
             )
 
         assert result == '/fake/output.mp4'
+        # Debe llamar a get_video_info dos veces: antes y después del procesamiento
+        assert mock_get_info.call_count == 2
         # Debe llamar a input dos veces: video y logo
         assert mock_input.call_count >= 2
 
