@@ -177,7 +177,7 @@ Este plan de pruebas se enfoca en medir la capacidad de estos componentes bajo d
 - **Sistema Operativo**: Ubuntu Server 24.04.3 LTS (Docker containers)
 - **CPU**: 2 cores
 - **Memoria RAM**: 4 GB
-- **Almacenamiento**: 25 GB
+- **Almacenamiento**: 50 GB
 - **Red**: Conexión estable para evitar interferencias
 
 ### 8.3 Software de Soporte
