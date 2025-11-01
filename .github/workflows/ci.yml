@@ -92,7 +92,7 @@ jobs:
         export DATABASE_URL="sqlite:///./test.db"
         export REDIS_URL="redis://localhost:6379/0"
         export UPLOAD_DIR="/tmp/test_uploads"
-        pytest tests/ -v --cov=tasks --cov=utils --cov-report=xml --cov-report=html
+        pytest tests/ -v --cov=. --cov-report=xml --cov-report=html
 
     - name: Upload coverage reports
       uses: codecov/codecov-action@v3
@@ -203,7 +203,7 @@ jobs:
         export DATABASE_URL="sqlite:///./test.db"
         export REDIS_URL="redis://localhost:6379/0"
         export UPLOAD_DIR="/tmp/test_uploads"
-        pytest tests/ --cov=tasks --cov=utils --cov-report=xml --cov-report=term
+        pytest tests/ --cov=. --cov-report=xml --cov-report=term
 
     - name: Check SonarCloud Token
       id: check_token
