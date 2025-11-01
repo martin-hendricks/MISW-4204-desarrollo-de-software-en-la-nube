@@ -89,9 +89,8 @@ def process_video(self, video_id: int) -> Dict:
     temp_files = []
 
     try:
-        logger.info(f"🎬 Iniciando procesamiento de video ID: {video_id}")
-        logger.info(f"   Task ID: {self.request.id}")
-        logger.info(f"   Intento: {self.request.retries + 1}/{self.max_retries + 1}")
+        logger.info(f"🎬 Video {video_id}: Iniciando procesamiento")
+        logger.debug(f"   Task ID: {self.request.id}, Intento: {self.request.retries + 1}/{self.max_retries + 1}")
 
         # ===== 1. CONSTRUIR RUTAS POR CONVENCIÓN (SIN CONSULTAR BD) =====
         # El worker NO consulta la BD para saber dónde están los archivos
@@ -99,8 +98,7 @@ def process_video(self, video_id: int) -> Dict:
         original_path = os.path.join(config.ORIGINAL_DIR, f"{video_id}.mp4")
         processed_path = os.path.join(config.PROCESSED_DIR, f"{video_id}.mp4")
 
-        logger.info(f"📂 Ruta original:  {original_path}")
-        logger.info(f"📂 Ruta procesada: {processed_path}")
+        logger.debug(f"📂 Rutas - Original: {original_path}, Procesada: {processed_path}")
 
         # ===== 2. VALIDAR QUE EL ARCHIVO ORIGINAL EXISTE =====
         if not os.path.exists(original_path):
@@ -111,7 +109,7 @@ def process_video(self, video_id: int) -> Dict:
         # Obtener tamaño del archivo original para métricas
         file_size_bytes = os.path.getsize(original_path)
         file_size_mb = file_size_bytes / (1024 * 1024)
-        logger.info(f"✅ Archivo original encontrado: {file_size_mb:.2f} MB")
+        logger.debug(f"✅ Archivo original: {file_size_mb:.2f} MB")
 
         # Registrar métrica de tamaño de archivo
         try:
@@ -122,13 +120,20 @@ def process_video(self, video_id: int) -> Dict:
 
         # ===== 3. PROCESAR VIDEO CON FFMPEG =====
 
-        logger.info("⚙️ Procesando con FFmpeg...")
+        logger.debug("⚙️ Procesando con FFmpeg...")
         video_processor.process_video(
             input_path=original_path, output_path=processed_path, add_logo=True
         )
 
-        temp_files.append(processed_path)
-        logger.info(f"✅ Video procesado: {processed_path}")
+        # NO agregar processed_path a temp_files - es el archivo FINAL, no temporal
+
+        # Verificar que el archivo fue creado
+        if os.path.exists(processed_path):
+            file_size = os.path.getsize(processed_path)
+            logger.info(f"✅ Archivo procesado creado: {processed_path} ({file_size} bytes)")
+        else:
+            logger.error(f"❌ Archivo procesado NO existe: {processed_path}")
+            raise VideoProcessingError(f"No se generó el video procesado: {processed_path}")
 
         # Validar video procesado
         if not video_processor.validate_video(processed_path):
@@ -139,7 +144,7 @@ def process_video(self, video_id: int) -> Dict:
         if os.path.exists(config.INTRO_VIDEO_PATH) or os.path.exists(
             config.OUTRO_VIDEO_PATH
         ):
-            logger.info("🎬 Agregando cortinillas...")
+            logger.debug("🎬 Agregando cortinillas...")
             # Crear archivo temporal para video con cortinillas
             temp_with_intros = os.path.join(config.TEMP_DIR, f"{video_id}_with_intros.mp4")
 
@@ -152,11 +157,18 @@ def process_video(self, video_id: int) -> Dict:
                 # Eliminar el archivo sin cortinillas
                 if os.path.exists(processed_path):
                     os.remove(processed_path)
-                    logger.info(f"🗑️  Eliminado archivo sin cortinillas: {processed_path}")
-                
+                    logger.debug(f"🗑️ Eliminado video sin cortinillas: {processed_path}")
+
                 # Mover el archivo con cortinillas al nombre final
                 os.rename(temp_with_intros, processed_path)
-                logger.info(f"✅ Cortinillas agregadas y archivo final: {processed_path}")
+                logger.info(f"✅ Video con cortinillas renombrado a: {processed_path}")
+
+                # Verificar que el archivo final existe
+                if os.path.exists(processed_path):
+                    file_size = os.path.getsize(processed_path)
+                    logger.info(f"✅ Archivo final con cortinillas: {processed_path} ({file_size} bytes)")
+                else:
+                    logger.error(f"❌ ERROR: Archivo final NO existe después de rename: {processed_path}")
             else:
                 logger.warning("⚠️ No se pudo agregar cortinillas, usando video sin cortinillas")
 
@@ -196,15 +208,11 @@ def process_video(self, video_id: int) -> Dict:
 
         db.commit()
 
-        # Obtener info del video para logging
+        # Obtener info del video para logging consolidado
         video_info = video_processor.get_video_info(processed_path)
         duration = int(video_info["duration"])
+        file_size_mb = video_info["size_bytes"] / (1024 * 1024)
 
-        logger.info("=" * 60)
-        logger.info(f"✅ Video {video_id} procesado exitosamente")
-        logger.info(f"   Path procesado: {processed_path}")
-        logger.info(f"   Duración: {duration}s")
-        logger.info(f"   URL pública: {video.processed_url}")
         # Calcular tiempo total de procesamiento (manejar timezone)
         from datetime import timezone
         now_utc = datetime.now(timezone.utc)
@@ -213,11 +221,23 @@ def process_video(self, video_id: int) -> Dict:
             uploaded_utc = video.uploaded_at.replace(tzinfo=timezone.utc)
         else:
             uploaded_utc = video.uploaded_at
-        processing_time = (now_utc - uploaded_utc).total_seconds()
-        logger.info(f"   Tiempo total: ~{int(processing_time)}s")
-        logger.info("=" * 60)
-        
+        processing_time = int((now_utc - uploaded_utc).total_seconds())
+
+        # Log consolidado: 1 línea con toda la info relevante
+        logger.info(
+            f"✅ Video {video_id}: Procesado exitosamente "
+            f"({duration}s, {file_size_mb:.1f}MB, {processing_time}s) - {video.processed_url}"
+        )
+
         db.close()  # Cerrar sesión antes de salir
+
+        # VERIFICACIÓN FINAL: Confirmar que el archivo existe antes de retornar
+        if os.path.exists(processed_path):
+            final_size = os.path.getsize(processed_path)
+            logger.info(f"🔍 VERIFICACIÓN FINAL: Archivo existe en {processed_path} ({final_size} bytes)")
+        else:
+            logger.error(f"❌ VERIFICACIÓN FINAL FALLIDA: Archivo NO existe en {processed_path}")
+            raise VideoProcessingError(f"El archivo procesado desapareció: {processed_path}")
 
         return {
             "status": "success",
@@ -267,12 +287,14 @@ def process_video(self, video_id: int) -> Dict:
         raise
 
     finally:
-        # Limpiar archivos temporales (opcional)
-        # for temp_file in temp_files:
-        #     if os.path.exists(temp_file):
-        #         os.remove(temp_file)
-
-        logger.info(f"🧹 Procesamiento finalizado para video {video_id}")
+        # Limpiar archivos temporales
+        for temp_file in temp_files:
+            try:
+                if os.path.exists(temp_file):
+                    os.remove(temp_file)
+                    logger.debug(f"🗑️ Archivo temporal eliminado: {temp_file}")
+            except Exception as e:
+                logger.warning(f"⚠️ No se pudo eliminar archivo temporal {temp_file}: {e}")
 
 
 @app.task(name="tasks.video_processor.handle_failed_video", queue="dlq")
