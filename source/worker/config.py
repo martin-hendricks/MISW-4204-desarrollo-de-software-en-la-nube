@@ -53,9 +53,10 @@ class Config:
     VIDEO_RESOLUTION_WIDTH: int = 1280  # 720p
     VIDEO_RESOLUTION_HEIGHT: int = 720
     VIDEO_ASPECT_RATIO: str = "16:9"
-    VIDEO_CODEC: str = "libx264"
-    VIDEO_PRESET: str = "fast"  # ultrafast, fast, medium, slow
-    VIDEO_CRF: int = 23  # Constant Rate Factor (18-28 recomendado, menor = mejor calidad)
+    VIDEO_CODEC: str = os.getenv('VIDEO_CODEC', 'libx264')
+    VIDEO_PRESET: str = os.getenv('VIDEO_PRESET', 'veryfast')  # Optimizado para videos largos (2x más rápido que "fast")
+    VIDEO_CRF: int = int(os.getenv('VIDEO_CRF', '25'))  # Optimizado para 720p web (-30% tamaño vs CRF 23)
+    VIDEO_TUNE: str = os.getenv('VIDEO_TUNE', 'film')  # Optimización para contenido de video
     
     # ===== LOGOS Y MARCA DE AGUA =====
     LOGO_PATH: str = os.getenv('LOGO_PATH', '/app/assets/anb_logo.png')
