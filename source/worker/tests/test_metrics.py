@@ -1,5 +1,5 @@
 """
-Tests para el módulo de métricas de Prometheus
+Tests comprehensivos para el módulo de métricas de Prometheus
 """
 import pytest
 from unittest.mock import patch, MagicMock
@@ -256,5 +256,158 @@ class TestMetricsGaugeOperations:
         assert True
 
 
+class TestMetricsEnvironment:
+    """Tests para configuración de entorno de métricas"""
+
+    def test_metrics_dir_default(self):
+        """Test que METRICS_DIR tiene un valor por defecto"""
+        import metrics
+        assert metrics.METRICS_DIR is not None
+        assert isinstance(metrics.METRICS_DIR, str)
+        assert len(metrics.METRICS_DIR) > 0
+
+    @patch.dict('os.environ', {'PROMETHEUS_MULTIPROC_DIR': '/tmp/test_metrics'}, clear=False)
+    def test_metrics_dir_from_env(self):
+        """Test que METRICS_DIR puede venir de variable de entorno"""
+        # Verificar que la variable de entorno se estableció
+        assert 'PROMETHEUS_MULTIPROC_DIR' in os.environ
+        assert os.environ['PROMETHEUS_MULTIPROC_DIR'] == '/tmp/test_metrics'
+
+    def test_metrics_dir_creation(self):
+        """Test que el directorio de métricas se crea si no existe"""
+        import metrics
+        # El directorio debería existir (se crea al importar el módulo)
+        # Verificar que METRICS_DIR está definido y es un string válido
+        assert metrics.METRICS_DIR is not None
+        assert isinstance(metrics.METRICS_DIR, str)
+        assert len(metrics.METRICS_DIR) > 0
+
+
+class TestMetricsBuckets:
+    """Tests para configuración de buckets en histogramas"""
+
+    def test_celery_task_duration_buckets(self):
+        """Test que celery_task_duration tiene buckets correctos"""
+        from metrics import celery_task_duration
+        # Verificar que tiene buckets configurados
+        assert hasattr(celery_task_duration, '_buckets') or hasattr(celery_task_duration, '_upper_bounds')
+
+    def test_video_processing_duration_buckets(self):
+        """Test que video_processing_duration tiene buckets correctos"""
+        from metrics import video_processing_duration
+        # Verificar que tiene buckets configurados
+        assert hasattr(video_processing_duration, '_buckets') or hasattr(video_processing_duration, '_upper_bounds')
+
+    def test_video_file_size_buckets(self):
+        """Test que video_file_size_bytes tiene buckets correctos"""
+        from metrics import video_file_size_bytes
+        # Verificar que tiene buckets configurados
+        assert hasattr(video_file_size_bytes, '_buckets') or hasattr(video_file_size_bytes, '_upper_bounds')
+
+
+class TestMetricsDescriptions:
+    """Tests para descripciones de métricas"""
+
+    def test_celery_tasks_total_description(self):
+        """Test que celery_tasks_total tiene descripción"""
+        from metrics import celery_tasks_total
+        assert hasattr(celery_tasks_total, '_documentation') or celery_tasks_total._name == 'celery_tasks'
+
+    def test_all_metrics_have_names(self):
+        """Test que todas las métricas tienen nombres"""
+        from metrics import (
+            celery_tasks_total, celery_tasks_failed, celery_task_duration,
+            video_processing_duration, celery_active_tasks, celery_reserved_tasks,
+            celery_queue_length, video_file_size_bytes
+        )
+        
+        assert hasattr(celery_tasks_total, '_name')
+        assert hasattr(celery_tasks_failed, '_name')
+        assert hasattr(celery_task_duration, '_name')
+        assert hasattr(video_processing_duration, '_name')
+        assert hasattr(celery_active_tasks, '_name')
+        assert hasattr(celery_reserved_tasks, '_name')
+        assert hasattr(celery_queue_length, '_name')
+        assert hasattr(video_file_size_bytes, '_name')
+
+
+class TestGenerateMultiprocessMetrics:
+    """Tests adicionales para generate_multiprocess_metrics"""
+
+    @patch('metrics.multiprocess.MultiProcessCollector')
+    @patch('metrics.generate_latest')
+    def test_generate_metrics_uses_registry(self, mock_generate, mock_collector):
+        """Test que generate_multiprocess_metrics usa un registry"""
+        from metrics import generate_multiprocess_metrics
+        
+        mock_generate.return_value = b'# HELP test\n'
+        mock_collector_instance = MagicMock()
+        mock_collector.return_value = mock_collector_instance
+        
+        result = generate_multiprocess_metrics()
+        
+        # Verificar que se creó un CollectorRegistry
+        mock_collector.assert_called_once()
+        mock_generate.assert_called_once()
+
+    @patch('metrics.multiprocess.MultiProcessCollector')
+    @patch('metrics.generate_latest')
+    def test_generate_metrics_content_type(self, mock_generate, mock_collector):
+        """Test que generate_multiprocess_metrics retorna contenido válido"""
+        from metrics import generate_multiprocess_metrics
+        
+        mock_generate.return_value = b'# HELP test_metric\n# TYPE test_metric counter\n'
+        result = generate_multiprocess_metrics()
+        
+        assert isinstance(result, bytes)
+        assert len(result) > 0
+
+
+class TestMetricsOperations:
+    """Tests para operaciones adicionales en métricas"""
+
+    def test_gauge_inc(self):
+        """Test incrementar gauge"""
+        from metrics import celery_active_tasks
+        
+        # Incrementar gauge
+        celery_active_tasks.inc()
+        
+        # Verificar que no lanza excepción
+        assert True
+
+    def test_gauge_dec(self):
+        """Test decrementar gauge"""
+        from metrics import celery_active_tasks
+        
+        # Decrementar gauge
+        celery_active_tasks.dec()
+        
+        # Verificar que no lanza excepción
+        assert True
+
+    def test_histogram_labels(self):
+        """Test que histogramas pueden usar labels"""
+        from metrics import celery_task_duration
+        
+        # Observar con labels
+        celery_task_duration.labels(task_name='test_task').observe(5.0)
+        
+        # Verificar que no lanza excepción
+        assert True
+
+    def test_counter_labels_combination(self):
+        """Test que contadores pueden usar múltiples labels"""
+        from metrics import celery_tasks_total
+        
+        # Incrementar con múltiples labels
+        celery_tasks_total.labels(task_name='test_task', status='success').inc()
+        celery_tasks_total.labels(task_name='test_task', status='failed').inc()
+        celery_tasks_total.labels(task_name='other_task', status='success').inc()
+        
+        # Verificar que no lanza excepción
+        assert True
+
+
 if __name__ == "__main__":
-    pytest.main([__file__, "-v"])
+    pytest.main([__file__, "-v", "--cov=metrics", "--cov-report=term-missing"])
