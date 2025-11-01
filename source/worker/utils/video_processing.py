@@ -179,12 +179,18 @@ class VideoProcessor:
                 pix_fmt="yuv420p",  # Máxima compatibilidad
             )
 
-            # Ejecutar FFmpeg
-            ffmpeg.run(
-                stream,
-                overwrite_output=True,
-                quiet=False  # Permite ver errores sin capturar en memoria
-            )
+            # Ejecutar FFmpeg (silencioso, solo muestra errores)
+            try:
+                ffmpeg.run(
+                    stream,
+                    overwrite_output=True,
+                    quiet=True  # Silenciar output normal de FFmpeg
+                )
+            except ffmpeg.Error as e:
+                # Solo mostrar error si falla, limitado a primeros 500 caracteres
+                error_output = e.stderr.decode()[:500] if hasattr(e, 'stderr') and e.stderr else str(e)
+                logger.error(f"❌ FFmpeg falló: {error_output}")
+                raise VideoProcessingError(f"Error en FFmpeg: {error_output}")
 
             # Verificar que se creó el archivo
             if not os.path.exists(output_path):
@@ -202,12 +208,9 @@ class VideoProcessor:
 
             return output_path
 
-        except ffmpeg.Error as e:
-            error_msg = e.stderr.decode() if e.stderr else str(e)
-            logger.error(f"❌ Error de FFmpeg: {error_msg}")
-            raise VideoProcessingError(
-                f"Error procesando video con FFmpeg: {error_msg}"
-            )
+        except VideoProcessingError:
+            # Re-lanzar errores de FFmpeg ya manejados
+            raise
 
         except Exception as e:
             logger.error(f"❌ Error procesando video: {e}")
@@ -293,11 +296,17 @@ class VideoProcessor:
                     movflags="+faststart",
                     pix_fmt="yuv420p",
                 )
-                ffmpeg.run(
-                    output,
-                    overwrite_output=True,
-                    quiet=False  # Permite ver errores sin capturar en memoria
-                )
+                # Ejecutar FFmpeg para concatenación (silencioso)
+                try:
+                    ffmpeg.run(
+                        output,
+                        overwrite_output=True,
+                        quiet=True  # Silenciar output de FFmpeg
+                    )
+                except ffmpeg.Error as e:
+                    error_output = e.stderr.decode()[:500] if hasattr(e, 'stderr') and e.stderr else str(e)
+                    logger.error(f"❌ FFmpeg falló en cortinillas: {error_output}")
+                    raise VideoProcessingError(f"Error concatenando cortinillas: {error_output}")
 
                 logger.debug("✅ Cortinillas agregadas exitosamente")
                 return output_path

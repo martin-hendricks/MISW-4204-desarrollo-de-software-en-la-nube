@@ -125,7 +125,15 @@ def process_video(self, video_id: int) -> Dict:
             input_path=original_path, output_path=processed_path, add_logo=True
         )
 
-        temp_files.append(processed_path)
+        # NO agregar processed_path a temp_files - es el archivo FINAL, no temporal
+
+        # Verificar que el archivo fue creado
+        if os.path.exists(processed_path):
+            file_size = os.path.getsize(processed_path)
+            logger.info(f"✅ Archivo procesado creado: {processed_path} ({file_size} bytes)")
+        else:
+            logger.error(f"❌ Archivo procesado NO existe: {processed_path}")
+            raise VideoProcessingError(f"No se generó el video procesado: {processed_path}")
 
         # Validar video procesado
         if not video_processor.validate_video(processed_path):
@@ -149,9 +157,18 @@ def process_video(self, video_id: int) -> Dict:
                 # Eliminar el archivo sin cortinillas
                 if os.path.exists(processed_path):
                     os.remove(processed_path)
+                    logger.debug(f"🗑️ Eliminado video sin cortinillas: {processed_path}")
 
                 # Mover el archivo con cortinillas al nombre final
                 os.rename(temp_with_intros, processed_path)
+                logger.info(f"✅ Video con cortinillas renombrado a: {processed_path}")
+
+                # Verificar que el archivo final existe
+                if os.path.exists(processed_path):
+                    file_size = os.path.getsize(processed_path)
+                    logger.info(f"✅ Archivo final con cortinillas: {processed_path} ({file_size} bytes)")
+                else:
+                    logger.error(f"❌ ERROR: Archivo final NO existe después de rename: {processed_path}")
             else:
                 logger.warning("⚠️ No se pudo agregar cortinillas, usando video sin cortinillas")
 
@@ -213,6 +230,14 @@ def process_video(self, video_id: int) -> Dict:
         )
 
         db.close()  # Cerrar sesión antes de salir
+
+        # VERIFICACIÓN FINAL: Confirmar que el archivo existe antes de retornar
+        if os.path.exists(processed_path):
+            final_size = os.path.getsize(processed_path)
+            logger.info(f"🔍 VERIFICACIÓN FINAL: Archivo existe en {processed_path} ({final_size} bytes)")
+        else:
+            logger.error(f"❌ VERIFICACIÓN FINAL FALLIDA: Archivo NO existe en {processed_path}")
+            raise VideoProcessingError(f"El archivo procesado desapareció: {processed_path}")
 
         return {
             "status": "success",
