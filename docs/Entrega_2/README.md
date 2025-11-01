@@ -16,6 +16,8 @@ Contiene los archivos necesarios para el despliegue en las instancias de aws,tam
 - `nginx.conf` - Configuracion del servidor Nginx
 - `setup-nfs-mount.sh` - Script de montaje de NFS
 
+**[Ver documentacion tecnica completa →](../../source/deployment/backend-instance/DEPLOY.md)**
+
 ### 📄 Codigo Fuente del Worker para subir en la instancia de AWS
 **Ubicacion:** `source/deployment/worker-instance/`
 
@@ -73,7 +75,7 @@ Contiene el analisis detallado de capacidad de la aplicacion, realizado sobre AW
 - Analisis de capacidad maxima encontrada
 - Metricas de rendimiento y estabilidad del sistema
 
-**[Ver plan de pruebas de capacidad →](../../capacity-planning/plan_de_pruebas_entrega2.md)**
+**[Ver plan de pruebas de capacidad →](../../capacity-planning/pruebas_de_carga_entrega2.md)**
 
 ### 🎥 Video de Sustentacion
 **Ubicacion:** `sustentacion/Entrega_2/`

@@ -28,32 +28,34 @@
 - **Evidencias**: 
   - [100 Usuarios](https://github.com/user-attachments/assets/6c476e20-c3cf-4389-978b-fbe553440bb1)
   - <img width="3110" height="1132" alt="rtamup-100-log" src="https://github.com/user-attachments/assets/6c476e20-c3cf-4389-978b-fbe553440bb1" />
-    - [Grafana-1](https://github.com/user-attachments/assets/20ffcc92-7fc4-4726-b8c5-63acb9167efd)
+
+  - [Grafana](https://github.com/user-attachments/assets/20ffcc92-7fc4-4726-b8c5-63acb9167efd)
     - <img width="1385" height="1141" alt="rtamup-100-grafana" src="https://github.com/user-attachments/assets/20ffcc92-7fc4-4726-b8c5-63acb9167efd" />
-    - [Grafana-2](https://github.com/user-attachments/assets/20ffcc92-7fc4-4726-b8c5-63acb9167efd](https://github.com/user-attachments/assets/0b53584c-f7c9-4d2c-be28-bff19e6fdf7c))
+
+  - [Grafana-2](https://github.com/user-attachments/assets/20ffcc92-7fc4-4726-b8c5-63acb9167efd](https://github.com/user-attachments/assets/0b53584c-f7c9-4d2c-be28-bff19e6fdf7c))
 <img width="1385" height="1141" alt="rtamup-100-grafana-2" src="https://github.com/user-attachments/assets/0b53584c-f7c9-4d2c-be28-bff19e6fdf7c" />
   - [NFS](https://github.com/user-attachments/assets/8e8578f4-bb43-4f4c-b41d-6ecae8652c2e)
     <img width="599" height="214" alt="rtamup-100-nfs" src="https://github.com/user-attachments/assets/8e8578f4-bb43-4f4c-b41d-6ecae8652c2e" />
 
   - [200 Usuarios](https://github.com/user-attachments/assets/fc025045-8940-4984-ab8f-77cc94acd700)
-  - 
-<img width="2996" height="1182" alt="rtamup-200-logs" src="https://github.com/user-attachments/assets/fc025045-8940-4984-ab8f-77cc94acd700" />
+    
+    <img width="2996" height="1182" alt="rtamup-200-logs" src="https://github.com/user-attachments/assets/fc025045-8940-4984-ab8f-77cc94acd700" />
 
-    - [Grafana](https://github.com/user-attachments/assets/8b9b63db-dfba-4381-b1e5-240b760895c3)
+  - [Grafana](https://github.com/user-attachments/assets/8b9b63db-dfba-4381-b1e5-240b760895c3)
    <img width="1385" height="1141" alt="rtamup-200-grafana" src="https://github.com/user-attachments/assets/8b9b63db-dfba-4381-b1e5-240b760895c3" />
 
   - [Grafana-2](https://github.com/user-attachments/assets/c5acf368-12fe-4b56-be2a-fbc5eea3aa25)
 
    <img width="1385" height="1141" alt="rtamup-200-grafana-2" src="https://github.com/user-attachments/assets/c5acf368-12fe-4b56-be2a-fbc5eea3aa25" />
    
-    - [NFS](https://github.com/user-attachments/assets/4703dae9-18a8-4a4c-87a1-2fc05fd19291)
-<img width="2996" height="1182" alt="rtamup-200-logs" src="https://github.com/user-attachments/assets/4703dae9-18a8-4a4c-87a1-2fc05fd19291" />
+  - [NFS](https://github.com/user-attachments/assets/4703dae9-18a8-4a4c-87a1-2fc05fd19291)
+    <img width="2996" height="1182" alt="rtamup-200-logs" src="https://github.com/user-attachments/assets/4703dae9-18a8-4a4c-87a1-2fc05fd19291" />
 
   - [300 Usuarios](https://github.com/user-attachments/assets/aedd275f-76fb-49f9-a1ce-b3a9e412a578)
     <img width="2992" height="854" alt="image (11)" src="https://github.com/user-attachments/assets/aedd275f-76fb-49f9-a1ce-b3a9e412a578" />
 
-    - [Grafana](https://github.com/user-attachments/assets/e4dddd04-c77d-4e6e-ab9a-063c27e04e6d)
-<img width="1385" height="1141" alt="rtamup-300-grafana" src="https://github.com/user-attachments/assets/e4dddd04-c77d-4e6e-ab9a-063c27e04e6d" />
+  - [Grafana](https://github.com/user-attachments/assets/e4dddd04-c77d-4e6e-ab9a-063c27e04e6d)
+    <img width="1385" height="1141" alt="rtamup-300-grafana" src="https://github.com/user-attachments/assets/e4dddd04-c77d-4e6e-ab9a-063c27e04e6d" />
 
 **Prueba Sostenida**
 
@@ -62,8 +64,12 @@
 - **Objetivo**: Confirmar estabilidad del sistema bajo carga sostenida
 
 - **Evidencias**:
-  - [Prueba sostenida](https://uniandes-my.sharepoint.com/:i:/r/personal/am_rodriguezs1_uniandes_edu_co1/Documents/Desarrollo%20de%20Software%20en%20la%20Nube/Semana%201-2/Evidencias%20pruebas%20de%20carga/Captura%20de%20pantalla%202025-10-19%20121438.jpg?csf=1&web=1&e=HfT6R2)
-  - [Grafana](https://uniandes-my.sharepoint.com/:i:/r/personal/am_rodriguezs1_uniandes_edu_co1/Documents/Desarrollo%20de%20Software%20en%20la%20Nube/Semana%201-2/Evidencias%20pruebas%20de%20carga/Captura%20de%20pantalla_19-10-2025_11947_localhost.jpeg?csf=1&web=1&e=xOhcXk)
+  - [Prueba sostenida](https://github.com/user-attachments/assets/1aa8e913-d210-40fc-be2f-6a449c48af45)
+  - <img width="3052" height="844" alt="image (15)" src="https://github.com/user-attachments/assets/1aa8e913-d210-40fc-be2f-6a449c48af45" />
+
+  - [Grafana](https://github.com/user-attachments/assets/a6eb91e7-e343-4a72-8bdb-7b6de3755199)
+  - <img width="1385" height="1141" alt="screencapture-ec2-54-147-163-25-compute-1-amazonaws-3000-d-backend-api-perf-backend-api-performance-2025-10-26-23_21_06" src="https://github.com/user-attachments/assets/a6eb91e7-e343-4a72-8bdb-7b6de3755199" />
+
 #### 4.1.3 Endpoints a Probar
 - `POST /auth/login` - Autenticación
 - `POST /videos/upload` - Subida de videos
@@ -81,7 +87,7 @@
 #### 4.2.2 Escenarios de Prueba
 
 **Pruebas de Saturación**
-- **Objetivo**: Encontrar el punto de quiebre del sistema
+- **Objetivo**: Envio de 20 videos
 - **Estrategia**: Aumentar progresivamente la cantidad de tareas en la cola
 - **Comandos**:
   ```bash
@@ -91,10 +97,13 @@
 #### 4.2.3 Configuraciones de Prueba
 - **Tamaños de Video**: 50MB
 - **Concurrencia de Worker**: 1, 2, 4 procesos/hilos por nodo
-- **Tiempo de Espera**: 600 segundos máximo por lote
+- **Tiempo de Espera**: Envio de 20 videos
 - **Evidencias**:
-  - [Pruebas de saturacion Worker](https://uniandes-my.sharepoint.com/:i:/r/personal/am_rodriguezs1_uniandes_edu_co1/Documents/Desarrollo%20de%20Software%20en%20la%20Nube/Semana%201-2/Evidencias%20pruebas%20de%20carga/Captura%20de%20pantalla_19-10-2025_11947_localhost.jpeg?csf=1&web=1&e=xOhcXk)
- 
+  - [Pruebas de saturacion Worker]()
+ <img width="2144" height="1106" alt="image (17)" src="https://github.com/user-attachments/assets/e96d591e-13bd-442a-9ecb-9a8edddfaeab" />
+
+<img width="1385" height="1483" alt="screencapture-ec2-50-19-149-165-compute-1-amazonaws-3000-d-worker-perf-worker-performance-video-processing-2025-10-27-00_22_31" src="https://github.com/user-attachments/assets/5e5db233-7499-4a0b-8e04-d2d22530e4c2" />
+
  # Concluciones
 
   - Se evidencio que la capacidad de 50 Gigas para la instacia del NFS se vio superada en la prueba de saturacion del worker, esto debido al tamaño de cada video, esto no solo afecto a la instacia del worker si no que afecto la estabilidad de todo el sistema.
@@ -103,9 +112,15 @@
 
   <img width="1265" height="816" alt="image (13)" src="https://github.com/user-attachments/assets/bad4988a-ef5a-4001-a178-fa5d42014c9c" />
 
-- Se evidencia que no solo se debe levantar la instancia con las configuraciones de memoria si no adicional se debe otorgar memoria al Docker para si ejecucion, debido a que se alcanbaba muy rapido y presentabla problemas.
+- Se evidencia que no solo se debe levantar la instancia con las configuraciones de memoria si no adicional se debe otorgar memoria al Docker para su ejecucion, debido a que se alcanzaba muy rapido y presentabla problemas.
 
 <img width="1421" height="230" alt="image (14)" src="https://github.com/user-attachments/assets/66233f43-500d-4b1a-99a0-355a6dabecb4" />
 
 -En las pruebas de Jmeter se evidencio inastibilidad del sistema en la ejecucion de 300 usuario, esto debido a la cantidad de trafico que estaba recibiendo el backend.
-  
+
+-En la prueba sostenida evidenciamos que llevamos las maquinas al limite pewro sin generar error
+
+-Se evidencia que la instancia del worker, bajo la carga de saturación presento bloqueos consumiendo la totalidad de recuros asigandos al docker, donde evidenciamos un incremento subito en la cpu bloquenado procesos.
+
+<img width="3250" height="2030" alt="image (19)" src="https://github.com/user-attachments/assets/d1e4ec35-ae9b-4f67-ab81-5817e7d82b55" />
+
