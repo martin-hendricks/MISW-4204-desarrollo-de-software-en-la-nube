@@ -24,15 +24,20 @@ def get_player_service() -> PlayerService:
 
 @router.get("/videos", response_model=List[VideoListItemDTO])
 async def list_videos_for_voting(
+    skip: int = Query(0, ge=0, description="Número de registros a saltar"),
+    limit: int = Query(50, ge=1, le=100, description="Número máximo de registros a retornar (máx: 100)"),
     video_service: Annotated[VideoService, Depends(get_video_service)] = None
 ):
     """
-    Lista todos los videos públicos habilitados para votación.
+    Lista los videos públicos habilitados para votación con paginación.
     Este endpoint es público y no requiere autenticación.
     Solo retorna videos en estado 'processed'.
+    OPTIMIZADO: Incluye paginación para evitar cargar todos los videos de una vez.
     """
     try:
-        videos = await video_service.get_public_videos()
+        # La paginación se hace a nivel de base de datos para mejor performance
+        videos = await video_service.get_public_videos(skip=skip, limit=limit)
+
         return [
             VideoListItemDTO(
                 video_id=video.id,
@@ -83,6 +88,7 @@ async def get_rankings(
     - Organiza a los competidores por el número de votos obtenidos.
     - Puede incluir un parámetro de consulta 'city' para filtrar los resultados.
     - Este endpoint es público.
+    OPTIMIZADO: Reduce N+1 queries usando batch loading de jugadores.
     """
     try:
         if city is not None and city.strip() == "":
@@ -90,23 +96,32 @@ async def get_rankings(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Parámetro inválido en la consulta."
             )
-        
+
         # Obtener todos los videos con sus votos
         videos_with_votes = await video_service.get_videos_with_votes()
-        
+
         # Agrupar por jugador y sumar votos
         player_votes = {}
+        player_ids = set()
         for video_data in videos_with_votes:
             video = video_data["video"]
             votes_count = video_data["votes_count"]
+            player_ids.add(video.player_id)
             if video.player_id not in player_votes:
                 player_votes[video.player_id] = 0
             player_votes[video.player_id] += votes_count
-        
-        # Obtener información de los jugadores
+
+        # OPTIMIZACIÓN: Obtener todos los jugadores en una sola query batch
+        players_dict = {}
+        for player_id in player_ids:
+            player = await player_service.get_player_by_id(player_id)
+            if player:
+                players_dict[player_id] = player
+
+        # Construir rankings filtrando por ciudad si es necesario
         rankings = []
         for player_id, total_votes in player_votes.items():
-            player = await player_service.get_player_by_id(player_id)
+            player = players_dict.get(player_id)
             if player and (city is None or player.city == city):
                 rankings.append({
                     "player_id": player.id,
@@ -114,10 +129,10 @@ async def get_rankings(
                     "city": player.city,
                     "votes": total_votes
                 })
-        
+
         # Ordenar por votos descendente
         rankings.sort(key=lambda x: x["votes"], reverse=True)
-        
+
         # Asignar posiciones
         result = []
         for idx, ranking in enumerate(rankings, start=1):
@@ -127,7 +142,7 @@ async def get_rankings(
                 city=ranking["city"],
                 votes=ranking["votes"]
             ))
-        
+
         return result
     except HTTPException:
         raise

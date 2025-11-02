@@ -102,9 +102,9 @@ class VideoService:
         # Eliminar de la base de datos
         return await self._video_repository.delete(video_id)
     
-    async def get_public_videos(self) -> List[Video]:
-        """Obtiene todos los videos públicos para votación"""
-        return await self._video_repository.get_public_videos()
+    async def get_public_videos(self, skip: int = 0, limit: int = 100) -> List[Video]:
+        """Obtiene videos públicos para votación con paginación"""
+        return await self._video_repository.get_public_videos(skip=skip, limit=limit)
     
     async def vote_for_video(self, video_id: int, player_id: int) -> bool:
         """Vota por un video"""
