@@ -6,6 +6,7 @@ import time
 import os
 import asyncio
 import logging
+import psutil
 
 # Configurar logger
 logger = logging.getLogger(__name__)
@@ -33,6 +34,35 @@ http_requests_in_progress = Gauge(
     'http_requests_in_progress',
     'HTTP requests currently in progress'
 )
+
+# Métricas de sistema
+process_cpu_usage = Gauge(
+    'process_cpu_usage_percent',
+    'CPU usage percentage of the backend process'
+)
+
+process_memory_usage = Gauge(
+    'process_memory_usage_bytes',
+    'Memory usage in bytes of the backend process'
+)
+
+process_memory_percent = Gauge(
+    'process_memory_usage_percent',
+    'Memory usage percentage of the backend process'
+)
+
+system_cpu_usage = Gauge(
+    'system_cpu_usage_percent',
+    'System-wide CPU usage percentage'
+)
+
+system_memory_usage = Gauge(
+    'system_memory_usage_percent',
+    'System-wide memory usage percentage'
+)
+
+# Obtener el proceso actual para métricas
+current_process = psutil.Process(os.getpid())
 
 # Crear la aplicación FastAPI
 app = FastAPI(
@@ -108,6 +138,21 @@ app.include_router(public.router)
 @app.get("/metrics")
 async def metrics():
     """Endpoint para exponer métricas de Prometheus"""
+    try:
+        # Actualizar métricas del proceso actual
+        process_cpu_usage.set(current_process.cpu_percent(interval=0.1))
+
+        mem_info = current_process.memory_info()
+        process_memory_usage.set(mem_info.rss)  # RSS = Resident Set Size (memoria física)
+        process_memory_percent.set(current_process.memory_percent())
+
+        # Actualizar métricas del sistema completo
+        system_cpu_usage.set(psutil.cpu_percent(interval=0.1))
+        system_memory_usage.set(psutil.virtual_memory().percent)
+
+    except Exception as e:
+        logger.warning(f"Error actualizando métricas de sistema: {e}")
+
     return Response(
         content=generate_latest(),
         media_type=CONTENT_TYPE_LATEST
