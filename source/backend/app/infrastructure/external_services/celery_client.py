@@ -13,30 +13,66 @@ logger = logging.getLogger(__name__)
 # Crear aplicación Celery (solo cliente)
 celery_app = Celery('anb_backend_client')
 
-# Configuración mínima para cliente
-celery_app.conf.update(
-    broker_url=settings.REDIS_URL,
-    task_serializer='json',
-    accept_content=['json'],
-    result_serializer='json',
-    timezone='America/Bogota',
-    enable_utc=True,
-    # No necesitamos result_backend para el cliente
-    task_ignore_result=True,
-    # Configuración de envío
-    task_default_retry_delay=60,
-    task_max_retries=3,
-    task_acks_late=True,
-    task_reject_on_worker_lost=True,
-)
+# Configuración según broker (Redis o SQS)
+if settings.USE_SQS:
+    # ===== CONFIGURACIÓN AWS SQS =====
+    logger.info("🚀 Configurando Celery con AWS SQS como broker")
+    celery_app.conf.update(
+        broker_url='sqs://',
+        broker_transport_options={
+            'region': settings.AWS_REGION,
+            'predefined_queues': {
+                'video_processing': {
+                    'url': settings.SQS_QUEUE_URL,
+                },
+                'dlq': {
+                    'url': settings.SQS_DLQ_URL,
+                }
+            },
+            'polling_interval': 20,  # Long polling (reduce costos)
+            'visibility_timeout': 3600,  # 1 hora (tiempo de procesamiento)
+        },
+        task_serializer='json',
+        accept_content=['json'],
+        result_serializer='json',
+        timezone='America/Bogota',
+        enable_utc=True,
+        task_ignore_result=True,
+        task_acks_late=True,
+        task_reject_on_worker_lost=True,
+    )
 
-# Configurar rutas de tareas (debe coincidir con el worker)
-celery_app.conf.task_routes = {
-    'tasks.video_processor.process_video': {
-        'queue': 'video_processing',
-        'routing_key': 'video.process',
-    },
-}
+    # Configurar rutas de tareas para SQS
+    celery_app.conf.task_routes = {
+        'tasks.video_processor.process_video': {
+            'queue': 'video_processing',
+        },
+    }
+
+else:
+    # ===== CONFIGURACIÓN REDIS =====
+    logger.info("🚀 Configurando Celery con Redis como broker")
+    celery_app.conf.update(
+        broker_url=settings.REDIS_URL,
+        task_serializer='json',
+        accept_content=['json'],
+        result_serializer='json',
+        timezone='America/Bogota',
+        enable_utc=True,
+        task_ignore_result=True,
+        task_default_retry_delay=60,
+        task_max_retries=3,
+        task_acks_late=True,
+        task_reject_on_worker_lost=True,
+    )
+
+    # Configurar rutas de tareas para Redis
+    celery_app.conf.task_routes = {
+        'tasks.video_processor.process_video': {
+            'queue': 'video_processing',
+            'routing_key': 'video.process',
+        },
+    }
 
 class CeleryTaskQueue(TaskQueueInterface):
     """Implementación de TaskQueueInterface usando Celery"""

@@ -8,8 +8,17 @@ from pathlib import Path
 class Config:
     """Configuración del worker de procesamiento de videos"""
     
-    # ===== REDIS BROKER =====
+    # ===== MESSAGE BROKER (Redis o SQS) =====
+    USE_SQS: bool = os.getenv('USE_SQS', 'false').lower() == 'true'
+
+    # Redis (broker actual)
     REDIS_URL: str = os.getenv('REDIS_URL', 'redis://redis:6379/0')
+
+    # AWS SQS (broker alternativo para autoscaling)
+    AWS_REGION: str = os.getenv('AWS_REGION', 'us-east-1')
+    SQS_QUEUE_URL: str = os.getenv('SQS_QUEUE_URL', '')
+    SQS_DLQ_URL: str = os.getenv('SQS_DLQ_URL', '')
+
     # NO usamos result_backend - PostgreSQL es la única fuente de verdad
     
     # ===== POSTGRESQL =====
