@@ -189,7 +189,13 @@ Si no puedes conectar:
 - Verifica el Security Group del Backend permite puerto 6379 desde Worker
 - Verifica que Redis está corriendo en Backend: `docker ps | grep redis`
 
-### Paso 6: Configurar montaje NFS
+### Paso 6: Configurar Almacenamiento (NFS o S3)
+
+Elige **UNA** de las dos opciones según tu `.env`:
+
+---
+
+#### **Opción A: Almacenamiento NFS** (Si `STORAGE_TYPE=local`)
 
 ```bash
 # Editar el script con la IP del servidor NFS
@@ -214,7 +220,51 @@ df -h | grep nfs
 ls -la /mnt/nfs_uploads
 ```
 
-**IMPORTANTE:** Deberías ver los mismos directorios que en el Backend.
+**IMPORTANTE:** Deberías ver los mismos directorios que en el Backend (original/, processed/, temp/).
+
+---
+
+#### **Opción B: Almacenamiento S3** (Si `STORAGE_TYPE=s3`)
+
+**Pre-requisito:** El bucket S3 debe estar creado y configurado (mismo que el Backend)
+
+```bash
+# Dar permisos de ejecución
+chmod +x setup-s3.sh
+
+# Ejecutar el script
+./setup-s3.sh
+```
+
+El script:
+- ✅ Valida las credenciales AWS (deben ser las **mismas** que en Backend)
+- ✅ Instala AWS CLI
+- ✅ Configura las credenciales (incluyendo session_token si existe)
+- ✅ Verifica acceso al bucket S3
+
+**Verificar acceso a S3:**
+
+```bash
+aws s3 ls s3://anb-videos-bucket-2025-team-2/
+```
+
+Deberías ver el mismo contenido que desde el Backend:
+
+```
+                           PRE original/
+                           PRE processed/
+```
+
+**IMPORTANTE:** Después de ejecutar `setup-s3.sh`, editar `docker-compose.yml`:
+
+```bash
+nano docker-compose.yml
+
+# Comentar la línea del volumen NFS (aproximadamente línea 33):
+# - /mnt/nfs_uploads:/app/uploads
+```
+
+---
 
 ### Paso 7: Construir y levantar el servicio
 
