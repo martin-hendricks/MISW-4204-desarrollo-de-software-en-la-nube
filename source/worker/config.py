@@ -25,6 +25,7 @@ class Config:
     # S3 Configuration (solo si STORAGE_TYPE='s3')
     AWS_ACCESS_KEY_ID: str = os.getenv('AWS_ACCESS_KEY_ID', '')
     AWS_SECRET_ACCESS_KEY: str = os.getenv('AWS_SECRET_ACCESS_KEY', '')
+    AWS_SESSION_TOKEN: str = os.getenv('AWS_SESSION_TOKEN', '')  # Para AWS Academy
     AWS_REGION: str = os.getenv('AWS_REGION', 'us-east-1')
     S3_BUCKET_NAME: str = os.getenv('S3_BUCKET_NAME', '')
     

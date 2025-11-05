@@ -24,7 +24,8 @@ def configure_container():
         # Crear instancia con parámetros requeridos
         s3_instance = S3FileStorage(
             bucket_name=settings.S3_BUCKET_NAME,
-            region=settings.AWS_REGION
+            region=settings.AWS_REGION,
+            session_token=settings.AWS_SESSION_TOKEN if settings.AWS_SESSION_TOKEN else None
         )
         container._singletons[FileStorageInterface.__name__] = s3_instance
     

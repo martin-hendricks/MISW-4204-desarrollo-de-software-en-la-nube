@@ -99,13 +99,23 @@ class S3Storage(StorageInterface):
     Descarga archivos bajo demanda y sube resultados
     """
 
-    def __init__(self, bucket_name: str, region: str = 'us-east-1'):
+    def __init__(self, bucket_name: str, region: str = 'us-east-1', session_token: str = None):
         try:
             import boto3
             self.bucket_name = bucket_name
             self.region = region
-            self.s3_client = boto3.client('s3', region_name=region)
-            logger.info(f"☁️ S3Storage inicializado: bucket={bucket_name}, region={region}")
+
+            # Configurar cliente S3 con session token (para AWS Academy)
+            if session_token:
+                self.s3_client = boto3.client(
+                    's3',
+                    region_name=region,
+                    aws_session_token=session_token
+                )
+                logger.info(f"☁️ S3Storage inicializado con session token: bucket={bucket_name}, region={region}")
+            else:
+                self.s3_client = boto3.client('s3', region_name=region)
+                logger.info(f"☁️ S3Storage inicializado: bucket={bucket_name}, region={region}")
         except ImportError:
             raise ImportError("boto3 no está instalado. Ejecuta: pip install boto3")
 
@@ -164,7 +174,8 @@ def get_storage_backend() -> StorageInterface:
     if storage_type == 's3':
         return S3Storage(
             bucket_name=config.S3_BUCKET_NAME,
-            region=config.AWS_REGION
+            region=config.AWS_REGION,
+            session_token=config.AWS_SESSION_TOKEN
         )
     else:
         return LocalStorage(base_dir=config.UPLOAD_BASE_DIR)

@@ -131,12 +131,31 @@ El sistema soporta **dos opciones de almacenamiento** para videos (original y pr
 - ❌ Mayor complejidad de configuración inicial
 
 **Pasos para configurar S3:**
+
+**Opción A: Cuenta AWS Regular**
 1. Crear bucket S3 en AWS
-2. Crear usuario IAM con permisos S3
-3. En Backend: `FILE_STORAGE_TYPE=s3` + configurar credenciales AWS en `.env`
-4. En Worker: `STORAGE_TYPE=s3` + configurar credenciales AWS en `.env`
+2. Crear usuario IAM con permisos S3 (AmazonS3FullAccess)
+3. Generar Access Key ID y Secret Access Key
+4. En Backend: `FILE_STORAGE_TYPE=s3` + configurar credenciales AWS en `.env`
+5. En Worker: `STORAGE_TYPE=s3` + configurar credenciales AWS en `.env`
+6. Ejecutar `./setup-s3.sh` en ambas instancias
+7. Comentar volumen NFS en `docker-compose.yml`
+
+**Opción B: AWS Academy (Credenciales Temporales)**
+1. Crear bucket S3 en AWS (el bucket es permanente)
+2. En AWS Academy > AWS Details > AWS CLI, copiar:
+   - `aws_access_key_id`
+   - `aws_secret_access_key`
+   - `aws_session_token` ⚠️ **IMPORTANTE**
+3. En Backend `.env`: `FILE_STORAGE_TYPE=s3` + pegar las 3 credenciales
+4. En Worker `.env`: `STORAGE_TYPE=s3` + pegar las 3 credenciales
 5. Ejecutar `./setup-s3.sh` en ambas instancias
 6. Comentar volumen NFS en `docker-compose.yml`
+
+⚠️ **Nota AWS Academy**: Las credenciales expiran cada 4 horas. Debes:
+   - Renovar credenciales en `.env` cada 4 horas
+   - Ejecutar `docker-compose restart` para aplicar nuevas credenciales
+   - El bucket y los archivos NO se eliminan, solo expiran las credenciales
 
 **Archivos de configuración:**
 - Backend: [backend-instance/.env.example](./backend-instance/.env.example)

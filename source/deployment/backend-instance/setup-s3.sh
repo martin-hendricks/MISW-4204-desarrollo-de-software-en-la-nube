@@ -64,6 +64,12 @@ aws configure set aws_access_key_id "$AWS_ACCESS_KEY_ID"
 aws configure set aws_secret_access_key "$AWS_SECRET_ACCESS_KEY"
 aws configure set default.region "$AWS_REGION"
 
+# Configurar session token si existe (AWS Academy)
+if [ ! -z "$AWS_SESSION_TOKEN" ]; then
+    echo "Configurando AWS Session Token (AWS Academy)..."
+    aws configure set aws_session_token "$AWS_SESSION_TOKEN"
+fi
+
 # ===== VERIFICAR/CREAR BUCKET =====
 echo -e "${YELLOW}[4/4] Verificando bucket S3: $S3_BUCKET_NAME${NC}"
 
