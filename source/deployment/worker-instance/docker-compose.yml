@@ -19,9 +19,18 @@ services:
     networks:
       - worker-network
     restart: unless-stopped
+    # Límites de recursos para prevenir bloqueo de la máquina
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'      # Máximo 2 CPUs
+          memory: 4096M    # Máximo 4GB RAM
+        reservations:
+          cpus: '0.5'      # Mínimo 0.5 CPU
+          memory: 512M     # Mínimo 512MB RAM
     command: >
       sh -c "python main.py &
-             celery -A celery_app worker --loglevel=info --concurrency=4 --queues=video_processing,dlq"
+             celery -A celery_app worker --loglevel=info --concurrency=2 --queues=video_processing,dlq"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
       interval: 30s

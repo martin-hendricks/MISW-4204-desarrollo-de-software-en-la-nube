@@ -105,13 +105,13 @@ class VideoRepository(VideoRepositoryInterface):
             if not self._db:
                 db.close()
     
-    async def get_public_videos(self) -> List[Video]:
-        """Obtiene todos los videos públicos para votación"""
+    async def get_public_videos(self, skip: int = 0, limit: int = 100) -> List[Video]:
+        """Obtiene videos públicos para votación con paginación a nivel de BD"""
         db = self._get_db()
         try:
             models = db.query(VideoModel).filter(
                 VideoModel.status == 'processed'
-            ).all()
+            ).order_by(VideoModel.uploaded_at.desc()).offset(skip).limit(limit).all()
             return [self._to_domain(model) for model in models]
         finally:
             if not self._db:
