@@ -80,28 +80,37 @@ class CeleryTaskQueue(TaskQueueInterface):
     async def publish_video_processing_task(self, video_id: int) -> str:
         """
         Publica una tarea de procesamiento de video a la cola
-        
+
         Args:
             video_id: ID del video a procesar
-            
+
         Returns:
             Task ID de la tarea publicada
         """
         try:
             # Enviar tarea a la cola
+            # Para SQS: routing_key se ignora (solo usa queue)
+            # Para Redis: routing_key se respeta
+            task_params = {
+                'args': [video_id],
+                'queue': 'video_processing',
+            }
+
+            # Solo agregar routing_key si usamos Redis
+            if not settings.USE_SQS:
+                task_params['routing_key'] = 'video.process'
+
             result = celery_app.send_task(
                 'tasks.video_processor.process_video',
-                args=[video_id],
-                queue='video_processing',
-                routing_key='video.process'
+                **task_params
             )
-            
+
             logger.info(f"✅ Tarea de procesamiento publicada para video {video_id}")
             logger.info(f"   Task ID: {result.id}")
             logger.info(f"   Queue: video_processing")
-            
+
             return result.id
-            
+
         except Exception as e:
             logger.error(f"❌ Error publicando tarea para video {video_id}: {e}")
             raise
