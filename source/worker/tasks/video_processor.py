@@ -117,10 +117,17 @@ def process_video(self, video_id: int) -> Dict:
         file_size_mb = file_size_bytes / (1024 * 1024)
         logger.debug(f"✅ Archivo descargado: {file_size_mb:.2f} MB")
 
-        # Registrar métrica
+        # Registrar métrica de tamaño de archivo en CloudWatch
         try:
-            from metrics import video_file_size_bytes
-            video_file_size_bytes.observe(file_size_bytes)
+            from metrics import cw_metrics
+            from shared.cloudwatch_metrics import MetricUnit
+
+            cw_metrics.record_histogram(
+                histogram_name="VideoFileSize",
+                value=file_size_bytes,
+                unit=MetricUnit.BYTES,
+                dimensions={"TaskName": "process_video"}
+            )
         except ImportError:
             pass
 
