@@ -11,9 +11,11 @@ La aplicacion esta construida siguiendo una arquitectura de microservicios con l
 - **Backend API** ([backend/](backend/README.md)): API REST desarrollada en FastAPI (Python) que gestiona la logica de negocio, autenticacion y persistencia de datos.Para instrucciones detalladas de ejecucion, configuracion y analisis de resultados, consulte:[backend/](backend/README.md)
 - **Worker** ([worker/](worker/)): Servicio de procesamiento asincrono de videos utilizando Celery para el procesamiento batch.
 - **Base de Datos** ([database/](database/)): PostgreSQL para almacenamiento persistente de informacion de jugadores, videos y votaciones.
-- **Message Broker**: RabbitMQ para la comunicacion asincrona entre servicios.
+- **Message Broker**: Redis para la comunicacion asincrona entre servicios.
 - **API Gateway** ([api-gateway/](api-gateway/)): NGINX como punto de entrada unico y balanceador de carga.
-- **Almacenamiento**: Sistema de almacenamiento de archivos (S3 o local) para videos originales y procesados.
+- **Almacenamiento**: Sistema de almacenamiento de archivos configurable para videos originales y procesados:
+  - **Desarrollo local**: Volumen Docker compartido (`video_storage`)
+  - **Producción AWS**: AWS S3 o NFS (Network File System)
 - **Performance Testing** ([performance-testing/](performance-testing/README.md)): Suite de pruebas de rendimiento y carga con JMeter, Prometheus y Grafana. Este componente no forma parte de la aplicacion en produccion, pero es esencial para evaluar la capacidad y escalabilidad del sistema.Para instrucciones detalladas de ejecucion, configuracion y analisis de resultados, consulte:[performance-testing/README.md](performance-testing/README.md)
 
 ### Diagramas de Arquitectura
@@ -21,6 +23,47 @@ La aplicacion esta construida siguiendo una arquitectura de microservicios con l
 Para ver los diagramas completos de arquitectura del sistema (contexto, contenedores, componentes, entidad-relacion y flujos), consulte:
 
 **[Diagramas de Arquitectura Completos](../docs/Entrega_1/diagramas_arquitectura.md)**
+
+## Configuración de Almacenamiento
+
+El sistema soporta **múltiples opciones de almacenamiento** dependiendo del entorno:
+
+### Desarrollo Local (docker-compose.yml)
+- **Tipo**: Volumen Docker compartido
+- **Configuración**: Automática (sin variables de entorno requeridas)
+- **Ubicación**: Volumen Docker `video_storage` compartido entre Backend y Worker
+- **Ventajas**: Configuración cero, ideal para desarrollo y testing local
+
+```yaml
+volumes:
+  video_storage:  # Compartido entre backend y worker
+    name: video_storage
+```
+
+### Producción AWS (deployment/)
+
+El sistema soporta **dos opciones** configurables mediante variables de entorno:
+
+#### Opción 1: AWS S3 (Recomendado para Producción)
+- **Backend**: `FILE_STORAGE_TYPE=s3`
+- **Worker**: `STORAGE_TYPE=s3`
+- **Ventajas**:
+  - Escalabilidad ilimitada
+  - Alta disponibilidad (99.99%)
+  - Sin gestión de servidores
+  - Integración nativa con AWS
+- **Configuración**: Ver [deployment/README.md - Configuración de Almacenamiento](deployment/README.md#-configuración-de-almacenamiento)
+
+#### Opción 2: NFS (Network File System)
+- **Backend**: `FILE_STORAGE_TYPE=local`
+- **Worker**: `STORAGE_TYPE=local`
+- **Ventajas**:
+  - Acceso más rápido (sin latencia de internet)
+  - Sin costos de transferencia
+  - Ideal para on-premise o desarrollo
+- **Configuración**: Ver [deployment/README.md - Configuración de Almacenamiento](deployment/README.md#-configuración-de-almacenamiento)
+
+**Documentación completa de deployment:** [deployment/README.md](deployment/README.md)
 
 ## Tecnologias Utilizadas
 
@@ -41,9 +84,11 @@ Para ver los diagramas completos de arquitectura del sistema (contexto, contened
 ### Infraestructura
 - **Docker & Docker Compose**: Contenedorizacion y orquestacion de servicios
 - **PostgreSQL 15**: Base de datos relacional
-- **RabbitMQ**: Message broker para comunicacion asincrona
+- **Redis**: Message broker para comunicacion asincrona (Celery)
 - **NGINX**: API Gateway, servidor web y balanceador de carga
-- **Redis**: Cache y almacenamiento de sesiones (opcional)
+- **Almacenamiento**:
+  - Local: Volumen Docker compartido
+  - AWS: S3 (boto3) o NFS
 
 ### Performance Testing (Entorno Separado)
 El directorio `performance-testing/` incluye un stack independiente de Docker Compose para pruebas de rendimiento:

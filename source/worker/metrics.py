@@ -4,6 +4,7 @@ Este módulo usa prometheus_client en modo multiprocess para permitir
 que múltiples procesos (FastAPI + Celery workers) compartan métricas.
 """
 import os
+import psutil
 from prometheus_client import Counter, Histogram, Gauge, CollectorRegistry, multiprocess, generate_latest
 
 # Directorio para archivos de métricas multiprocess
@@ -73,6 +74,40 @@ video_file_size_bytes = Histogram(
     'Size of video files being processed',
     buckets=[1e6, 10e6, 50e6, 100e6, 200e6, 500e6, 1e9]  # 1MB a 1GB
 )
+
+# Métricas de sistema
+process_cpu_usage = Gauge(
+    'process_cpu_usage_percent',
+    'CPU usage percentage of the worker process',
+    multiprocess_mode='livesum'
+)
+
+process_memory_usage = Gauge(
+    'process_memory_usage_bytes',
+    'Memory usage in bytes of the worker process',
+    multiprocess_mode='livesum'
+)
+
+process_memory_percent = Gauge(
+    'process_memory_usage_percent',
+    'Memory usage percentage of the worker process',
+    multiprocess_mode='livesum'
+)
+
+system_cpu_usage = Gauge(
+    'system_cpu_usage_percent',
+    'System-wide CPU usage percentage',
+    multiprocess_mode='livesum'
+)
+
+system_memory_usage = Gauge(
+    'system_memory_usage_percent',
+    'System-wide memory usage percentage',
+    multiprocess_mode='livesum'
+)
+
+# Obtener el proceso actual para métricas
+current_process = psutil.Process(os.getpid())
 
 
 def generate_multiprocess_metrics():

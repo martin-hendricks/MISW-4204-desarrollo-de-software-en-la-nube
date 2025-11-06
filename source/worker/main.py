@@ -24,6 +24,12 @@ from metrics import (
     celery_reserved_tasks,
     celery_queue_length,
     video_file_size_bytes,
+    process_cpu_usage,
+    process_memory_usage,
+    process_memory_percent,
+    system_cpu_usage,
+    system_memory_usage,
+    current_process,
     generate_multiprocess_metrics
 )
 
@@ -107,6 +113,23 @@ def metrics():
 
     except Exception as e:
         logger.warning(f"Error actualizando métricas de Celery: {e}")
+
+    # Actualizar métricas del sistema
+    try:
+        import psutil
+        # Actualizar métricas del proceso actual
+        process_cpu_usage.set(current_process.cpu_percent(interval=0.1))
+
+        mem_info = current_process.memory_info()
+        process_memory_usage.set(mem_info.rss)  # RSS = Resident Set Size (memoria física)
+        process_memory_percent.set(current_process.memory_percent())
+
+        # Actualizar métricas del sistema completo
+        system_cpu_usage.set(psutil.cpu_percent(interval=0.1))
+        system_memory_usage.set(psutil.virtual_memory().percent)
+
+    except Exception as e:
+        logger.warning(f"Error actualizando métricas de sistema: {e}")
 
     # Generar respuesta en formato Prometheus (multiprocess-safe)
     return Response(
