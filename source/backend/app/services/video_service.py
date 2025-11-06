@@ -50,12 +50,12 @@ class VideoService:
             processed_url=None,
             uploaded_at=datetime.now()
         )
-        
+
         # Guardar en repositorio primero para obtener el ID
         created_video = await self._video_repository.create(video)
-        
-        # Generar filename usando el ID de la BD
-        filename = f"{created_video.id}.{file_extension}"
+
+        # Generar filename usando el ID de la BD - siempre usar .mp4 para consistencia con S3 y worker
+        filename = f"{created_video.id}.mp4"
         
         # Generar la URL del archivo original
         original_url = f"{settings.BASE_PATH}/original/{created_video.id}"
@@ -195,17 +195,20 @@ class VideoService:
     async def get_original_video(self, video_id: int, player_id: int) -> bytes:
         """Obtiene el contenido del video original"""
         video = await self.get_video(video_id, player_id)
-        return await self._file_storage.get_file_content(video_id, "original")
+        # Pasar el filename con extensión (siempre mp4 después del procesamiento inicial)
+        filename = f"{video_id}.mp4"
+        return await self._file_storage.get_file_content(filename, "original")
     
     async def get_processed_video(self, video_id: int, player_id: int) -> bytes:
         """Obtiene el contenido del video procesado"""
         video = await self.get_video(video_id, player_id)
-        
+
         if not video.processed_url:
             raise ValueError("El video procesado no está disponible")
-        
 
-        return await self._file_storage.get_file_content(video_id, "processed")
+        # Pasar el filename con extensión
+        filename = f"{video_id}.mp4"
+        return await self._file_storage.get_file_content(filename, "processed")
 
 
 class MockVideoService(VideoService):
