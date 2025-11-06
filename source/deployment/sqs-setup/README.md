@@ -218,6 +218,86 @@ AWS_SESSION_TOKEN=xxx...
 
 ---
 
+## Redesplegar Servicios
+
+Una vez agregadas las variables al `.env`, debes **reconstruir y redesplegar** los contenedores:
+
+### Backend
+
+```bash
+# Conectar a instancia Backend
+ssh -i "your-key.pem" ubuntu@BACKEND_IP
+
+# Ir al directorio de deployment
+cd ~/anb-backend/deployment/backend-instance
+
+# Detener servicios actuales (si están corriendo)
+docker-compose down
+
+# Reconstruir imágenes con nuevas dependencias (kombu[sqs], boto3)
+docker-compose -f docker-compose.sqs.yml build --no-cache
+
+# Levantar servicios con SQS (sin Redis)
+docker-compose -f docker-compose.sqs.yml up -d
+
+# Verificar logs
+docker-compose -f docker-compose.sqs.yml logs -f backend
+
+# Deberías ver:
+# 🚀 Configurando Celery con AWS SQS como broker
+```
+
+### Worker
+
+```bash
+# Conectar a instancia Worker
+ssh -i "your-key.pem" ubuntu@WORKER_IP
+
+# Ir al directorio de deployment
+cd ~/anb-worker/deployment/worker-instance
+
+# Detener worker actual
+docker-compose down
+
+# Reconstruir imagen con nuevas dependencias
+docker-compose build --no-cache
+
+# Levantar worker
+docker-compose up -d
+
+# Verificar logs
+docker-compose logs -f worker
+
+# Deberías ver:
+# 🚀 Configurando Worker con AWS SQS como broker
+# 📍 Broker: AWS SQS
+# ✅ Worker ANB Rising Stars iniciado correctamente
+```
+
+### ¿Por qué usar `docker-compose.sqs.yml`?
+
+- **`docker-compose.yml`**: Incluye Redis (para desarrollo local)
+- **`docker-compose.sqs.yml`**: Sin Redis, solo SQS (para producción)
+
+El archivo SQS es más limpio y no levanta servicios innecesarios.
+
+### ¿Por qué `build --no-cache`?
+
+- Las nuevas dependencias (`kombu[sqs]`, `boto3`) deben instalarse
+- El flag `--no-cache` garantiza que se instalen las versiones correctas
+- Sin rebuild, los contenedores seguirán usando las dependencias antiguas
+
+### Alternativa: Solo reiniciar si ya habías construido antes
+
+Si ya habías construido las imágenes con las dependencias correctas:
+
+```bash
+# Solo reiniciar para cargar nuevas variables .env
+docker-compose -f docker-compose.sqs.yml restart
+```
+
+---
+
 ## Verificación
 
 ### 1. Verificar colas en AWS Console
@@ -420,14 +500,39 @@ Msg 1,4   Msg 2,5   Msg 3,6
 
 ## Checklist de Setup
 
-- [ ] AWS CLI configurado con credenciales (o IAM Role adjunto)
+### Fase 1: Crear Colas en AWS
 - [ ] Cola DLQ creada: `anb-video-processing-dlq`
 - [ ] Cola principal creada: `anb-video-processing-queue`
+- [ ] DLQ vinculada a cola principal (max receives: 3)
+- [ ] Long polling configurado (Receive wait time: 20s)
+
+### Fase 2: Configurar Permisos
 - [ ] IAM Role configurado (o usando LabRole en AWS Academy)
-- [ ] Variables en `backend/.env` actualizadas
-- [ ] Variables en `worker/.env` actualizadas
-- [ ] Test end-to-end exitoso
-- [ ] Monitoreo de colas en AWS Console
+- [ ] IAM Role/LabRole adjunto a instancia Backend
+- [ ] IAM Role/LabRole adjunto a instancia Worker
+- [ ] (Si AWS Academy) Credenciales temporales obtenidas
+
+### Fase 3: Configurar Variables de Entorno
+- [ ] Variables en `backend-instance/.env` actualizadas
+  - [ ] `USE_SQS=true`
+  - [ ] `SQS_QUEUE_URL` con URL correcta
+  - [ ] `SQS_DLQ_URL` con URL correcta
+  - [ ] (Si AWS Academy) Credenciales AWS agregadas
+- [ ] Variables en `worker-instance/.env` actualizadas (mismos valores)
+
+### Fase 4: Redesplegar Servicios
+- [ ] Backend: `docker-compose -f docker-compose.sqs.yml build --no-cache && docker-compose -f docker-compose.sqs.yml up -d`
+- [ ] Worker: `docker-compose build --no-cache && docker-compose up -d`
+- [ ] Logs del backend muestran: "Configurando Celery con AWS SQS"
+- [ ] Logs del worker muestran: "Configurando Worker con AWS SQS"
+- [ ] Verificar que Redis NO está corriendo en el backend
+
+### Fase 5: Verificación
+- [ ] Test end-to-end exitoso (subir video y verificar procesamiento)
+- [ ] Mensajes aparecen en cola SQS al subir videos
+- [ ] Worker consume y procesa mensajes correctamente
+- [ ] No hay mensajes en DLQ
+- [ ] Monitoreo de colas en AWS Console funcionando
 
 ---
 
