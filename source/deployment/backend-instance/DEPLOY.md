@@ -133,7 +133,13 @@ SECRET_KEY=tu-clave-secreta-super-segura-minimo-32-caracteres
 BASE_PATH=http://<BACKEND_PUBLIC_IP>/api/videos
 ```
 
-### Paso 4: Configurar montaje NFS
+### Paso 4: Configurar Almacenamiento (NFS o S3)
+
+Elige **UNA** de las dos opciones según tu `.env`:
+
+---
+
+#### **Opción A: Almacenamiento NFS** (Si `FILE_STORAGE_TYPE=local`)
 
 ```bash
 # Editar el script con la IP del servidor NFS
@@ -169,6 +175,51 @@ drwxrwxrwx 2 root root 4096 Jan 15 10:30 original
 drwxrwxrwx 2 root root 4096 Jan 15 10:30 processed
 drwxrwxrwx 2 root root 4096 Jan 15 10:30 temp
 ```
+
+---
+
+#### **Opción B: Almacenamiento S3** (Si `FILE_STORAGE_TYPE=s3`)
+
+**Pre-requisito:** Tener creado el bucket S3 y las credenciales configuradas en `.env`
+
+```bash
+# Dar permisos de ejecución
+chmod +x setup-s3.sh
+
+# Ejecutar el script
+./setup-s3.sh
+```
+
+El script:
+- ✅ Valida las credenciales AWS
+- ✅ Instala AWS CLI
+- ✅ Configura las credenciales (incluyendo session_token si existe)
+- ✅ Verifica/crea el bucket S3
+- ✅ Crea estructura de carpetas (`original/`, `processed/`)
+
+**Verificar acceso a S3:**
+
+```bash
+aws s3 ls s3://anb-videos-bucket-2025-team-2/
+```
+
+Deberías ver:
+
+```
+                           PRE original/
+                           PRE processed/
+```
+
+**IMPORTANTE:** Después de ejecutar `setup-s3.sh`, editar `docker-compose.yml`:
+
+```bash
+nano docker-compose.yml
+
+# Comentar la línea del volumen NFS (aproximadamente línea 70):
+# - /mnt/nfs_uploads:/app/uploads
+```
+
+---
 
 ### Paso 5: Inicializar Base de Datos (IMPORTANTE - Solo primera vez)
 

@@ -50,12 +50,12 @@ class VideoService:
             processed_url=None,
             uploaded_at=datetime.now()
         )
-        
+
         # Guardar en repositorio primero para obtener el ID
         created_video = await self._video_repository.create(video)
-        
-        # Generar filename usando el ID de la BD
-        filename = f"{created_video.id}.{file_extension}"
+
+        # Generar filename usando el ID de la BD - siempre usar .mp4 para consistencia con S3 y worker
+        filename = f"{created_video.id}.mp4"
         
         # Generar la URL del archivo original
         original_url = f"{settings.BASE_PATH}/original/{created_video.id}"
@@ -92,13 +92,18 @@ class VideoService:
     async def delete_video(self, video_id: int, player_id: int) -> bool:
         """Elimina un video"""
         video = await self.get_video(video_id, player_id)
-        
+
         if not video.can_be_deleted():
             raise VideoCannotBeDeletedException("El video no puede ser eliminado en su estado actual")
-        
-        # Eliminar archivo del almacenamiento
-        await self._file_storage.delete_file(video_id)
-        
+
+        # Eliminar archivos del almacenamiento (original y procesado si existe)
+        filename = f"{video_id}.mp4"
+        await self._file_storage.delete_file(filename, "original")
+
+        # Si el video está procesado, eliminar también el archivo procesado
+        if video.status == VideoStatus.PROCESSED:
+            await self._file_storage.delete_file(filename, "processed")
+
         # Eliminar de la base de datos
         return await self._video_repository.delete(video_id)
     
@@ -195,17 +200,20 @@ class VideoService:
     async def get_original_video(self, video_id: int, player_id: int) -> bytes:
         """Obtiene el contenido del video original"""
         video = await self.get_video(video_id, player_id)
-        return await self._file_storage.get_file_content(video_id, "original")
+        # Pasar el filename con extensión (siempre mp4 después del procesamiento inicial)
+        filename = f"{video_id}.mp4"
+        return await self._file_storage.get_file_content(filename, "original")
     
     async def get_processed_video(self, video_id: int, player_id: int) -> bytes:
         """Obtiene el contenido del video procesado"""
         video = await self.get_video(video_id, player_id)
-        
+
         if not video.processed_url:
             raise ValueError("El video procesado no está disponible")
-        
 
-        return await self._file_storage.get_file_content(video_id, "processed")
+        # Pasar el filename con extensión
+        filename = f"{video_id}.mp4"
+        return await self._file_storage.get_file_content(filename, "processed")
 
 
 class MockVideoService(VideoService):
