@@ -92,13 +92,18 @@ class VideoService:
     async def delete_video(self, video_id: int, player_id: int) -> bool:
         """Elimina un video"""
         video = await self.get_video(video_id, player_id)
-        
+
         if not video.can_be_deleted():
             raise VideoCannotBeDeletedException("El video no puede ser eliminado en su estado actual")
-        
-        # Eliminar archivo del almacenamiento
-        await self._file_storage.delete_file(video_id)
-        
+
+        # Eliminar archivos del almacenamiento (original y procesado si existe)
+        filename = f"{video_id}.mp4"
+        await self._file_storage.delete_file(filename, "original")
+
+        # Si el video está procesado, eliminar también el archivo procesado
+        if video.status == VideoStatus.PROCESSED:
+            await self._file_storage.delete_file(filename, "processed")
+
         # Eliminar de la base de datos
         return await self._video_repository.delete(video_id)
     
