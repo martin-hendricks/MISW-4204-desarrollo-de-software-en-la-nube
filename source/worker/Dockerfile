@@ -11,14 +11,14 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Copy cloudwatch module (shared with backend)
+COPY ../cloudwatch /app/cloudwatch
+
 # Copiar código de la aplicación
 COPY . .
 
-# Crear directorios para videos, assets y métricas multiprocess
-RUN mkdir -p /app/uploads/original /app/uploads/processed /app/uploads/temp /app/assets /tmp/prometheus_multiproc
-
-# Establecer variable de entorno para prometheus_client multiprocess
-ENV PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus_multiproc
+# Crear directorios para videos y assets
+RUN mkdir -p /app/uploads/original /app/uploads/processed /app/uploads/temp /app/assets
 
 # Exponer puerto para Health API
 EXPOSE 8001
