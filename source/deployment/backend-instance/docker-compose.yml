@@ -45,9 +45,9 @@ services:
     environment:
       # Asegurar que USE_SQS esté activado
       - USE_SQS=true
-    volumes:
+    #volumes:
       # Montaje NFS - se monta desde el host
-      - /mnt/nfs_uploads:/app/uploads
+    #  - /mnt/nfs_uploads:/app/uploads
     networks:
       - app-network
     restart: unless-stopped
