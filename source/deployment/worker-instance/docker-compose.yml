@@ -19,8 +19,8 @@ services:
   # ===== WORKER - Procesamiento de Videos =====
   worker:
     build:
-      context: ../../worker
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: worker/Dockerfile
     container_name: anb-worker
     ports:
       - "8001:8001"  # Health API
@@ -32,7 +32,7 @@ services:
       # S3:  Comentar esta línea si STORAGE_TYPE=s3 en .env
       - /mnt/nfs_uploads:/app/uploads
       # Assets locales (logo, intro, outro) - SIEMPRE necesario
-      - ../../worker/assets:/app/assets:ro
+      - ./assets:/app/assets:ro
     networks:
       - worker-network
     restart: unless-stopped

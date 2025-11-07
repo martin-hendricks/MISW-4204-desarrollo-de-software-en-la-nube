@@ -8,14 +8,14 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copiar e instalar dependencias de Python
-COPY requirements.txt .
+COPY worker/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy cloudwatch module (shared with backend)
-COPY ../cloudwatch /app/cloudwatch
+COPY cloudwatch /app/cloudwatch
 
 # Copiar código de la aplicación
-COPY . .
+COPY worker /app
 
 # Crear directorios para videos y assets
 RUN mkdir -p /app/uploads/original /app/uploads/processed /app/uploads/temp /app/assets
