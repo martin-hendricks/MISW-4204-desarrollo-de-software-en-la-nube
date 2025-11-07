@@ -19,9 +19,16 @@ class Settings:
         "postgresql://user:password@localhost:5432/fileprocessing"
     )
     
-    # Redis
+    # Message Broker (Redis o SQS)
+    USE_SQS: bool = os.getenv("USE_SQS", "false").lower() == "true"
+
+    # Redis (broker actual)
     REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
-    
+
+    # AWS SQS (broker alternativo para autoscaling)
+    SQS_QUEUE_URL: str = os.getenv("SQS_QUEUE_URL", "")
+    SQS_DLQ_URL: str = os.getenv("SQS_DLQ_URL", "")
+
     # JWT
     SECRET_KEY: str = os.getenv("SECRET_KEY", "your-secret-key-here")
     ALGORITHM: str = "HS256"
