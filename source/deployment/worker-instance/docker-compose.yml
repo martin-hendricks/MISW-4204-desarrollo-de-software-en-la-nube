@@ -59,9 +59,9 @@ services:
       options:
         awslogs-region: us-east-1
         awslogs-group: /aws/ec2/anb-worker
-        # awslogs-stream-prefix crea streams únicos automáticamente
-        # Formato: worker/container-id (único por instancia)
-        awslogs-stream-prefix: worker
+        # awslogs-stream usa el container name (único por instancia EC2)
+        # Si hay múltiples instancias, cada una tiene su propio contenedor
+        awslogs-stream: worker-${HOSTNAME}
         awslogs-create-group: "true"
         # Modo non-blocking para no afectar performance
         mode: non-blocking
