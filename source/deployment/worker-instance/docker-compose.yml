@@ -26,7 +26,7 @@ services:
       - "8001:8001"  # Health API
     env_file:
       - .env
-    volumes:
+    #volumes:
       # ===== ALMACENAMIENTO =====
       # NFS: Mantener esta línea activa si STORAGE_TYPE=local en .env
       # S3:  Comentar esta línea si STORAGE_TYPE=s3 en .env
