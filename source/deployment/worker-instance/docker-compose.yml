@@ -31,8 +31,7 @@ services:
       # NFS: Mantener esta línea activa si STORAGE_TYPE=local en .env
       # S3:  Comentar esta línea si STORAGE_TYPE=s3 en .env
       - /mnt/nfs_uploads:/app/uploads
-      # Assets locales (logo, intro, outro) - SIEMPRE necesario
-      - ./assets:/app/assets:ro
+      # Nota: Los assets (logo, intro, outro) están incluidos en la imagen Docker
     networks:
       - worker-network
     restart: unless-stopped
