@@ -6,10 +6,10 @@ import os
 import sys
 import psutil
 
-# Agregar directorio shared al path
+# Agregar directorio cloudwatch al path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from shared.cloudwatch_metrics import CloudWatchMetrics, MetricUnit
+from cloudwatch.cloudwatch_metrics import CloudWatchMetrics, MetricUnit
 
 # Inicializar cliente CloudWatch para Worker
 cw_metrics = CloudWatchMetrics(

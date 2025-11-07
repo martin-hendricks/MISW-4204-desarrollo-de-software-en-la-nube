@@ -17,7 +17,7 @@ from celery_app import app as celery_app
 
 # Importar métricas de CloudWatch
 from metrics import cw_metrics, current_process
-from shared.cloudwatch_metrics import MetricUnit
+from cloudwatch.cloudwatch_metrics import MetricUnit
 
 # Configurar logging
 logging.basicConfig(level=config.LOG_LEVEL)

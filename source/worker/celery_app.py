@@ -171,7 +171,7 @@ def task_postrun_handler(task_id=None, task=None, state=None, **kwargs):
         # Publicar duración de la tarea a CloudWatch
         try:
             from metrics import cw_metrics
-            from shared.cloudwatch_metrics import MetricUnit
+            from cloudwatch.cloudwatch_metrics import MetricUnit
 
             cw_metrics.record_histogram(
                 histogram_name="TaskDuration",
@@ -196,7 +196,7 @@ def task_success_handler(sender=None, result=None, **kwargs):
     # Incrementar contador de métricas en CloudWatch
     try:
         from metrics import cw_metrics
-        from shared.cloudwatch_metrics import MetricUnit
+        from cloudwatch.cloudwatch_metrics import MetricUnit
 
         cw_metrics.put_metric(
             metric_name="TaskCount",
@@ -220,7 +220,7 @@ def task_failure_handler(sender=None, task_id=None, exception=None, traceback=No
     # Incrementar contadores de métricas en CloudWatch
     try:
         from metrics import cw_metrics
-        from shared.cloudwatch_metrics import MetricUnit
+        from cloudwatch.cloudwatch_metrics import MetricUnit
 
         # Publicar múltiples métricas de fallo
         cw_metrics.put_metrics(
@@ -248,7 +248,7 @@ def task_retry_handler(sender=None, reason=None, **kwargs):
     # Incrementar contador de métricas en CloudWatch
     try:
         from metrics import cw_metrics
-        from shared.cloudwatch_metrics import MetricUnit
+        from cloudwatch.cloudwatch_metrics import MetricUnit
 
         cw_metrics.put_metric(
             metric_name="TaskCount",

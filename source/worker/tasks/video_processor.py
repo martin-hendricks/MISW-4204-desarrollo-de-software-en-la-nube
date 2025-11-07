@@ -120,7 +120,7 @@ def process_video(self, video_id: int) -> Dict:
         # Registrar métrica de tamaño de archivo en CloudWatch
         try:
             from metrics import cw_metrics
-            from shared.cloudwatch_metrics import MetricUnit
+            from cloudwatch.cloudwatch_metrics import MetricUnit
 
             cw_metrics.record_histogram(
                 histogram_name="VideoFileSize",

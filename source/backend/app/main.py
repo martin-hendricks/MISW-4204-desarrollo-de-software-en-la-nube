@@ -16,10 +16,10 @@ from app.config.container_config import configure_container
 from app.config.settings import settings
 
 # ===== MÉTRICAS DE CLOUDWATCH =====
-# Agregar directorio shared al path para importar módulo compartido
+# Agregar directorio cloudwatch al path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
-from shared.cloudwatch_metrics import CloudWatchMetrics, MetricUnit
+from cloudwatch.cloudwatch_metrics import CloudWatchMetrics, MetricUnit
 
 # Inicializar cliente CloudWatch
 cw_metrics = CloudWatchMetrics(
