@@ -1,13 +1,17 @@
-# Guía de Despliegue - Instancia de Performance Testing
+# Guía de Despliegue - Instancia de Performance Testing (AWS SQS + S3)
+
+## 🆕 Actualización: Migración a AWS SQS y S3
+
+Esta guía ha sido actualizada para usar AWS SQS y S3 en lugar de Redis con SSH tunnel y almacenamiento local/NFS.
 
 ## Resumen
 Esta instancia EC2 contiene:
-- ✅ Producer (Python + Celery Client) - Inyecta tareas en Redis
-- ✅ JMeter - Pruebas de carga HTTP
-- ✅ Prometheus - Recolección de métricas
+- ✅ Producer (Python + Celery Client) - Inyecta tareas en AWS SQS y sube videos a S3
+- ✅ JMeter - Pruebas de carga HTTP contra la API
+- ✅ Prometheus - Recolección de métricas vía HTTP
 - ✅ Grafana - Visualización de métricas (Puerto 3000)
 
-**Conexión:** Esta instancia se conecta vía SSH tunnel a Redis del backend de tu compañero para inyectar tareas y recolectar métricas.
+**Modo de operación:** Esta instancia usa AWS SQS como broker de mensajes y S3 para almacenar videos de prueba. No requiere túnel SSH ni acceso directo al backend.
 
 ---
 
@@ -15,20 +19,20 @@ Esta instancia EC2 contiene:
 
 ### 1. Instancia EC2 configurada
 - ✅ Ubuntu Server 22.04 LTS
-- ✅ Tipo: t2.medium o superior
+- ✅ Tipo: t2.medium o superior (mínimo 4GB RAM para JMeter)
 - ✅ Docker y Docker Compose instalados
 - ✅ Security Group configurado (ver abajo)
 
-### 2. Servicios externos funcionando (Backend de tu compañero)
-- ✅ Backend desplegado y funcionando (con Redis en puerto 6379)
-- ✅ Worker desplegado y funcionando
-- ✅ Puertos 8000 (backend) y 8001 (worker) accesibles para métricas
+### 2. Recursos AWS configurados
+- ✅ Colas SQS creadas (Main Queue y DLQ)
+- ✅ Bucket S3 creado (mismo que usa el worker)
+- ✅ Credenciales AWS configuradas (Access Key, Secret Key, Session Token)
+- ✅ Worker configurado para leer de SQS y procesar videos de S3
 
-### 3. Información que necesitas de tu compañero
-- IP pública del Backend
-- Clave SSH (`.pem`) para acceder al Backend
-- Usuario SSH del Backend (generalmente `ubuntu`)
-- Confirmación de que Redis está corriendo en el Backend
+### 3. Servicios backend accesibles
+- ✅ Backend desplegado y funcionando
+- ✅ Worker(s) desplegado(s) y escuchando en SQS
+- ✅ Puerto 8000 (backend métricas) y 8001 (worker métricas) accesibles vía HTTP
 
 ---
 
@@ -46,8 +50,11 @@ Esta instancia EC2 contiene:
 - All traffic (default)
 
 **IMPORTANTE:** Esta instancia necesita poder conectarse a:
-- Backend de tu compañero (puerto 80 para API, 8000 para métricas, 22 para SSH tunnel)
-- Worker de tu compañero (puerto 8001 para métricas)
+- AWS SQS (puerto 443 HTTPS para enviar mensajes)
+- AWS S3 (puerto 443 HTTPS para subir/descargar archivos)
+- Backend API (puerto 80 HTTP para pruebas JMeter)
+- Backend métricas (puerto 8000 HTTP para Prometheus)
+- Worker métricas (puerto 8001 HTTP para Prometheus)
 
 ---
 
@@ -56,19 +63,24 @@ Esta instancia EC2 contiene:
 **Si ya tienes la instancia configurada**, solo necesitas:
 
 ```bash
-# 1. Editar .env con las IPs correctas
+# 1. Crear recursos AWS (colas SQS)
+cd ~/MISW-4204-desarrollo-de-software-en-la-nube/source/deployment/sqs-setup
+./setup-sqs.sh us-east-1
+
+# 2. Editar .env con configuración AWS
 cd ~/performance-instance
 nano .env
+# Configura: USE_SQS=true, USE_S3=true, SQS_QUEUE_URL, S3_BUCKET_NAME, credenciales AWS
 
-# 2. Ejecutar script de túnel SSH (configura túnel + prometheus.yml automáticamente)
-chmod +x setup-ssh-tunnel.sh
-./setup-ssh-tunnel.sh
+# 3. Configurar Prometheus con las IPs
+./setup-ssh-tunnel.sh  # Ahora solo configura prometheus.yml, no crea túnel SSH si USE_SQS=true
 
-# 3. Levantar servicios
+# 4. Levantar servicios
 docker-compose up -d
 
-# 4. Verificar
+# 5. Verificar
 docker ps
+docker exec producer python -c "import boto3; print('✅ AWS configurado correctamente')"
 curl http://localhost:3000  # Grafana
 ```
 
@@ -76,13 +88,19 @@ curl http://localhost:3000  # Grafana
 
 | Archivo | Qué configurar | Valor |
 |---------|----------------|-------|
-| **`.env`** | `BACKEND_PUBLIC_IP` | **IP PÚBLICA** del backend de tu compañero |
-| **`.env`** | `BACKEND_SSH_KEY` | Ruta a la clave SSH del backend (ej: `/home/ubuntu/backend-key.pem`) |
+| **`.env`** | `USE_SQS` | `true` (usar AWS SQS) |
+| **`.env`** | `USE_S3` | `true` (usar AWS S3) |
+| **`.env`** | `SQS_QUEUE_URL` | URL de la cola SQS principal (del script setup-sqs.sh) |
+| **`.env`** | `SQS_DLQ_URL` | URL de la cola DLQ (del script setup-sqs.sh) |
+| **`.env`** | `S3_BUCKET_NAME` | Nombre del bucket S3 (mismo que usa el worker) |
+| **`.env`** | `AWS_ACCESS_KEY_ID` | Access Key de AWS Academy |
+| **`.env`** | `AWS_SECRET_ACCESS_KEY` | Secret Key de AWS Academy |
+| **`.env`** | `AWS_SESSION_TOKEN` | Session Token de AWS Academy |
 | **`.env`** | `API_BASE_URL` | URL de la API del backend (ej: `http://3.XXX.XXX.XXX`) |
 | **`.env`** | `PROMETHEUS_BACKEND_TARGET` | IP y puerto del backend para métricas (ej: `3.XXX.XXX.XXX:8000`) |
 | **`.env`** | `PROMETHEUS_WORKER_TARGET` | IP y puerto del worker para métricas (ej: `3.YYY.YYY.YYY:8001`) |
 
-**Nota:** El script `setup-ssh-tunnel.sh` configurará automáticamente `prometheus.yml` usando los valores del `.env`.
+**Nota:** El script `setup-ssh-tunnel.sh` configurará automáticamente `prometheus.yml` usando los valores del `.env`. Cuando `USE_SQS=true`, no se crea túnel SSH.
 
 ### 🔄 ¿Necesitas recrear contenedores después de cambiar configuración?
 
@@ -109,51 +127,63 @@ docker-compose up -d --build
 
 ---
 
-## Arquitectura del Performance Testing
+## Arquitectura del Performance Testing (AWS SQS + S3)
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ TU CUENTA AWS (Performance Testing)                        │
+│ TU CUENTA AWS                                               │
 │                                                             │
 │  ┌─────────────────────────────────────────────────────┐  │
 │  │ EC2: anb-performance-testing                        │  │
 │  │                                                     │  │
-│  │  • Producer (Python + Celery Client)               │  │
+│  │  • Producer (envía a SQS, sube a S3)               │  │
 │  │  • JMeter (HTTP Load Testing)                      │  │
-│  │  • Prometheus (Metrics Collection)                 │  │
+│  │  • Prometheus (Metrics Collection vía HTTP)        │  │
 │  │  • Grafana (Metrics Visualization)                 │  │
 │  └─────────────────────────────────────────────────────┘  │
-│                         │                                   │
-│                         │ SSH Tunnel                        │
-│                         ▼                                   │
-└─────────────────────────────────────────────────────────────┘
-                          │
-                          │ SSH Connection
-                          │
-┌─────────────────────────┼───────────────────────────────────┐
-│ CUENTA DE TU COMPAÑERO  │                                   │
-│                         ▼                                   │
+│            │                   │                            │
+│            │ HTTPS             │ HTTPS                      │
+│            ▼                   ▼                            │
+│  ┌──────────────────┐  ┌─────────────────┐                │
+│  │  AWS SQS         │  │  AWS S3         │                │
+│  │  • Main Queue    │  │  • Bucket       │                │
+│  │  • DLQ           │  │    original/    │                │
+│  └──────────────────┘  └─────────────────┘                │
+│            │                   │                            │
+└────────────┼───────────────────┼────────────────────────────┘
+             │ Poll              │ Download/Upload
+             │ Messages          │ Videos
+             ▼                   ▼
+┌─────────────────────────────────────────────────────────────┐
+│ TU INFRAESTRUCTURA DE BACKEND/WORKER                        │
+│                                                             │
 │  ┌─────────────────────────────────────────────────────┐  │
-│  │ EC2: anb-backend (IP Pública de tu compañero)      │  │
+│  │ EC2: anb-backend                                    │  │
 │  │                                                     │  │
-│  │  • Redis (Puerto 6379) ◄─── Túnel SSH              │  │
-│  │  • API Backend (Puerto 80) ◄─── HTTP directo       │  │
+│  │  • API Backend (Puerto 80) ◄─── JMeter (HTTP)      │  │
+│  │  • Métricas (Puerto 8000) ◄─── Prometheus (HTTP)   │  │
 │  └─────────────────────────────────────────────────────┘  │
 │                                                             │
 │  ┌─────────────────────────────────────────────────────┐  │
-│  │ EC2: anb-worker                                     │  │
+│  │ EC2: anb-worker(s) - Auto Scaling Group             │  │
 │  │                                                     │  │
-│  │  • Celery Worker (procesa las tareas)              │  │
+│  │  • Lee mensajes de SQS                             │  │
+│  │  • Descarga videos de S3                           │  │
+│  │  • Procesa videos                                  │  │
+│  │  • Sube resultados a S3                            │  │
+│  │  • Métricas (Puerto 8001) ◄─── Prometheus (HTTP)   │  │
 │  └─────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## Flujo de las Pruebas
+## Flujo de las Pruebas (AWS SQS + S3)
 
-1. **Producer** (tu instancia) → Encola tareas en **Redis** (instancia de tu compañero) vía SSH tunnel
-2. **Worker** (instancia de tu compañero) → Procesa las tareas de la cola
-3. **Prometheus** (tu instancia) → Recolecta métricas del backend de tu compañero vía HTTP
-4. **Grafana** (tu instancia) → Visualiza las métricas
+1. **Producer** (tu instancia) → Sube videos a **S3** (carpeta `original/`)
+2. **Producer** (tu instancia) → Envía mensajes a **SQS** con referencias a los videos
+3. **Worker(s)** (tu infraestructura) → Leen mensajes de **SQS**
+4. **Worker(s)** (tu infraestructura) → Descargan videos de **S3**, procesan y suben resultados
+5. **Prometheus** (tu instancia) → Recolecta métricas del backend y workers vía HTTP
+6. **Grafana** (tu instancia) → Visualiza las métricas en dashboards
 
 ---
 
@@ -197,45 +227,62 @@ PERFORMANCE_PRIVATE_IP: _____________________________________________
 
 ---
 
-## Paso 3: Configurar Acceso SSH al Backend de tu Compañero (15 min)
+## Paso 3: Configurar AWS SQS y S3 (15 min)
 
-### 3.1 Obtener datos del Backend de tu compañero
+### 3.1 Crear colas SQS
 
-Tu compañero debe proporcionarte:
-
-```
-BACKEND_PUBLIC_IP: _____________________________________________
-BACKEND_SSH_KEY: <archivo-clave.pem>
-BACKEND_SSH_USER: ubuntu (generalmente)
-```
-
-### 3.2 Copiar la clave SSH del backend a tu instancia
-
-**En tu máquina local:**
+**Opción A: Usar el script automatizado (Recomendado)**
 
 ```bash
-# Copiar la clave del backend de tu compañero a tu instancia de performance
-scp -i "your-key.pem" backend-key.pem ubuntu@<PERFORMANCE_PUBLIC_IP>:~/backend-key.pem
-
 # Conectarte a tu instancia de performance
 ssh -i "your-key.pem" ubuntu@<PERFORMANCE_PUBLIC_IP>
 
-# Configurar permisos de la clave del backend
-chmod 400 ~/backend-key.pem
+# Clonar el repositorio (si aún no lo has hecho)
+cd ~
+git clone https://github.com/TU_USUARIO/MISW-4204-desarrollo-de-software-en-la-nube.git
+
+# Navegar al directorio de setup de SQS
+cd MISW-4204-desarrollo-de-software-en-la-nube/source/deployment/sqs-setup
+
+# Configurar credenciales de AWS (desde AWS Academy)
+# Ve a AWS Details > AWS CLI > Show y copia las credenciales
+export AWS_ACCESS_KEY_ID="ASIA..."
+export AWS_SECRET_ACCESS_KEY="..."
+export AWS_SESSION_TOKEN="..."
+
+# Ejecutar script de creación de colas
+chmod +x setup-sqs.sh
+./setup-sqs.sh us-east-1
 ```
 
-### 3.3 Probar conexión SSH al backend
+**El script creará:**
+- Cola principal: `anb-video-processing-queue`
+- Cola DLQ: `anb-video-processing-dlq`
+
+**Anota las URLs que genera el script:**
+```
+SQS_QUEUE_URL: https://sqs.us-east-1.amazonaws.com/ACCOUNT_ID/anb-video-processing-queue
+SQS_DLQ_URL: https://sqs.us-east-1.amazonaws.com/ACCOUNT_ID/anb-video-processing-dlq
+```
+
+### 3.2 Verificar bucket S3
+
+El bucket S3 debe ser creado previamente (el mismo que usa el worker).
 
 ```bash
-# Desde tu instancia de performance, conectarte al backend de tu compañero
-ssh -i ~/backend-key.pem ubuntu@<BACKEND_PUBLIC_IP>
+# Verificar que el bucket existe
+aws s3 ls s3://your-bucket-name
 
-# Si funciona, deberías estar conectado al servidor backend
-# Verifica que Redis esté corriendo:
-docker ps | grep redis
+# Si no existe, créalo
+aws s3 mb s3://your-bucket-name --region us-east-1
 
-# Salir del backend
-exit
+# Verificar carpeta original/ (se creará automáticamente si no existe)
+aws s3 ls s3://your-bucket-name/original/
+```
+
+**Anota el nombre del bucket:**
+```
+S3_BUCKET_NAME: your-bucket-name
 ```
 
 ---
@@ -308,57 +355,68 @@ cd ~/performance-instance
 ```bash
 # Desde tu instancia de performance
 cd ~/performance-instance
+cp .env.example .env
 nano .env
 ```
 
-**Contenido del .env:**
+**Configuración del .env para AWS SQS + S3:**
 
 ```bash
-# ==========================================
-# CONFIGURACIÓN DEL BACKEND DE TU COMPAÑERO
-# ==========================================
+# ==============================================================================
+# MODO DE OPERACIÓN (AWS SQS + S3)
+# ==============================================================================
 
-# IP pública del backend de tu compañero
-BACKEND_PUBLIC_IP=3.XXX.XXX.XXX
+USE_SQS=true
+USE_S3=true
 
-# Usuario SSH del backend
-BACKEND_SSH_USER=ubuntu
+# ==============================================================================
+# AWS SQS CONFIGURATION
+# ==============================================================================
 
-# Ruta a la clave SSH del backend (dentro de tu instancia)
-BACKEND_SSH_KEY=/home/ubuntu/backend-key.pem
+AWS_REGION=us-east-1
 
-# ==========================================
-# CONFIGURACIÓN DE REDIS (vía SSH Tunnel)
-# ==========================================
+# URLs obtenidas del script setup-sqs.sh (Paso 3.1)
+SQS_QUEUE_URL=https://sqs.us-east-1.amazonaws.com/ACCOUNT_ID/anb-video-processing-queue
+SQS_DLQ_URL=https://sqs.us-east-1.amazonaws.com/ACCOUNT_ID/anb-video-processing-dlq
 
-# Redis se conectará vía túnel SSH al backend
-# El producer se conectará a localhost:6379 que será tunelizado
-REDIS_HOST=localhost
-REDIS_PORT=6379
-REDIS_URL=redis://localhost:6379/0
+# ==============================================================================
+# AWS S3 CONFIGURATION
+# ==============================================================================
 
-# ==========================================
-# CONFIGURACIÓN DE LA API (Acceso Directo HTTP)
-# ==========================================
+# Nombre del bucket (mismo que usa el worker)
+S3_BUCKET_NAME=your-bucket-name
 
-# La API del backend se accede directamente por HTTP (puerto 80)
+# ==============================================================================
+# AWS CREDENTIALS (desde AWS Academy)
+# ==============================================================================
+
+# Ve a: AWS Details > AWS CLI > Show
+AWS_ACCESS_KEY_ID=ASIA...
+AWS_SECRET_ACCESS_KEY=...
+AWS_SESSION_TOKEN=...
+
+# ==============================================================================
+# API CONFIGURATION (para JMeter y setup JWT)
+# ==============================================================================
+
+# URL de la API del backend
 API_BASE_URL=http://3.XXX.XXX.XXX
 
-# Usuario de prueba para JMeter (debe existir en el backend)
+# Usuario de prueba para JMeter
 TEST_USER_EMAIL=performance_test@example.com
 TEST_USER_PASSWORD=PerformanceTest123!
 
-# ==========================================
-# CONFIGURACIÓN DE PROMETHEUS
-# ==========================================
+# ==============================================================================
+# PROMETHEUS CONFIGURATION
+# ==============================================================================
 
-# IP pública del backend para scraping de métricas
+# IPs públicas del backend y worker para scraping de métricas
 PROMETHEUS_BACKEND_TARGET=3.XXX.XXX.XXX:8000
-PROMETHEUS_WORKER_TARGET=3.XXX.XXX.XXX:8001
+PROMETHEUS_WORKER_TARGET=3.YYY.YYY.YYY:8001
 
-# ==========================================
-# CONFIGURACIÓN DE GRAFANA
-# ==========================================
+# ==============================================================================
+# GRAFANA CONFIGURATION
+# ==============================================================================
 
 GF_SECURITY_ADMIN_USER=admin
 GF_SECURITY_ADMIN_PASSWORD=admin
@@ -372,8 +430,11 @@ GF_SECURITY_ADMIN_PASSWORD=admin
 # Verificar que el archivo .env está correcto
 cat .env
 
-# Verificar que la clave SSH existe
-ls -lh ~/backend-key.pem
+# Verificar que USE_SQS y USE_S3 están en true
+grep "USE_SQS\|USE_S3" .env
+
+# Verificar que las URLs de SQS están configuradas
+grep "SQS_QUEUE_URL\|SQS_DLQ_URL" .env
 ```
 
 ---
@@ -452,142 +513,50 @@ grep -i "PUBLIC_IP" prometheus.yml
 
 ---
 
-## Paso 8: Configurar SSH Tunnel a Redis (20 min)
+## Paso 8: Configurar Prometheus (sin túnel SSH) (10 min)
 
-### 8.1 Crear script de túnel SSH
+Ya no necesitamos túnel SSH porque usamos AWS SQS. El script `setup-ssh-tunnel.sh` ahora solo configura `prometheus.yml`.
+
+### 8.1 Actualizar script de configuración
+
+El script `setup-ssh-tunnel.sh` ya existe en el repositorio y ahora detecta automáticamente si `USE_SQS=true` para omitir la creación del túnel SSH.
 
 ```bash
 cd ~/performance-instance
-nano setup-ssh-tunnel.sh
-```
-
-**Contenido del script:**
-
-```bash
-#!/bin/bash
-
-# Cargar variables de entorno
-source .env
-
-echo "=========================================="
-echo "Configurando túnel SSH a Redis"
-echo "=========================================="
-echo "Backend IP: $BACKEND_PUBLIC_IP"
-echo "SSH User: $BACKEND_SSH_USER"
-echo "SSH Key: $BACKEND_SSH_KEY"
-echo ""
-
-# Verificar que la clave SSH existe
-if [ ! -f "$BACKEND_SSH_KEY" ]; then
-    echo "ERROR: La clave SSH no existe en $BACKEND_SSH_KEY"
-    exit 1
-fi
-
-# Verificar permisos de la clave
-PERMS=$(stat -c %a "$BACKEND_SSH_KEY")
-if [ "$PERMS" != "400" ]; then
-    echo "ADVERTENCIA: Los permisos de la clave SSH no son 400. Corrigiendo..."
-    chmod 400 "$BACKEND_SSH_KEY"
-fi
-
-# Verificar conectividad SSH
-echo "Probando conexión SSH al backend..."
-ssh -i "$BACKEND_SSH_KEY" \
-    -o ConnectTimeout=10 \
-    -o StrictHostKeyChecking=no \
-    "$BACKEND_SSH_USER@$BACKEND_PUBLIC_IP" \
-    "echo 'Conexión SSH exitosa' && docker ps | grep redis"
-
-if [ $? -ne 0 ]; then
-    echo "ERROR: No se pudo conectar al backend via SSH"
-    echo "Verifica:"
-    echo "  1. La IP pública del backend es correcta"
-    echo "  2. La clave SSH es correcta"
-    echo "  3. El Security Group del backend permite SSH desde esta IP"
-    exit 1
-fi
-
-echo ""
-echo "Creando túnel SSH a Redis (puerto 6379)..."
-echo "Nota: Este proceso se ejecutará en segundo plano"
-
-# Crear túnel SSH a Redis
-# -f: ejecutar en background
-# -N: no ejecutar comandos remotos (solo túnel)
-# -L: port forwarding local
-ssh -f -N \
-    -o ServerAliveInterval=60 \
-    -o ServerAliveCountMax=3 \
-    -o ExitOnForwardFailure=yes \
-    -o StrictHostKeyChecking=no \
-    -i "$BACKEND_SSH_KEY" \
-    -L 6379:localhost:6379 \
-    "$BACKEND_SSH_USER@$BACKEND_PUBLIC_IP"
-
-if [ $? -eq 0 ]; then
-    echo "Túnel SSH creado exitosamente"
-    echo ""
-    echo "Verificando túnel..."
-    sleep 2
-
-    # Verificar que el puerto 6379 está escuchando
-    if netstat -tuln | grep -q ":6379"; then
-        echo "El puerto 6379 está abierto localmente"
-        echo ""
-        echo "Para verificar que Redis responde:"
-        echo "  docker run --rm --network host redis:latest redis-cli ping"
-        echo ""
-        echo "Para ver el proceso del túnel SSH:"
-        echo "  ps aux | grep 'ssh.*6379'"
-        echo ""
-        echo "Para cerrar el túnel:"
-        echo "  pkill -f 'ssh.*6379'"
-    else
-        echo "ADVERTENCIA: El puerto 6379 no está escuchando"
-        echo "Verifica los logs de SSH"
-    fi
-else
-    echo "ERROR: No se pudo crear el túnel SSH"
-    exit 1
-fi
-
-echo "=========================================="
-echo "Túnel SSH configurado correctamente"
-echo "=========================================="
-```
-
-**Guardar y dar permisos:**
-
-```bash
 chmod +x setup-ssh-tunnel.sh
 ```
 
-### 8.2 Ejecutar el script de túnel SSH
+### 8.2 Ejecutar el script de configuración
 
 ```bash
 ./setup-ssh-tunnel.sh
 ```
 
+**Con USE_SQS=true, el script:**
+1. ✅ Configura `prometheus.yml` con las IPs del `.env`
+2. ✅ **NO** crea túnel SSH (porque usas SQS, no Redis)
+3. ✅ Valida que las variables de entorno estén configuradas
+
 **Deberías ver:**
 
 ```
 ==========================================
-Túnel SSH configurado correctamente
+Configuración completada
 ==========================================
+✅ prometheus.yml configurado con IPs
+✅ Modo SQS activado (no se requiere túnel SSH)
 ```
 
-### 8.3 Verificar el túnel SSH
+### 8.3 Verificar configuración de Prometheus
 
 ```bash
-# Verificar que el puerto 6379 está escuchando localmente
-netstat -tuln | grep 6379
+# Ver el archivo configurado
+cat prometheus.yml
 
-# Probar conexión a Redis (requiere redis-cli)
-docker run --rm --network host redis:latest redis-cli ping
-# Debería responder: PONG
+# Asegurarte de que las IPs fueron reemplazadas correctamente
+grep -E "3\." prometheus.yml
 
-# Ver el proceso del túnel
-ps aux | grep 'ssh.*6379'
+# Debería mostrar las IPs reales del backend y worker
 ```
 
 ---
@@ -648,7 +617,7 @@ docker logs producer
 
 ---
 
-## Paso 10: Verificación End-to-End (20 min)
+## Paso 10: Verificación End-to-End con AWS SQS y S3 (20 min)
 
 ### 10.1 Verificar acceso a Grafana
 
@@ -665,19 +634,57 @@ http://<PERFORMANCE_PUBLIC_IP>:3000
 - Dashboard del Worker: [http://localhost:3000/d/worker-perf/worker-performance-video-processing](http://localhost:3000/d/worker-perf/worker-performance-video-processing)
 - Dashboard del Backend: [http://localhost:3000/d/backend-api-perf/backend-api-performance](http://localhost:3000/d/backend-api-perf/backend-api-performance)
 
-### 10.2 Verificar conexión a Redis
+### 10.2 Verificar conexión a AWS SQS
 
 ```bash
 # Desde tu instancia de performance
-docker exec producer redis-cli -h localhost -p 6379 ping
-# Debería responder: PONG
+docker exec producer python -c "
+import boto3
+import os
+sqs = boto3.client('sqs', region_name=os.getenv('AWS_REGION', 'us-east-1'))
+print('✅ Conexión a AWS SQS exitosa')
+print('Colas disponibles:', sqs.list_queues())
+"
 
-# Ver la longitud de la cola
-docker exec producer redis-cli -h localhost -p 6379 LLEN video_processing
-# Debería responder: (integer) 0
+# Verificar estado de la cola
+docker exec producer python -c "
+import boto3
+import os
+sqs = boto3.client('sqs', region_name=os.getenv('AWS_REGION', 'us-east-1'))
+response = sqs.get_queue_attributes(
+    QueueUrl=os.getenv('SQS_QUEUE_URL'),
+    AttributeNames=['ApproximateNumberOfMessages']
+)
+print('Mensajes en cola:', response['Attributes']['ApproximateNumberOfMessages'])
+"
 ```
 
-### 10.3 Verificar acceso a la API del backend
+### 10.3 Verificar acceso a AWS S3
+
+```bash
+# Verificar conexión a S3
+docker exec producer python -c "
+import boto3
+s3 = boto3.client('s3')
+print('✅ Conexión a AWS S3 exitosa')
+print('Buckets:', [b['Name'] for b in s3.list_buckets()['Buckets']])
+"
+
+# Verificar acceso al bucket configurado
+docker exec producer python -c "
+import boto3
+import os
+s3 = boto3.client('s3')
+bucket = os.getenv('S3_BUCKET_NAME')
+try:
+    s3.head_bucket(Bucket=bucket)
+    print(f'✅ Bucket {bucket} accesible')
+except Exception as e:
+    print(f'❌ Error: {e}')
+"
+```
+
+### 10.4 Verificar acceso a la API del backend
 
 ```bash
 # Verificar health check
@@ -687,7 +694,7 @@ curl http://<BACKEND_PUBLIC_IP>/health
 # {"status":"healthy"}
 ```
 
-### 10.4 Ejecutar prueba de sanidad con JMeter
+### 10.5 Ejecutar prueba de sanidad con JMeter
 
 ```bash
 # Ejecutar smoke test
@@ -697,20 +704,26 @@ docker exec jmeter /bin/bash -c "jmeter -n -t /scripts/smoke_test.jmx -l /script
 cat ~/performance-testing/web-api-tests/scenarios/scenarios/smoke_results.jtl
 ```
 
-### 10.5 Ejecutar prueba básica con el Producer
+### 10.6 Ejecutar prueba básica con el Producer (AWS SQS + S3)
 
 ```bash
-# Encolar 5 tareas de prueba
+# Encolar 5 tareas de prueba (sube videos a S3 y envía mensajes a SQS)
 docker exec producer python producer.py --num-videos 5 --video-file ./assets/dummy_file_50mb.mp4 --no-wait --debug
 
 # Deberías ver:
-# [INFO] Verificando conexión a Redis...
-# [INFO] ✅ Conexión a Redis exitosa
-# [INFO] ✅ 5 tareas encoladas exitosamente.
+# [INFO] Verificando conexión a AWS SQS...
+# [INFO] ✅ Conexión a AWS SQS exitosa
+# [INFO] ✅ Bucket S3 'your-bucket-name' existe y es accesible
+# [INFO] ✅ 5 archivos subidos a S3 y tareas preparadas
+# [INFO] ✅ 5 tareas encoladas exitosamente en SQS
 
-# Verificar que las tareas se encolaron en Redis
-docker exec producer redis-cli -h localhost -p 6379 LLEN video_processing
-# Debería mostrar: (integer) 5 (o menos si ya se están procesando)
+# Verificar archivos en S3
+aws s3 ls s3://<S3_BUCKET_NAME>/original/
+
+# Verificar mensajes en SQS
+aws sqs get-queue-attributes \
+  --queue-url <SQS_QUEUE_URL> \
+  --attribute-names ApproximateNumberOfMessages
 
 # Monitorear en Grafana que las tareas se procesan
 ```
@@ -862,27 +875,60 @@ http_requests_total
 
 ---
 
-## Troubleshooting Común
+## Troubleshooting Común (AWS SQS + S3)
 
-### Problema 1: El producer no puede conectarse a Redis
+### Problema 1: El producer no puede conectarse a AWS SQS
 
 **Síntoma:**
 
 ```
-redis.exceptions.ConnectionError: Error connecting to Redis
+botocore.exceptions.NoCredentialsError: Unable to locate credentials
 ```
 
 **Solución:**
 
 ```bash
-# Verificar que el túnel SSH está activo
-ps aux | grep 'ssh.*6379'
+# Verificar que las credenciales AWS están configuradas en .env
+docker exec producer printenv | grep AWS
 
-# Si no está activo, recrearlo
-./setup-ssh-tunnel.sh
+# Si las credenciales están vacías o expiradas, actualizarlas
+cd ~/performance-instance
+nano .env
+# Actualiza AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN
 
-# Verificar que Redis responde en el backend
-ssh -i ~/backend-key.pem ubuntu@<BACKEND_PUBLIC_IP> "docker ps | grep redis"
+# Reiniciar el producer
+docker-compose restart producer
+
+# Verificar conexión
+docker exec producer python -c "import boto3; print(boto3.client('sqs').list_queues())"
+```
+
+### Problema 2: Credenciales de AWS Academy expiraron
+
+**Síntoma:**
+
+```
+An error occurred (ExpiredToken) when calling the ... operation: The security token included in the request is expired
+```
+
+**Solución:**
+
+```bash
+# Las credenciales de AWS Academy expiran cada 4 horas
+# Obtener nuevas credenciales:
+# 1. Ve a AWS Academy > AWS Details > AWS CLI > Show
+# 2. Copia las nuevas credenciales
+# 3. Actualiza el .env
+
+cd ~/performance-instance
+nano .env
+# Pega las nuevas credenciales AWS
+
+# Reiniciar el producer
+docker-compose restart producer
+
+# Verificar que las nuevas credenciales funcionan
+docker exec producer python -c "import boto3; print('✅ Credenciales válidas')"
 ```
 
 ### Problema 2: JMeter no puede conectarse a la API
@@ -926,68 +972,93 @@ docker exec prometheus cat /etc/prometheus/prometheus.yml
 http://<PERFORMANCE_PUBLIC_IP>:9090/targets
 ```
 
-### Problema 4: El túnel SSH se cae constantemente
+### Problema 4: No se pueden subir archivos a S3
 
 **Síntoma:**
 
 ```
-Connection reset by peer
+botocore.exceptions.ClientError: An error occurred (AccessDenied) when calling the PutObject operation: Access Denied
 ```
 
 **Solución:**
 
 ```bash
-# Usar autossh para mantener el túnel activo
-sudo apt install -y autossh
+# Verificar que el bucket existe y tienes permisos
+aws s3 ls s3://<S3_BUCKET_NAME>
 
-# Crear script persistente
-nano ~/start-persistent-tunnel.sh
+# Verificar que las credenciales tienen permisos de escritura
+# En AWS Academy, las credenciales deberían tener acceso completo a S3
 
-# Contenido:
-#!/bin/bash
-source ~/performance-instance/.env
-autossh -M 0 -f -N \
-    -o ServerAliveInterval=60 \
-    -o ServerAliveCountMax=3 \
-    -o ExitOnForwardFailure=yes \
-    -o StrictHostKeyChecking=no \
-    -i "$BACKEND_SSH_KEY" \
-    -L 6379:localhost:6379 \
-    "$BACKEND_SSH_USER@$BACKEND_PUBLIC_IP"
+# Si el bucket no existe, créalo
+aws s3 mb s3://<S3_BUCKET_NAME> --region us-east-1
 
-# Dar permisos y ejecutar
-chmod +x ~/start-persistent-tunnel.sh
-~/start-persistent-tunnel.sh
+# Verificar que el bucket está configurado en .env
+grep S3_BUCKET_NAME ~/performance-instance/.env
+```
+
+### Problema 5: Las tareas no se procesan (mensajes en SQS pero workers no las toman)
+
+**Síntoma:**
+
+```
+Mensajes en SQS pero no se procesan
+```
+
+**Solución:**
+
+```bash
+# Verificar que los workers están escuchando en SQS
+# Conectarse a la instancia del worker y verificar logs
+ssh -i "worker-key.pem" ubuntu@<WORKER_IP>
+docker logs -f celery-worker
+
+# Verificar que el worker tiene las mismas URLs de SQS configuradas
+docker exec celery-worker printenv | grep SQS_QUEUE_URL
+
+# Verificar que el worker tiene credenciales AWS válidas
+docker exec celery-worker python -c "import boto3; print(boto3.client('sqs').list_queues())"
 ```
 
 ---
 
-## Checklist Final
+## Checklist Final (AWS SQS + S3)
 
 - [ ] Instancia EC2 `anb-performance-testing` creada
 - [ ] Security Group `anb-performance-sg` configurado
 - [ ] Docker y Docker Compose instalados
-- [ ] Clave SSH del backend copiada y con permisos correctos
-- [ ] Archivo `.env` configurado con IPs correctas
-- [ ] Túnel SSH a Redis funcionando (`netstat -tuln | grep 6379`)
+- [ ] Colas SQS creadas (Main Queue y DLQ)
+- [ ] Bucket S3 creado y accesible
+- [ ] Credenciales AWS configuradas en `.env` (Access Key, Secret Key, Session Token)
+- [ ] Archivo `.env` configurado con URLs de SQS y nombre de bucket S3
+- [ ] `prometheus.yml` configurado con IPs del backend y worker
 - [ ] Servicios de Docker Compose corriendo (`docker ps`)
+- [ ] Producer puede conectarse a AWS SQS (`docker exec producer python -c "import boto3; print(boto3.client('sqs').list_queues())"`)
+- [ ] Producer puede acceder a S3 (`docker exec producer python -c "import boto3; s3=boto3.client('s3'); print(s3.list_buckets())"`)
 - [ ] Grafana accesible en puerto 3000
-- [ ] Producer puede conectarse a Redis (`docker exec producer redis-cli ping`)
 - [ ] JMeter puede ejecutar smoke test exitosamente
+- [ ] Producer puede encolar tareas en SQS y subir archivos a S3
 - [ ] Métricas visibles en Grafana
 
 ---
 
-## Comandos de Referencia Rápida
+## Comandos de Referencia Rápida (AWS SQS + S3)
 
 ```bash
 # Conexión SSH a la instancia de performance
 ssh -i "your-key.pem" ubuntu@<PERFORMANCE_PUBLIC_IP>
 
-# Ver estado del túnel SSH
-ps aux | grep 'ssh.*6379'
+# Verificar configuración AWS
+docker exec producer printenv | grep AWS
+docker exec producer printenv | grep SQS
+docker exec producer printenv | grep S3
 
-# Recrear túnel SSH
+# Verificar conexión a SQS
+docker exec producer python -c "import boto3; print(boto3.client('sqs').list_queues())"
+
+# Verificar conexión a S3
+docker exec producer python -c "import boto3; print(boto3.client('s3').list_buckets())"
+
+# Configurar Prometheus
 cd ~/performance-instance && ./setup-ssh-tunnel.sh
 
 # Levantar servicios
@@ -996,18 +1067,31 @@ cd ~/performance-instance && docker-compose up -d
 # Ver logs de todos los servicios
 docker-compose logs -f
 
-# Ejecutar prueba básica con producer
+# Ejecutar prueba básica con producer (SQS + S3)
 docker exec producer python producer.py --num-videos 10 --no-wait --debug
 
 # Ejecutar smoke test con JMeter
 docker exec jmeter /bin/bash -c "jmeter -n -t /scripts/smoke_test.jmx -l /scripts/smoke_results.jtl"
 
-# Ver tamaño de la cola de Redis
-docker exec producer redis-cli -h localhost -p 6379 LLEN video_processing
+# Ver mensajes en SQS
+aws sqs get-queue-attributes \
+  --queue-url <SQS_QUEUE_URL> \
+  --attribute-names ApproximateNumberOfMessages ApproximateNumberOfMessagesNotVisible
+
+# Ver archivos en S3
+aws s3 ls s3://<S3_BUCKET_NAME>/original/
 
 # Acceder a Grafana
 http://<PERFORMANCE_PUBLIC_IP>:3000
 Usuario: admin / Password: admin
+
+# Renovar credenciales AWS (cada 4 horas en AWS Academy)
+# 1. Obtén nuevas credenciales de AWS Academy
+# 2. Edita .env con las nuevas credenciales
+cd ~/performance-instance
+nano .env
+# 3. Reinicia el producer
+docker-compose restart producer
 ```
 
 ---

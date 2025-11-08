@@ -94,11 +94,22 @@ services:
     env_file:
       - .env
     environment:
-      - REDIS_URL=${REDIS_URL}
+      # Broker configuration (SQS or Redis)
+      - USE_SQS=${USE_SQS:-true}
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - SQS_QUEUE_URL=${SQS_QUEUE_URL}
+      - SQS_DLQ_URL=${SQS_DLQ_URL}
+      - REDIS_URL=${REDIS_URL:-redis://localhost:6379/0}
+      # Storage configuration (S3 or Local)
+      - USE_S3=${USE_S3:-true}
+      - S3_BUCKET_NAME=${S3_BUCKET_NAME}
+      # AWS Credentials (for AWS Academy or EC2 without IAM Role)
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN}
     volumes:
       - ../../performance-testing/worker-tests/assets:/app/assets
-      - /mnt/nfs_uploads:/app/uploads  # Montaje NFS para acceder a videos
-    network_mode: host  # Usar host network para acceder a localhost:6379 (túnel SSH)
+    network_mode: host  # Usar host network para acceder a localhost:6379 cuando USE_SQS=false
     depends_on:
       - prometheus
       - grafana
