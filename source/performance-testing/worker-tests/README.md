@@ -20,13 +20,18 @@ cp .env.example .env
 
 Edita el archivo `.env` con los valores correctos:
 
-#### Para AWS SQS (Producción)
+#### Para AWS SQS + S3 (Producción en la Nube)
 
 ```bash
+# Broker: AWS SQS
 USE_SQS=true
 AWS_REGION=us-east-1
 SQS_QUEUE_URL=https://sqs.us-east-1.amazonaws.com/ACCOUNT_ID/anb-video-processing-queue
 SQS_DLQ_URL=https://sqs.us-east-1.amazonaws.com/ACCOUNT_ID/anb-video-processing-dlq
+
+# Storage: AWS S3
+USE_S3=true
+S3_BUCKET_NAME=your-bucket-name
 
 # Credenciales de AWS (solo si no usas IAM Role)
 AWS_ACCESS_KEY_ID=tu_access_key
@@ -34,14 +39,18 @@ AWS_SECRET_ACCESS_KEY=tu_secret_key
 AWS_SESSION_TOKEN=tu_session_token
 ```
 
-#### Para Redis (Desarrollo Local)
+#### Para Redis + Volumen Local (Desarrollo Local)
 
 ```bash
+# Broker: Redis
 USE_SQS=false
 REDIS_URL=redis://localhost:6379/0
+
+# Storage: Volumen compartido local
+USE_S3=false
 ```
 
-### 3. Obtener URLs de SQS
+### 3. Configurar AWS SQS
 
 Si aún no has creado las colas de SQS, ejecuta:
 
@@ -51,6 +60,39 @@ cd ../../deployment/sqs-setup
 ```
 
 Esto generará un archivo `sqs-config.env` con las URLs necesarias.
+
+### 4. Configurar AWS S3
+
+Si estás usando S3 para almacenamiento (`USE_S3=true`), necesitas:
+
+#### Opción 1: Crear bucket manualmente
+
+```bash
+# Crear bucket
+aws s3 mb s3://your-bucket-name --region us-east-1
+
+# Crear estructura de carpetas
+aws s3api put-object --bucket your-bucket-name --key original/ --content-length 0
+aws s3api put-object --bucket your-bucket-name --key processed/ --content-length 0
+```
+
+#### Opción 2: Usar el script de setup del backend
+
+```bash
+cd ../../deployment/backend-instance
+# Edita el archivo .env con S3_BUCKET_NAME
+./setup-s3.sh
+```
+
+#### Verificar que el bucket existe
+
+```bash
+# Listar buckets
+aws s3 ls
+
+# Verificar contenido del bucket
+aws s3 ls s3://your-bucket-name/
+```
 
 ## Uso del Producer
 
@@ -110,18 +152,27 @@ python producer.py --num-videos 5 --debug
 
 ## Cómo Funciona
 
-### Con AWS SQS (USE_SQS=true)
+### Con AWS SQS + S3 (Producción en la Nube)
 
-1. **Validación**: Verifica la conexión a AWS SQS y las credenciales
-2. **Preparación**: Copia los archivos de video al volumen compartido
-3. **Encolado**: Envía las tareas a la cola de SQS `video_processing`
+1. **Validación**:
+   - Verifica la conexión a AWS SQS y las credenciales
+   - Verifica que el bucket de S3 existe y es accesible
+2. **Preparación**:
+   - Sube los archivos de video a S3 en la carpeta `original/`
+   - Cada archivo se nombra con el ID de la tarea (ej: `1.mp4`, `2.mp4`, etc.)
+3. **Encolado**:
+   - Envía las tareas a la cola de SQS `video_processing`
+   - Cada tarea contiene el `video_id` que el worker usará para descargar el archivo de S3
 4. **Monitoreo**:
    - Si `--no-wait`: Termina inmediatamente después de encolar
    - Si espera resultados: Monitorea la cola de SQS para ver cuántos mensajes quedan
 
-### Con Redis (USE_SQS=false)
+### Con Redis + Volumen Local (Desarrollo Local)
 
-Similar al flujo de SQS, pero usando Redis como broker y puede rastrear el progreso de las tareas si el result backend está configurado.
+1. **Validación**: Verifica que Redis esté disponible y la carpeta local existe
+2. **Preparación**: Copia los archivos de video al volumen compartido local
+3. **Encolado**: Envía las tareas a la cola de Redis
+4. **Monitoreo**: Puede rastrear el progreso de las tareas si el result backend está configurado
 
 ## Monitoreo del Procesamiento
 
@@ -239,7 +290,43 @@ cd ../../deployment/sqs-setup
 ./setup-sqs.sh us-east-1
 ```
 
-### Error: "No se puede continuar sin la carpeta de uploads"
+### Error: "El bucket S3 no existe" o "No tienes permisos para acceder al bucket"
+
+**Solución**: Verifica que el bucket existe y tienes los permisos correctos:
+
+```bash
+# Listar buckets
+aws s3 ls
+
+# Crear bucket si no existe
+aws s3 mb s3://your-bucket-name --region us-east-1
+
+# Verificar permisos de tu usuario IAM
+aws s3 ls s3://your-bucket-name/
+```
+
+Si estás usando AWS Academy, asegúrate de:
+1. Tener las credenciales actualizadas (expiran cada 4 horas)
+2. Incluir el `AWS_SESSION_TOKEN` en el archivo `.env`
+
+### Error: "Error al subir archivo a S3"
+
+**Causas comunes**:
+1. **Credenciales expiradas**: Actualiza las credenciales de AWS Academy
+2. **Permisos insuficientes**: Verifica que tu usuario IAM tiene permisos `s3:PutObject`
+3. **Bucket en otra región**: Verifica que `AWS_REGION` coincide con la región del bucket
+
+**Verificación**:
+```bash
+# Probar subida manual
+echo "test" > test.txt
+aws s3 cp test.txt s3://your-bucket-name/original/test.txt
+
+# Verificar que se subió
+aws s3 ls s3://your-bucket-name/original/
+```
+
+### Error: "No se puede continuar sin la carpeta de uploads" (Modo Local)
 
 **Solución**: Asegúrate de que el volumen compartido esté montado correctamente o que la carpeta exista:
 
@@ -257,12 +344,34 @@ mkdir -p /app/uploads/original
 
 ## Notas Importantes
 
+### AWS SQS
+
 1. **Límites de SQS**: AWS SQS tiene límites de throughput. Para pruebas muy grandes (>1000 tareas), considera usar `--no-wait` y monitorear desde CloudWatch.
 
-2. **Costos**: Cada llamada a SQS tiene un costo. El long polling (configurado a 20 segundos) ayuda a reducir costos.
+2. **Costos de SQS**: Cada llamada a SQS tiene un costo. El long polling (configurado a 20 segundos) ayuda a reducir costos.
 
 3. **Timeout de Visibilidad**: Las tareas tienen 1 hora (3600 segundos) de visibility timeout. Si un worker no completa la tarea en ese tiempo, la tarea volverá a la cola.
 
 4. **Dead Letter Queue**: Después de 3 reintentos fallidos, las tareas se mueven automáticamente a la DLQ para su análisis.
 
-5. **CloudWatch Integration**: El worker envía métricas automáticamente. Revisa CloudWatch para análisis detallado del rendimiento.
+### AWS S3
+
+5. **Costos de S3**: Cada operación de S3 (PUT, GET, LIST) tiene un costo. Subir 1000 videos generará:
+   - 1000 operaciones PUT (subida del producer)
+   - 1000 operaciones GET (descarga del worker)
+   - 1000 operaciones PUT (subida del video procesado)
+   - Costo de almacenamiento por GB-mes
+
+6. **Credenciales de AWS Academy**: Las credenciales expiran cada 4 horas. Si tienes un error de credenciales durante una prueba larga:
+   - Actualiza las credenciales en el archivo `.env`
+   - Exporta las variables: `export $(grep -v '^#' .env | xargs)`
+
+7. **Nombres únicos de archivos**: El producer usa IDs secuenciales (1.mp4, 2.mp4, etc.). Si ejecutas el producer múltiples veces, sobrescribirá archivos anteriores en S3.
+
+8. **Región de S3**: Asegúrate de que el bucket de S3 y las colas de SQS estén en la misma región AWS para reducir costos y latencia.
+
+### Monitoreo
+
+9. **CloudWatch Integration**: El worker envía métricas automáticamente. Revisa CloudWatch para análisis detallado del rendimiento.
+
+10. **Modo `--no-wait`**: Recomendado para pruebas de carga grandes. El producer terminará inmediatamente después de subir los archivos y encolar las tareas, permitiéndote monitorear desde CloudWatch o los logs del worker.

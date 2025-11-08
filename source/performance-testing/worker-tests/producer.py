@@ -18,9 +18,15 @@ AWS_REGION = os.getenv('AWS_REGION', 'us-east-1')
 SQS_QUEUE_URL = os.getenv('SQS_QUEUE_URL', '')
 SQS_DLQ_URL = os.getenv('SQS_DLQ_URL', '')
 
+# Configuración de S3
+USE_S3 = os.getenv('USE_S3', 'true').lower() == 'true'
+S3_BUCKET_NAME = os.getenv('S3_BUCKET_NAME', '')
+
 # Ruta base donde el worker espera encontrar los videos originales
-# Esta ruta es DENTRO del contenedor del productor, que mapea al volumen compartido
+# Para S3: carpeta "original/" en el bucket
+# Para Local: '/app/uploads/original'
 UPLOAD_FOLDER = '/app/uploads/original'
+S3_ORIGINAL_FOLDER = 'original'
 
 # Timeout por defecto para esperar resultados (en segundos)
 DEFAULT_TIMEOUT = 600  # 10 minutos
@@ -139,8 +145,56 @@ def check_sqs_connection() -> bool:
         log(f"❌ Error inesperado al conectar a SQS: {e}", "ERROR")
         return False
 
+def check_s3_bucket() -> bool:
+    """Verifica que el bucket de S3 esté disponible y tenga las carpetas necesarias."""
+    try:
+        log("Verificando bucket de S3...")
+
+        if not S3_BUCKET_NAME:
+            log("❌ S3_BUCKET_NAME no está configurado", "ERROR")
+            return False
+
+        # Crear cliente de S3
+        s3_client = boto3.client('s3', region_name=AWS_REGION)
+
+        # Verificar que el bucket existe
+        try:
+            s3_client.head_bucket(Bucket=S3_BUCKET_NAME)
+            log(f"✅ Bucket S3 '{S3_BUCKET_NAME}' existe y es accesible", "SUCCESS")
+        except ClientError as e:
+            error_code = e.response['Error']['Code']
+            if error_code == '404':
+                log(f"❌ El bucket '{S3_BUCKET_NAME}' no existe", "ERROR")
+            elif error_code == '403':
+                log(f"❌ No tienes permisos para acceder al bucket '{S3_BUCKET_NAME}'", "ERROR")
+            else:
+                log(f"❌ Error al verificar bucket: {error_code}", "ERROR")
+            return False
+
+        # Verificar que la carpeta 'original/' existe (solo verificamos, no necesitamos el contenido)
+        try:
+            s3_client.list_objects_v2(
+                Bucket=S3_BUCKET_NAME,
+                Prefix=f"{S3_ORIGINAL_FOLDER}/",
+                MaxKeys=1
+            )
+            log(f"✅ Carpeta '{S3_ORIGINAL_FOLDER}/' existe en el bucket", "SUCCESS")
+        except Exception as e:
+            log(f"⚠️  Carpeta '{S3_ORIGINAL_FOLDER}/' podría no existir: {e}", "WARNING")
+            log("   El script intentará crearla automáticamente al subir archivos", "INFO")
+
+        return True
+
+    except NoCredentialsError:
+        log("❌ No se encontraron credenciales de AWS", "ERROR")
+        log("   Configura AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY y AWS_SESSION_TOKEN", "ERROR")
+        return False
+    except Exception as e:
+        log(f"❌ Error inesperado al verificar S3: {e}", "ERROR")
+        return False
+
 def check_upload_folder() -> bool:
-    """Verifica que la carpeta de uploads exista, si no, la crea."""
+    """Verifica que la carpeta de uploads exista, si no, la crea (solo para modo local)."""
     try:
         if not os.path.exists(UPLOAD_FOLDER):
             log(f"Carpeta {UPLOAD_FOLDER} no existe. Creándola...", "WARNING")
@@ -151,6 +205,30 @@ def check_upload_folder() -> bool:
         return True
     except Exception as e:
         log(f"❌ Error al verificar/crear carpeta {UPLOAD_FOLDER}: {e}", "ERROR")
+        return False
+
+def upload_file_to_s3(local_path: str, s3_key: str) -> bool:
+    """Sube un archivo local a S3."""
+    try:
+        s3_client = boto3.client('s3', region_name=AWS_REGION)
+
+        # Subir archivo
+        s3_client.upload_file(
+            local_path,
+            S3_BUCKET_NAME,
+            s3_key,
+            ExtraArgs={'ContentType': 'video/mp4'}
+        )
+
+        return True
+    except FileNotFoundError:
+        log(f"❌ Archivo local no encontrado: {local_path}", "ERROR")
+        return False
+    except NoCredentialsError:
+        log("❌ No se encontraron credenciales de AWS para subir a S3", "ERROR")
+        return False
+    except Exception as e:
+        log(f"❌ Error al subir archivo a S3: {e}", "ERROR")
         return False
 
 # --- Lógica Principal --- #
@@ -170,7 +248,12 @@ def run_test(num_videos: int, video_path: str, timeout: int = DEFAULT_TIMEOUT, d
     log("🚀 Iniciando prueba de rendimiento del Worker")
     log(f"   - Tareas a generar: {num_videos}")
     log(f"   - Archivo de video: {video_path}")
-    log(f"   - Destino de worker: {UPLOAD_FOLDER}")
+    log(f"   - Storage: {'AWS S3' if USE_S3 else 'Local/Volumen Compartido'}")
+    if USE_S3:
+        log(f"   - S3 Bucket: {S3_BUCKET_NAME}")
+        log(f"   - S3 Folder: {S3_ORIGINAL_FOLDER}/")
+    else:
+        log(f"   - Destino local: {UPLOAD_FOLDER}")
     log(f"   - Timeout: {timeout} segundos")
     log(f"   - Broker: {'AWS SQS' if USE_SQS else 'Redis'}")
     if USE_SQS:
@@ -195,10 +278,16 @@ def run_test(num_videos: int, video_path: str, timeout: int = DEFAULT_TIMEOUT, d
         # Si estás usando Redis localmente, puedes agregar check_redis_connection() aquí
         log("⚠️  Usando Redis - asegúrate de que esté disponible", "WARNING")
 
-    # Verificar carpeta de uploads
-    if not check_upload_folder():
-        log("❌ No se puede continuar sin la carpeta de uploads.", "ERROR")
-        sys.exit(1)
+    # Verificar storage (S3 o carpeta local)
+    if USE_S3:
+        if not check_s3_bucket():
+            log("❌ No se puede continuar sin acceso al bucket de S3.", "ERROR")
+            log("   Verifica que las credenciales de AWS estén configuradas y el bucket exista.", "ERROR")
+            sys.exit(1)
+    else:
+        if not check_upload_folder():
+            log("❌ No se puede continuar sin la carpeta de uploads.", "ERROR")
+            sys.exit(1)
 
     # --- 1. Preparar archivos y tareas ---
     log("\n[Paso 1/4] Preparando archivos y tareas...")
@@ -214,23 +303,40 @@ def run_test(num_videos: int, video_path: str, timeout: int = DEFAULT_TIMEOUT, d
     log(f"   - Tamaño del archivo: {file_size_mb:.2f} MB")
 
     task_signatures = []
-    files_copied = 0
+    files_uploaded = 0
 
     for i in range(num_videos):
         video_id = i + 1  # Usamos un ID simple y predecible
         new_filename = f"{video_id}.mp4"
-        destination_path = os.path.join(UPLOAD_FOLDER, new_filename)
 
-        # Copiar el archivo de video de prueba al volumen compartido
-        try:
-            shutil.copy(video_path, destination_path)
-            files_copied += 1
-            if debug and files_copied % 10 == 0:
-                log(f"   - Copiados {files_copied}/{num_videos} archivos...", "DEBUG")
-        except Exception as e:
-            log(f"❌ Error copiando archivo a {destination_path}: {e}", "ERROR")
-            log("   Asegúrate de que el volumen 'video_storage' esté montado correctamente.", "ERROR")
-            sys.exit(1)
+        # Subir archivo a S3 o copiar a volumen local
+        if USE_S3:
+            # Subir a S3
+            s3_key = f"{S3_ORIGINAL_FOLDER}/{new_filename}"
+            try:
+                if upload_file_to_s3(video_path, s3_key):
+                    files_uploaded += 1
+                    if debug and files_uploaded % 10 == 0:
+                        log(f"   - Subidos {files_uploaded}/{num_videos} archivos a S3...", "DEBUG")
+                else:
+                    log(f"❌ Error subiendo archivo {new_filename} a S3", "ERROR")
+                    sys.exit(1)
+            except Exception as e:
+                log(f"❌ Error subiendo archivo a S3: {e}", "ERROR")
+                log("   Verifica que las credenciales de AWS estén configuradas correctamente.", "ERROR")
+                sys.exit(1)
+        else:
+            # Copiar a volumen local
+            destination_path = os.path.join(UPLOAD_FOLDER, new_filename)
+            try:
+                shutil.copy(video_path, destination_path)
+                files_uploaded += 1
+                if debug and files_uploaded % 10 == 0:
+                    log(f"   - Copiados {files_uploaded}/{num_videos} archivos...", "DEBUG")
+            except Exception as e:
+                log(f"❌ Error copiando archivo a {destination_path}: {e}", "ERROR")
+                log("   Asegúrate de que el volumen 'video_storage' esté montado correctamente.", "ERROR")
+                sys.exit(1)
 
         # Crear la "firma" de la tarea de Celery
         # IMPORTANTE: Especificar la cola 'video_processing' que es donde escucha el worker
@@ -241,7 +347,8 @@ def run_test(num_videos: int, video_path: str, timeout: int = DEFAULT_TIMEOUT, d
         )
         task_signatures.append(signature)
 
-    log(f"✅ {num_videos} archivos copiados y tareas preparadas.", "SUCCESS")
+    storage_action = "subidos a S3" if USE_S3 else "copiados"
+    log(f"✅ {num_videos} archivos {storage_action} y tareas preparadas.", "SUCCESS")
 
     # --- 2. Ejecutar y cronometrar ---
     broker_name = "AWS SQS" if USE_SQS else "Redis"
