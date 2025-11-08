@@ -45,6 +45,8 @@ services:
     environment:
       # Asegurar que USE_SQS esté activado
       - USE_SQS=true
+      # TEST_MODE: true = no envía a cola (para pruebas), false = funcionamiento normal
+      - TEST_MODE=${TEST_MODE}
     #volumes:
       # Montaje NFS - se monta desde el host
       #- /mnt/nfs_uploads:/app/uploads
@@ -84,4 +86,7 @@ networks:
 # 3. Configurar SQS_QUEUE_URL y SQS_DLQ_URL en .env
 # 4. Instance Profile debe estar adjunto a la instancia EC2
 # 5. No hay volúmenes de Redis - SQS persiste mensajes automáticamente
+# 6. TEST_MODE=false (producción) o TEST_MODE=true (testing sin cola)
+#    - false: El backend envía tareas a SQS normalmente
+#    - true: El backend NO envía tareas a SQS (para pruebas de carga)
 # ============================================
