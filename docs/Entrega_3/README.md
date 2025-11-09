@@ -225,7 +225,7 @@ Configuración de balanceador de carga de aplicación para distribuir el tráfic
 
 Contiene el video de sustentación del proyecto para la tercera entrega, donde se presenta la migración completa a AWS, la arquitectura cloud-native implementada y una demostración del funcionamiento del sistema con servicios AWS.
 
-**[Ver informacion del video de sustentacion →]()**
+**[Ver informacion del video de sustentacion →](https://github.com/martin-hendricks/MISW-4204-desarrollo-de-software-en-la-nube/tree/feature/entrega-3/sustentacion/Entrega_3)**
 
 **Curso**: MISW-4204 Desarrollo de Software en la Nube
 **Numero de Equipo**: 2
