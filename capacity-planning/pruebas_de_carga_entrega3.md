@@ -1,5 +1,3 @@
-<img width="1234" height="569" alt="image" src="https://github.com/user-attachments/assets/445f4d76-654c-4024-abbd-3388b32ff7c5" />## 4. Escenarios de Prueba
-
 ## 4.1 Escenario 1: Capacidad de la Capa Web (Usuarios Concurrentes)
 
 ### 4.1.1 Estrategia de Implementación
@@ -94,8 +92,20 @@
 - **Concurrencia de Worker**: 1, 2, 4 procesos/hilos por nodo
 - **Tiempo de Espera**: Envio de 20 videos
 - **Evidencias**:
-  - Pruebas de saturacion Worker
- <img width="2144" height="1106" alt="image (17)" src="" />
+  - ##Pruebas de saturacion Worker
+      ###Inyeccion 100 videos en la cola
+      <img width="1249" height="648" alt="image" src="https://github.com/user-attachments/assets/387e535b-a3fb-4391-857d-96e6f5f586de" />
+
+      ## Monitoreo de la maquina directamente con las herramientas de linux htop
+      <img width="1234" height="947" alt="image" src="https://github.com/user-attachments/assets/93a9b05f-944b-438c-87e5-3a095305757d" />
+
+      ## Monitoreo de la maquina mediante la herramienta CloudWatch sobre el comportamiento de la maquina
+      <img width="1133" height="1345" alt="image" src="https://github.com/user-attachments/assets/bbb85982-12f4-4b06-976a-4a6f4578a459" />
+      <img width="1151" height="607" alt="image" src="https://github.com/user-attachments/assets/8cca0986-519b-4443-a51d-e39992033c2a" />
+      <img width="1112" height="637" alt="image" src="https://github.com/user-attachments/assets/c85417b9-10ad-45e9-ad4b-416e3acd3658" />
+
+
+      
 
 #### **Concluciones - Pruebas de Saturación**
 ---------------------------------------------------------------------------------------------------------------------------------
