@@ -20,7 +20,7 @@
   - ClaudWatch
 <img width="1385" height="1141" alt="smocke-test-5 usuario-grafa" src="" />
 
- # **Concluciones - Prueba de Sanidad (Smoke Test)**
+ #### **Concluciones - Prueba de Sanidad (Smoke Test)**
 
 **Prueba de Escalamiento (Ramp-up)**
 - **Estrategia**: Iniciar en 0 usuarios y aumentar gradualmente hasta X usuarios en 3 minutos, mantener 5 minutos
@@ -41,7 +41,7 @@
   - CloudWatch
     - <img width="1385" height="1141" alt="rtamup-100-grafana" src="" />
 
-# **Concluciones - Prueba de Escalamiento (Ramp-up)**
+#### **Concluciones - Prueba de Escalamiento (Ramp-up)**
 
 **Prueba Sostenida**
 
@@ -56,7 +56,7 @@
   - CloudWatch
   - <img width="1385" height="1141" alt="image (15)" src="" />
 
-# **Concluciones - Prueba Sostenida**
+#### **Concluciones - Prueba Sostenida**
 
 #### 4.1.3 Endpoints a Probar
 - `POST /auth/login` - Autenticación
@@ -86,7 +86,7 @@
   - Pruebas de saturacion Worker
  <img width="2144" height="1106" alt="image (17)" src="" />
 
-# **Concluciones - Pruebas de Saturación**
+#### **Concluciones - Pruebas de Saturación**
 
 
 
