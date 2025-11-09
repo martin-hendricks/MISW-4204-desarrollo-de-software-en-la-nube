@@ -208,7 +208,7 @@ La prueba con 300 usuarios activó el **escalamiento completo** del Auto Scaling
 
 ---
 
-### **Conclusiones Generales - Ramp-up**
+## **Conclusiones Generales - Ramp-up**
 
 **Capacidad del sistema:**
 
@@ -235,24 +235,6 @@ La prueba con 300 usuarios activó el **escalamiento completo** del Auto Scaling
 5. **Límite de escalamiento:** La configuración máxima de 3 instancias limita la capacidad total a ~260 usuarios
    - **Recomendación:** Aumentar máximo de instancias a 5-6 para soportar 400+ usuarios
 
-**Configuración óptima recomendada:**
-
-Auto Scaling Group - Configuración sugerida:
-  Mínimo: 2 instancias (evitar cold start)
-  Deseado: 2 instancias
-  Máximo: 5 instancias
-  
-Políticas de escalamiento:
-  Scale Out: CPU > 60% durante 1 minuto (más agresivo)
-  Scale In: CPU < 30% durante 5 minutos (más conservador)
-  
-Warm Pool:
-  Habilitar: Sí
-  Tamaño: 1 instancia pre-calentada
-  
-Health Checks:
-  Intervalo: 15 segundos (vs 30 actual)
-  Threshold: 2 checks consecutivos (vs 3 actual)
 
 
 **Cálculo de capacidad sostenible:**
@@ -265,9 +247,7 @@ Basado en las pruebas, la capacidad sostenible (con SLA de 95% de éxito y laten
 - **4 instancias (proyección):** 320 usuarios
 - **5 instancias (proyección):** 400 usuarios
 
-**Recomendación final:**
 
-Para mantener un **margen de seguridad del 20%** y evitar degradación durante escalamiento, la configuración **inicial debería ser de 2 instancias**, permitiendo escalar hasta 5 para soportar picos de hasta 400 usuarios concurrentes.
 
 ------------------------------------------------------------------------------------------------------------------------------------------
 #### 4.1.2.3 **Prueba Sostenida**
@@ -286,7 +266,33 @@ Para mantener un **margen de seguridad del 20%** y evitar degradación durante e
     <img width="1238" height="578" alt="image" src="https://github.com/user-attachments/assets/ff0b29d4-ff46-4522-bdf9-dc0a505bf723" />
     <img width="1244" height="590" alt="image" src="https://github.com/user-attachments/assets/b25bf460-bf0c-4ed5-b2e4-135eb728f1a8" />
 
-#### **Concluciones - Prueba Sostenida**
+## **Concluciones - Prueba Sostenida**
+
+
+
+
+# **Recomendación final:**
+
+Para mantener un **margen de seguridad del 20%** y evitar degradación durante escalamiento, la configuración **inicial debería ser de 2 instancias**, permitiendo escalar hasta 5 para soportar picos de hasta 400 usuarios concurrentes.
+
+**Configuración óptima recomendada:**
+
+Auto Scaling Group - Configuración sugerida:
+  Mínimo: 2 instancias (evitar cold start)
+  Deseado: 2 instancias
+  Máximo: 5 instancias
+  
+Políticas de escalamiento:
+  Scale Out: CPU > 60% durante 1 minuto (más agresivo)
+  Scale In: CPU < 30% durante 5 minutos (más conservador)
+  
+Warm Pool:
+  Habilitar: Sí
+  Tamaño: 1 instancia pre-calentada
+  
+Health Checks:
+  Intervalo: 15 segundos (vs 30 actual)
+  Threshold: 2 checks consecutivos (vs 3 actual)
 
 #### 4.1.3 Endpoints a Probar
 - `POST /auth/login` - Autenticación
