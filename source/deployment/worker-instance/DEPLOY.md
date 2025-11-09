@@ -2,8 +2,10 @@
 
 ## Resumen
 Esta instancia EC2 contiene:
-- ✅ Celery Worker (Procesamiento de videos con FFmpeg) - 4 workers
+- ✅ Celery Worker (Procesamiento de videos con FFmpeg) - 2 workers
 - ✅ Health Check API (FastAPI) - Puerto 8001
+- ✅ Integración con AWS SQS (Message Broker)
+- ✅ Integración con AWS S3 (Almacenamiento de archivos)
 
 ---
 
@@ -16,16 +18,18 @@ Esta instancia EC2 contiene:
 - ✅ Security Group configurado (ver abajo)
 
 ### 2. Servicios externos funcionando
-- ✅ Servidor NFS configurado y ejecutándose
 - ✅ RDS PostgreSQL creado y accesible
-- ✅ Backend desplegado y funcionando (con Redis)
+- ✅ AWS SQS colas creadas (main queue y DLQ) - las mismas que usa el Backend
+- ✅ AWS S3 bucket creado - el mismo que usa el Backend
+- ✅ Backend desplegado y funcionando
 
 ### 3. Información que necesitas tener a mano
-- IP privada del servidor NFS
-- IP privada de la instancia Backend (para Redis)
 - IP pública de la instancia Backend (para BASE_PATH)
 - Endpoint de RDS PostgreSQL
 - Usuario y contraseña de RDS
+- SQS Queue URL y DLQ URL (las mismas que el Backend)
+- S3 Bucket Name (el mismo que el Backend)
+- AWS credentials (las mismas que el Backend)
 
 ### 4. Assets de video
 - Logo ANB (anb_logo.png)
@@ -48,24 +52,24 @@ Esta instancia EC2 contiene:
 - All traffic (default)
 
 **IMPORTANTE:** El Worker necesita poder conectarse a:
-- NFS Server (puerto 2049)
-- Backend Redis (puerto 6379)
 - RDS PostgreSQL (puerto 5432)
+- AWS SQS (puerto 443 - HTTPS)
+- AWS S3 (puerto 443 - HTTPS)
 
 ---
 
 ## ⚠️ IMPORTANTE: Configuración Previa al Despliegue
 
-**Antes de ejecutar `docker-compose up`**, debes configurar estos 2 archivos con las IPs correctas:
+**Antes de ejecutar `docker-compose up`**, debes configurar el archivo `.env` con los valores correctos:
 
-### 📝 Archivos que DEBES editar:
+### 📝 Archivo que DEBES editar:
 
-| Archivo | Qué configurar | Tipo de IP |
-|---------|----------------|------------|
-| **`.env`** | `DATABASE_URL` (RDS endpoint) | Endpoint RDS |
-| **`.env`** | `REDIS_URL` (Redis en Backend) | **IP PRIVADA** del Backend |
-| **`.env`** | `BASE_PATH` (URL pública del Backend) | **IP PÚBLICA** del Backend |
-| **`setup-nfs-mount.sh`** | `NFS_SERVER_IP` (línea 17) | **IP PRIVADA** del servidor NFS |
+| Archivo | Qué configurar |
+|---------|----------------|
+| **`.env`** | `DATABASE_URL` (RDS endpoint - el mismo que el Backend) |
+| **`.env`** | `BASE_PATH` (URL pública del Backend - IP PÚBLICA del Backend) |
+| **`.env`** | `SQS_QUEUE_URL` y `SQS_DLQ_URL` (las mismas que el Backend) |
+| **`.env`** | `S3_BUCKET_NAME` y credenciales AWS (las mismas que el Backend) |
 
 ### 🔄 ¿Necesitas recrear contenedores después de cambiar configuración?
 
@@ -77,11 +81,6 @@ docker-compose down
 
 # Editar archivos de configuración
 nano .env
-nano setup-nfs-mount.sh
-
-# Si cambiaste setup-nfs-mount.sh, remontar NFS
-sudo umount /mnt/nfs_uploads
-./setup-nfs-mount.sh
 
 # Reconstruir y levantar con nueva configuración
 docker-compose up -d --build
@@ -165,66 +164,23 @@ nano .env
 # RDS Database (mismo que Backend)
 DATABASE_URL=postgresql://admin:YourPassword@anb-db.xxx.us-east-1.rds.amazonaws.com:5432/anbdb
 
-# Redis en Backend (usar IP PRIVADA del Backend)
-REDIS_URL=redis://172.xx.xx.xx:6xxx/0
+# AWS SQS (mismas URLs que Backend)
+USE_SQS=true
+SQS_QUEUE_URL=https://sqs.us-east-1.amazonaws.com/123456789/anb-video-processing
+SQS_DLQ_URL=https://sqs.us-east-1.amazonaws.com/123456789/anb-video-processing-dlq
+
+# AWS S3 (mismo bucket y credenciales que Backend)
+STORAGE_TYPE=s3
+S3_BUCKET_NAME=anb-videos-bucket
+AWS_ACCESS_KEY_ID=your-access-key
+AWS_SECRET_ACCESS_KEY=your-secret-key
+AWS_REGION=us-east-1
 
 # Base Path (IP PÚBLICA del Backend)
-BASE_PATH=http://172.xx.xx.xx/api/videos
+BASE_PATH=http://<BACKEND_PUBLIC_IP>/api/videos
 ```
 
-### Paso 5: Verificar conectividad con Redis (Backend)
-
-```bash
-# Instalar redis-tools para probar
-sudo apt install -y redis-tools
-
-# Probar conexión con Redis en Backend
-# Reemplaza <BACKEND_PRIVATE_IP> con la IP privada real
-redis-cli -h <BACKEND_PRIVATE_IP> ping
-
-# Deberías ver: PONG
-```
-
-Si no puedes conectar:
-- Verifica el Security Group del Backend permite puerto 6379 desde Worker
-- Verifica que Redis está corriendo en Backend: `docker ps | grep redis`
-
-### Paso 6: Configurar Almacenamiento (NFS o S3)
-
-Elige **UNA** de las dos opciones según tu `.env`:
-
----
-
-#### **Opción A: Almacenamiento NFS** (Si `STORAGE_TYPE=local`)
-
-```bash
-# Editar el script con la IP del servidor NFS
-nano setup-nfs-mount.sh
-
-# Cambiar esta línea:
-# NFS_SERVER_IP="REPLACE_WITH_NFS_PRIVATE_IP"
-# Por ejemplo:
-# NFS_SERVER_IP="172.xx.xx.xx"
-
-# Dar permisos de ejecución
-chmod +x setup-nfs-mount.sh
-
-# Ejecutar el script
-./setup-nfs-mount.sh
-```
-
-**Verificar que NFS está montado:**
-
-```bash
-df -h | grep nfs
-ls -la /mnt/nfs_uploads
-```
-
-**IMPORTANTE:** Deberías ver los mismos directorios que en el Backend (original/, processed/, temp/).
-
----
-
-#### **Opción B: Almacenamiento S3** (Si `STORAGE_TYPE=s3`)
+### Paso 5: Configurar Almacenamiento S3
 
 **Pre-requisito:** El bucket S3 debe estar creado y configurado (mismo que el Backend)
 
@@ -255,18 +211,9 @@ Deberías ver el mismo contenido que desde el Backend:
                            PRE processed/
 ```
 
-**IMPORTANTE:** Después de ejecutar `setup-s3.sh`, editar `docker-compose.yml`:
-
-```bash
-nano docker-compose.yml
-
-# Comentar la línea del volumen NFS (aproximadamente línea 33):
-# - /mnt/nfs_uploads:/app/uploads
-```
-
 ---
 
-### Paso 7: Construir y levantar el servicio
+### Paso 6: Construir y levantar el servicio
 
 ```bash
 cd ~/anb-worker/deployment/worker-instance
@@ -281,7 +228,7 @@ docker-compose up -d
 docker-compose logs -f
 ```
 
-### Paso 8: Verificar que el worker está corriendo
+### Paso 7: Verificar que el worker está corriendo
 
 ```bash
 # Ver estado del contenedor
@@ -296,11 +243,11 @@ docker-compose logs -f worker
 
 # Deberías ver líneas como:
 # [2025-01-15 10:30:00] [INFO] celery.worker.strategy: Starting Celery worker
-# [2025-01-15 10:30:01] [INFO] Connected to redis://172.31.10.5:6379/0
+# [2025-01-15 10:30:01] [INFO] Connected to SQS
 # [2025-01-15 10:30:02] [INFO] Ready to accept tasks
 ```
 
-### Paso 9: Verificar health check
+### Paso 8: Verificar health check
 
 ```bash
 # Desde la instancia Worker
@@ -310,13 +257,13 @@ curl http://localhost:8001/health
 # {
 #   "status": "healthy",
 #   "celery_status": "running",
-#   "redis_connection": "ok",
+#   "sqs_connection": "ok",
 #   "database_connection": "ok",
-#   "nfs_mount": "ok"
+#   "s3_access": "ok"
 # }
 ```
 
-### Paso 10: Verificar tareas de Celery
+### Paso 9: Verificar tareas de Celery
 
 ```bash
 # Ver workers activos
@@ -327,7 +274,7 @@ docker exec -it anb-worker celery -A celery_app inspect stats
 ```
 
 Deberías ver:
-- 4 workers activos
+- 2 workers activos (configurable con CELERY_CONCURRENCY)
 - Queues: `video_processing` y `dlq`
 - Estado: Online
 
@@ -356,12 +303,12 @@ docker-compose logs -f worker | grep process_video
 Deberías ver la tarea `process_video` progresando:
 - `PENDING` → `STARTED` → `SUCCESS`
 
-3. **Verificar en el NFS:**
+3. **Verificar en S3:**
 
 ```bash
-# En el servidor NFS
-ls -lh /mnt/nfs_share/uploads/original/
-ls -lh /mnt/nfs_share/uploads/processed/
+# Verificar archivos en S3
+aws s3 ls s3://anb-videos-bucket/original/
+aws s3 ls s3://anb-videos-bucket/processed/
 
 # Deberías ver el video original y el procesado
 ```
@@ -428,33 +375,43 @@ exit
 # Ver logs con timestamp
 docker-compose logs -f --timestamps worker
 
-# Monitorear archivos procesados
-watch -n 5 'ls -lht /mnt/nfs_uploads/processed/ | head -n 10'
-```
-
-### Limpiar archivos temporales
-
-```bash
-# Limpiar carpeta temp manualmente
-sudo rm -rf /mnt/nfs_uploads/temp/*
-
-# Verificar espacio en NFS
-df -h /mnt/nfs_uploads
+# Monitorear archivos procesados en S3
+watch -n 5 'aws s3 ls s3://anb-videos-bucket/processed/ | tail -n 10'
 ```
 
 ---
 
 ## Troubleshooting
 
-### Error: "Cannot connect to Redis"
+### Error: "Cannot connect to SQS"
 
 ```bash
-# Verificar conectividad
-ping <BACKEND_PRIVATE_IP>
-telnet <BACKEND_PRIVATE_IP> 6379
+# Verificar que las colas existen
+aws sqs list-queues
 
-# Verificar Security Group del Backend permite puerto 6379 desde Worker
-# Verificar que Redis está corriendo en Backend
+# Verificar URL de la cola
+aws sqs get-queue-attributes --queue-url <YOUR_QUEUE_URL>
+
+# Verificar credenciales
+cat .env | grep SQS_QUEUE_URL
+cat .env | grep AWS_
+
+# Ver logs del worker
+docker-compose logs worker
+```
+
+### Error: "Cannot connect to S3"
+
+```bash
+# Verificar acceso al bucket
+aws s3 ls s3://<YOUR_BUCKET_NAME>
+
+# Verificar credenciales
+cat .env | grep S3_BUCKET_NAME
+cat .env | grep AWS_
+
+# Ver logs del worker
+docker-compose logs worker
 ```
 
 ### Error: "Cannot connect to database"
@@ -465,20 +422,6 @@ telnet <RDS_ENDPOINT> 5432
 
 # Verificar credenciales en .env
 cat .env | grep DATABASE_URL
-```
-
-### Error: "NFS mount failed"
-
-```bash
-# Verificar montaje
-df -h | grep nfs
-
-# Intentar remontar
-sudo umount /mnt/nfs_uploads
-./setup-nfs-mount.sh
-
-# Ver logs del sistema
-sudo journalctl -xe | grep mount
 ```
 
 ### Error: "FFmpeg not found"
@@ -514,11 +457,11 @@ ls -la ~/anb-worker/deployment/worker-instance/assets/
 # Ver logs detallados
 docker-compose logs -f worker
 
-# Verificar conexión a Redis
+# Verificar conexión a SQS
 docker exec -it anb-worker python -c "
 from celery_app import app
 app.connection().connect()
-print('Redis OK')
+print('SQS OK')
 "
 
 # Verificar que las colas están configuradas
@@ -576,8 +519,8 @@ docker-compose restart worker
 
 1. Crear nueva instancia EC2 idéntica
 2. Repetir todos los pasos de despliegue
-3. Ambas instancias consumirán de la misma cola Redis
-4. Load balancing automático
+3. Ambas instancias consumirán de la misma cola SQS
+4. Load balancing automático por SQS
 
 ---
 
@@ -590,19 +533,13 @@ docker-compose restart worker
 watch -n 30 'curl -s http://localhost:8001/health | jq'
 ```
 
-### Métricas de Prometheus
-
-```bash
-# Ver métricas
-curl http://localhost:8001/metrics
-```
 
 ### Alertas (opcional)
 
 Configurar alertas cuando:
 - Worker deja de procesar tareas
 - Tareas fallan repetidamente
-- Espacio en NFS < 10%
+- Errores de acceso a S3 o SQS
 
 ---
 
@@ -654,11 +591,8 @@ Una vez que el Worker esté funcionando:
 ## Comandos Rápidos de Referencia
 
 ```bash
-# Montaje NFS
-./setup-nfs-mount.sh
-
-# Verificar conectividad Redis
-redis-cli -h <BACKEND_PRIVATE_IP> ping
+# Configurar S3
+./setup-s3.sh
 
 # Levantar worker
 docker-compose up -d
@@ -672,8 +606,8 @@ curl http://localhost:8001/health
 # Ver tareas activas
 docker exec -it anb-worker celery -A celery_app inspect active
 
-# Monitorear archivos procesados
-watch 'ls -lht /mnt/nfs_uploads/processed/ | head'
+# Monitorear archivos procesados en S3
+watch -n 5 'aws s3 ls s3://anb-videos-bucket/processed/ | tail -n 10'
 
 # Reiniciar
 docker-compose restart worker

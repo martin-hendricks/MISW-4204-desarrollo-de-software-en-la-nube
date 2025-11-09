@@ -47,9 +47,6 @@ services:
       - USE_SQS=true
       # TEST_MODE: true = no envía a cola (para pruebas), false = funcionamiento normal
       - TEST_MODE=${TEST_MODE}
-    #volumes:
-      # Montaje NFS - se monta desde el host
-      #- /mnt/nfs_uploads:/app/uploads
     networks:
       - app-network
     restart: unless-stopped
