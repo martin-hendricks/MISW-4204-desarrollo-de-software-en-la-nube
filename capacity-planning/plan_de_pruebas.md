@@ -161,33 +161,15 @@ Este plan de pruebas se enfoca en medir la capacidad de estos componentes bajo d
 ## 8. Configuración del Sistema
 
 ### 8.1 Arquitectura del Sistema
-```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   API Gateway   │    │   Backend API   │    │   PostgreSQL    │
-│    (Nginx)      │◄──►│   (FastAPI)     │◄──►│    (RDS)        │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-         │                      │
-         │                      ▼
-         │             ┌─────────────────┐
-         │             │   AWS SQS       │
-         │             │ (Message Queue) │
-         │             │   + DLQ         │
-         │             └─────────────────┘
-         │                      │
-         ▼                      ▼
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   AWS S3        │◄──►│  Celery Workers │───►│  CloudWatch     │
-│ (File Storage)  │    │  (Video Proc.)  │    │  (Monitoring)   │
-│ original/       │    │  + FFmpeg       │    │  - Metrics      │
-│ processed/      │    │                 │    │  - Logs         │
-│ temp/           │    │                 │    │  - Dashboards   │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-```
+
+Los diagramas de arquitectura actualizados muestran la migración completa a servicios AWS nativos, con diferentes niveles de abstracción y detalle del sistema:
+
+**[Ver Diagramas de Arquitectura →](../docs/Entrega_3/diagramas_arquitectura.md)**
 
 ### 8.2 Infraestructura de Pruebas
 - **Sistema Operativo**: Ubuntu Server 24.04.3 LTS (Docker containers)
 - **CPU**: 2 cores
-- **Memoria RAM**: 4 GB
+- **Memoria RAM**: 2 GB
 - **Almacenamiento**: 50 GB
 - **Red**: Conexión estable para evitar interferencias
 
