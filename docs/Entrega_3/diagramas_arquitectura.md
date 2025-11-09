@@ -4,7 +4,7 @@ Este documento presenta el diagrama de arquitectura del sistema ANB Rising Stars
 
 ## 1. Diagrama de Componentes
 
-El diagrama de componentes muestra la estructura interna del Backend API, detallando los modulos y capas que lo componen siguiendo los principios de Domain-Driven Design (DDD). Los cuales se instalaron en las 4 instancias de AWS.   
+El diagrama de componentes muestra la estructura interna del Backend API, detallando los modulos y capas que lo componen.   
 
 <img width="1400" height="1440" alt="image" src="https://github.com/user-attachments/assets/659a6132-b95d-45e9-8ba3-a05446f488df" />
 
