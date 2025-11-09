@@ -19,20 +19,19 @@ services:
   # ===== WORKER - Procesamiento de Videos =====
   worker:
     build:
-      context: ../../worker
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: worker/Dockerfile
     container_name: anb-worker
     ports:
       - "8001:8001"  # Health API
     env_file:
       - .env
-    volumes:
+    #volumes:
       # ===== ALMACENAMIENTO =====
       # NFS: Mantener esta línea activa si STORAGE_TYPE=local en .env
       # S3:  Comentar esta línea si STORAGE_TYPE=s3 en .env
-      - /mnt/nfs_uploads:/app/uploads
-      # Assets locales (logo, intro, outro) - SIEMPRE necesario
-      - ../../worker/assets:/app/assets:ro
+      #- /mnt/nfs_uploads:/app/uploads
+      # Nota: Los assets (logo, intro, outro) están incluidos en la imagen Docker
     networks:
       - worker-network
     restart: unless-stopped
@@ -54,6 +53,19 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    # ===== CLOUDWATCH LOGS - Auto Scaling Compatible =====
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: us-east-1
+        awslogs-group: /aws/ec2/anb-worker
+        # awslogs-stream usa el container name (único por instancia EC2)
+        # Si hay múltiples instancias, cada una tiene su propio contenedor
+        awslogs-stream: worker-${HOSTNAME}
+        awslogs-create-group: "true"
+        # Modo non-blocking para no afectar performance
+        mode: non-blocking
+        max-buffer-size: 25m
 
 networks:
   worker-network:

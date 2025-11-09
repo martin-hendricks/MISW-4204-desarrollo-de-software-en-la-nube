@@ -1,19 +1,16 @@
 version: '3.8'
 
-# ===== CONFIGURACIÓN DE ALMACENAMIENTO =====
-# Este docker-compose soporta dos modos de almacenamiento:
+# ============================================
+# Docker Compose para Backend con AWS SQS
+# ============================================
+# Este archivo es para usar cuando migres a AWS SQS
+# Ya NO incluye Redis (SQS es el message broker)
 #
-# MODO 1 - NFS (Almacenamiento compartido en red):
-#   - Mantener el volumen: /mnt/nfs_uploads:/app/uploads
-#   - En .env: FILE_STORAGE_TYPE=local
-#   - Ejecutar ./setup-nfs-mount.sh antes de docker-compose up
+# Uso:
+#   docker-compose -f docker-compose.sqs.yml up -d
 #
-# MODO 2 - S3 (Amazon S3):
-#   - Comentar la línea del volumen NFS (línea 55)
-#   - En .env: FILE_STORAGE_TYPE=s3, configurar AWS_ACCESS_KEY_ID, S3_BUCKET_NAME, etc.
-#   - Ejecutar ./setup-s3.sh antes de docker-compose up
-#
-# Para cambiar de modo, solo edita el .env y comenta/descomenta el volumen
+# O renombrar este archivo a docker-compose.yml después de migrar
+# ============================================
 
 services:
   # ===== NGINX API GATEWAY =====
@@ -35,42 +32,24 @@ services:
       timeout: 10s
       retries: 3
 
-  # ===== REDIS BROKER =====
-  redis:
-    image: redis:7-alpine
-    container_name: anb-redis
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    networks:
-      - app-network
-    restart: unless-stopped
-    command: redis-server --appendonly yes
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # ===== BACKEND API =====
+  # ===== BACKEND API (Sin Redis - usa AWS SQS) =====
   backend:
     build:
-      context: ../../backend
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: backend/Dockerfile
     container_name: anb-backend
     ports:
       - "8000:8000"
     env_file:
       - .env
-    volumes:
-      # ===== ALMACENAMIENTO =====
-      # NFS: Mantener esta línea activa si FILE_STORAGE_TYPE=local en .env
-      # S3:  Comentar esta línea si FILE_STORAGE_TYPE=s3 en .env
-      - /mnt/nfs_uploads:/app/uploads
-    depends_on:
-      redis:
-        condition: service_healthy
+    environment:
+      # Asegurar que USE_SQS esté activado
+      - USE_SQS=true
+      # TEST_MODE: true = no envía a cola (para pruebas), false = funcionamiento normal
+      - TEST_MODE=${TEST_MODE}
+    #volumes:
+      # Montaje NFS - se monta desde el host
+      #- /mnt/nfs_uploads:/app/uploads
     networks:
       - app-network
     restart: unless-stopped
@@ -80,12 +59,34 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    # ===== CLOUDWATCH LOGS - Auto Scaling Compatible =====
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: us-east-1
+        awslogs-group: /aws/ec2/anb-backend
+        # awslogs-stream usa el container name (único por instancia EC2)
+        # Si hay múltiples instancias, cada una tiene su propio contenedor
+        awslogs-stream: backend-${HOSTNAME}
+        awslogs-create-group: "true"
+        # Modo non-blocking para no afectar performance si CloudWatch está lento
+        mode: non-blocking
+        max-buffer-size: 25m
 
 networks:
   app-network:
     name: anb-network
     driver: bridge
 
-volumes:
-  redis_data:
-    name: anb-redis-data
+# ============================================
+# NOTAS:
+# ============================================
+# 1. Redis ha sido REMOVIDO - AWS SQS es el message broker
+# 2. Asegurar que USE_SQS=true en .env
+# 3. Configurar SQS_QUEUE_URL y SQS_DLQ_URL en .env
+# 4. Instance Profile debe estar adjunto a la instancia EC2
+# 5. No hay volúmenes de Redis - SQS persiste mensajes automáticamente
+# 6. TEST_MODE=false (producción) o TEST_MODE=true (testing sin cola)
+#    - false: El backend envía tareas a SQS normalmente
+#    - true: El backend NO envía tareas a SQS (para pruebas de carga)
+# ============================================

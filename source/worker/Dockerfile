@@ -8,17 +8,20 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copiar e instalar dependencias de Python
-COPY requirements.txt .
+COPY worker/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Copy cloudwatch module (shared with backend)
+COPY ../cloudwatch /app/cloudwatch
+
 # Copiar código de la aplicación
-COPY . .
+COPY worker /app
 
-# Crear directorios para videos, assets y métricas multiprocess
-RUN mkdir -p /app/uploads/original /app/uploads/processed /app/uploads/temp /app/assets /tmp/prometheus_multiproc
+# Copiar assets (logo, intro, outro) - se sobrescriben los que vienen en worker/assets
+COPY worker/assets /app/assets
 
-# Establecer variable de entorno para prometheus_client multiprocess
-ENV PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus_multiproc
+# Crear directorios para videos
+RUN mkdir -p /app/uploads/original /app/uploads/processed /app/uploads/temp
 
 # Exponer puerto para Health API
 EXPOSE 8001

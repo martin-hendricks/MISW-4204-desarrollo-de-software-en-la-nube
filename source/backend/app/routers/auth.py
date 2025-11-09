@@ -81,7 +81,7 @@ async def login(
         return TokenResponseDTO(
             access_token=token,
             token_type="Bearer",
-            expires_in=3600
+            expires_in=360000
         )
         
     except HTTPException:
