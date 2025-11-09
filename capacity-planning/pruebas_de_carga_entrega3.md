@@ -268,7 +268,7 @@ Basado en las pruebas, la capacidad sostenible (con SLA de 95% de éxito y laten
 
 ## **Concluciones - Prueba Sostenida**
 
-
+El sistema demuestra estabilidad aceptable durante carga sostenida. La CPU de la instancia principal (naranja) alcanza saturación cercana al 95%, mientras que las instancias de auto-scaling mantienen uso moderado (60-70% y 53%). La memoria permanece estable en todas las instancias (53-65%). El P95 de latencia se mantiene bajo (718ms-1.62s) con tasa de error 0% y throughput constante (~1200 req/s), confirmando que el sistema puede manejar 240 usuarios concurrentes de forma sostenida, aunque la instancia principal opera cerca de su límite de CPU.
 
 
 # **Recomendación final:**
