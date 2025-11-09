@@ -227,6 +227,25 @@ Contiene el video de sustentación del proyecto para la tercera entrega, donde s
 
 **[Ver informacion del video de sustentacion →](https://github.com/martin-hendricks/MISW-4204-desarrollo-de-software-en-la-nube/tree/feature/entrega-3/sustentacion/Entrega_3)**
 
+### 📈 Resultados de SonarCloud
+
+Contiene el analisis estatico de calidad de codigo realizado con SonarCloud, una plataforma de inspeccion continua que evalua la calidad del codigo fuente. Incluye:
+- Metricas de calidad de codigo (bugs, vulnerabilidades, code smells)
+- Analisis de cobertura de pruebas
+- Evaluacion de duplicacion de codigo
+- Calificacion general del proyecto (Quality Gate)
+- Recomendaciones para mejoras de calidad
+
+**Metricas evaluadas:**
+- Reliability (Confiabilidad)
+- Security (Seguridad)
+- Maintainability (Mantenibilidad)
+- Coverage (Cobertura de pruebas)
+- Duplications (Duplicacion de codigo)
+
+<img width="2304" height="1668" alt="image (25)" src="https://github.com/user-attachments/assets/4258b83a-aa11-4183-80e9-29a3211d4fe3" />
+
+
 **Curso**: MISW-4204 Desarrollo de Software en la Nube
 **Numero de Equipo**: 2
 **Universidad**: Universidad de los Andes
