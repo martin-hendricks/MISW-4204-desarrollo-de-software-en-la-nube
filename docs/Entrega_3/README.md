@@ -135,12 +135,9 @@ Configuración de escalamiento automático para la capa web del sistema, permiti
 **2. Plantillas de Lanzamiento (Launch Templates)**
 - Creadas a partir de las AMIs personalizadas
 - Especificaciones configuradas:
-  - **Tipo de instancia**: t2.medium (2 vCPUs, 4 GB RAM)
+  - **Tipo de instancia**: t2.small (2 vCPUs, 2 GB RAM)
   - **AMI**: Imagen personalizada del backend
-  - **Security Groups**: Reglas de firewall (puertos 80, 443, 22)
   - **IAM Role**: LabRole para acceso a SQS, S3 y CloudWatch
-  - **User Data**: Scripts de inicialización para levantar servicios Docker
-  - **Network**: VPC y subnets configuradas
 
 **3. Grupo de Auto Scaling (Auto Scaling Group)**
 - Configuración del grupo:
@@ -148,14 +145,12 @@ Configuración de escalamiento automático para la capa web del sistema, permiti
   - **Capacidad mínima**: 1 instancia
   - **Capacidad máxima**: 5 instancias
   - **Zonas de disponibilidad**: Multi-AZ (us-east-1a, us-east-1b)
-  - **Health checks**: ELB + EC2 (intervalo 300 segundos)
-  - **Política de terminación**: Oldest Instance
 
 **4. Políticas de Escalado (Scaling Policies)**
 
 **Política 1 - Escalado por Tráfico de Red Entrante:**
 - **Métrica**: NetworkIn (bytes recibidos)
-- **Umbral**: > 10 MB/minuto por instancia
+- **Umbral**: > 40 peticiones por instancia
 - **Acción**: Agregar 1 instancia
 - **Cooldown**: 300 segundos
 - **Objetivo**: Manejar picos de tráfico HTTP
@@ -168,12 +163,6 @@ Configuración de escalamiento automático para la capa web del sistema, permiti
 - **Acción de escalado hacia abajo**: Remover 1 instancia
 - **Cooldown**: 300 segundos
 - **Objetivo**: Optimizar uso de recursos
-
-**Beneficios del Auto Scaling:**
-- ✅ Ajuste automático de capacidad según demanda
-- ✅ Alta disponibilidad con instancias en múltiples AZs
-- ✅ Reducción de costos al escalar hacia abajo en periodos de baja demanda
-- ✅ Tolerancia a fallos con reemplazo automático de instancias no saludables
 
 ---
 
@@ -221,16 +210,6 @@ Configuración de balanceador de carga de aplicación para distribuir el tráfic
   - Distribuye carga usando algoritmo Round Robin
   - Sticky Sessions habilitadas (basadas en cookies)
 
-**Flujo de Tráfico:**
-
-
-**Características del ALB:**
-- ✅ **Distribución de carga**: Round Robin entre instancias saludables
-- ✅ **Health Checks**: Monitoreo continuo del endpoint `/api/health`
-- ✅ **Alta disponibilidad**: Multi-AZ deployment
-- ✅ **Sticky Sessions**: Mantiene sesiones de usuario en la misma instancia
-- ✅ **Integración con Auto Scaling**: Registro/desregistro automático de instancias
-- ✅ **Métricas en CloudWatch**: RequestCount, TargetResponseTime, HealthyHostCount
 
 ---
 
