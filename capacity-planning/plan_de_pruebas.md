@@ -14,13 +14,14 @@ Ejecutar escenarios de prueba que permitan medir la capacidad máxima que pueden
 
 ## 2. Descripción General
 
-El sistema ANB Rising Stars Showcase es una aplicación de procesamiento de videos que permite a los usuarios subir videos de baloncesto, procesarlos con intro/outro, y participar en un sistema de votación. La arquitectura incluye:
+El sistema ANB Rising Stars Showcase es una aplicación de procesamiento de videos que permite a los usuarios subir videos de baloncesto, procesarlos con intro/outro, y participar en un sistema de votación. La arquitectura basada en AWS incluye:
 
 - **Capa Web (FastAPI)**: API REST para autenticación, gestión de videos y votación
 - **Capa de Procesamiento (Celery Workers)**: Procesamiento asíncrono de videos con FFmpeg
 - **Base de Datos (PostgreSQL)**: Almacenamiento de datos de usuarios, videos y votos
-- **Cola de Tareas (Redis)**: Gestión de tareas de procesamiento
-- **Almacenamiento de Archivos**: Sistema de archivos local para videos
+- **Cola de Mensajes (AWS SQS)**: Gestión de tareas de procesamiento asíncrono con Dead Letter Queue
+- **Almacenamiento de Archivos (AWS S3)**: Almacenamiento escalable de videos originales y procesados
+- **Monitoreo (AWS CloudWatch)**: Métricas, logs y alertas del sistema usando Embedded Metric Format
 
 Este plan de pruebas se enfoca en medir la capacidad de estos componentes bajo diferentes escenarios de carga para proporcionar datos cuantitativos sobre el rendimiento del sistema.
 
@@ -85,8 +86,8 @@ Este plan de pruebas se enfoca en medir la capacidad de estos componentes bajo d
 ### Escenario 2: Rendimiento de la Capa Worker (Videos/Minuto)
 
 #### 4.2.1 Estrategia de Implementación
-- **Bypass de la Web**: Inyección directa de mensajes en la cola Redis
-- **Payloads Realistas**: Uso de archivos de video de diferentes tamaños (50MB)
+- **Bypass de la Web**: Inyección directa de mensajes en la cola SQS
+- **Payloads Realistas**: Uso de archivos de video de diferentes tamaños (50MB) almacenados en S3
 - **Configuraciones Variables**: 1, 2, 4 procesos/hilos por nodo
 
 #### 4.2.2 Escenarios de Prueba
@@ -141,8 +142,8 @@ Este plan de pruebas se enfoca en medir la capacidad de estos componentes bajo d
 
 ### 6.3 Datos de Configuración
 - **Configuración de Base de Datos**: PostgreSQL con datos de prueba
-- **Configuración de Redis**: Cola de tareas configurada
-- **Configuración de Almacenamiento**: Directorios de uploads configurados
+- **Configuración de SQS**: Colas de tareas configuradas (video_processing y DLQ)
+- **Configuración de S3**: Buckets configurados con permisos apropiados (original/, processed/, temp/)
 
 ## 7. Iteraciones
 
@@ -160,23 +161,15 @@ Este plan de pruebas se enfoca en medir la capacidad de estos componentes bajo d
 ## 8. Configuración del Sistema
 
 ### 8.1 Arquitectura del Sistema
-```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   API Gateway   │    │   Backend API   │    │   PostgreSQL    │
-│    (Nginx)      │◄──►│   (FastAPI)     │◄──►│   Database      │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-                                │
-                                ▼
-                       ┌─────────────────┐    ┌─────────────────┐
-                       │   Redis Queue   │◄──►│  Celery Workers │
-                       │   (Task Queue)  │    │  (Video Proc.)  │
-                       └─────────────────┘    └─────────────────┘
-```
+
+Los diagramas de arquitectura actualizados muestran la migración completa a servicios AWS nativos, con diferentes niveles de abstracción y detalle del sistema:
+
+**[Ver Diagramas de Arquitectura →](../docs/Entrega_3/diagramas_arquitectura.md)**
 
 ### 8.2 Infraestructura de Pruebas
 - **Sistema Operativo**: Ubuntu Server 24.04.3 LTS (Docker containers)
 - **CPU**: 2 cores
-- **Memoria RAM**: 4 GB
+- **Memoria RAM**: 2 GB
 - **Almacenamiento**: 50 GB
 - **Red**: Conexión estable para evitar interferencias
 
@@ -184,16 +177,27 @@ Este plan de pruebas se enfoca en medir la capacidad de estos componentes bajo d
 - **Docker**: 20.10+
 - **Docker Compose**: 2.0+
 - **JMeter**: 5.4+ (para pruebas de carga web)
-- **Prometheus**: 2.30+ (para métricas)
-- **Grafana**: 8.0+ (para visualización)
-- **Redis**: 6.0+ (para cola de tareas)
 - **PostgreSQL**: 13+ (para base de datos)
+- **FFmpeg**: 4.4+ (para procesamiento de video)
+- **CloudWatch Agent**: Para publicación de métricas EMF
 
-### 8.4 Configuración de Monitoreo
-- **Prometheus**: Recolección de métricas del sistema
-- **Grafana**: Dashboards para visualización en tiempo real
-- **Métricas de Aplicación**: Latencia, throughput, errores
-- **Métricas de Sistema**: CPU, memoria, I/O, red
+### 8.4 Servicios AWS Utilizados
+- **AWS SQS**: Colas de mensajes con long polling (20s) y Dead Letter Queue
+- **AWS S3**: Almacenamiento de objetos para videos
+- **AWS CloudWatch**:
+  - Métricas usando Embedded Metric Format (EMF)
+  - Logs centralizados con awslogs driver
+  - Dashboards personalizados
+  - Alarmas configurables
+
+### 8.5 Configuración de Monitoreo
+- **CloudWatch Metrics**: Recolección automática usando EMF
+- **CloudWatch Dashboards**: Visualización en tiempo real de:
+  - **Métricas de Aplicación**: Latencia (P50, P95, P99), throughput, errores
+  - **Métricas de Sistema**: CPU, memoria, I/O, red
+  - **Métricas de Negocio**: Videos procesados, tiempo de procesamiento
+- **CloudWatch Logs**: Agregación de logs de todos los contenedores
+- **CloudWatch Alarms**: Alertas automáticas para condiciones anómalas
 
 ## 9. Herramientas para la Prueba
 
@@ -205,19 +209,23 @@ Este plan de pruebas se enfoca en medir la capacidad de estos componentes bajo d
 
 ### 9.2 Procesamiento Asíncrono
 - **Script Producer (Python)**: Para pruebas del worker
-  - Inyección directa de tareas en Redis
+  - Inyección directa de tareas en SQS
   - Configuración de parámetros de prueba
-  - Monitoreo de progreso
+  - Monitoreo de progreso mediante CloudWatch
 
 ### 9.3 Observabilidad
-- **Prometheus**: Recolección y almacenamiento de métricas
-- **Grafana**: Visualización y alertas
-- **APM (OpenTelemetry)**: Trazabilidad de aplicaciones
+- **AWS CloudWatch**: Recolección, almacenamiento y visualización de métricas
+  - Embedded Metric Format (EMF) para métricas de aplicación
+  - CloudWatch Logs Insights para análisis de logs
+  - CloudWatch Dashboards para visualización
+  - CloudWatch Alarms para alertas automáticas
+- **SQS Monitoring**: Métricas de cola (mensajes visibles, en vuelo, edad)
 
 ### 9.4 Análisis de Resultados
 - **JMeter Reports**: Análisis de resultados de carga web
-- **Grafana Dashboards**: Monitoreo en tiempo real
-- **Logs de Aplicación**: Análisis de errores y comportamiento
+- **CloudWatch Dashboards**: Monitoreo en tiempo real con métricas personalizadas
+- **CloudWatch Logs**: Análisis de errores y comportamiento de aplicación
+- **CloudWatch Insights**: Consultas y análisis avanzado de logs
 
 ## 10. Métricas
 
@@ -237,10 +245,12 @@ Este plan de pruebas se enfoca en medir la capacidad de estos componentes bajo d
 - **Tasa de Éxito**: Porcentaje de tareas completadas exitosamente
 
 ### 10.3 Métricas de Sistema
-- **CPU**: Uso de procesador por componente
-- **Memoria**: Consumo de RAM por servicio
+- **CPU**: Uso de procesador por componente (ProcessCPU, SystemCPU)
+- **Memoria**: Consumo de RAM por servicio (ProcessMemoryMB, ProcessMemoryPercent)
 - **I/O**: Operaciones de disco y red
 - **Conectividad**: Latencia de red entre componentes
+- **SQS**: Mensajes visibles, mensajes en vuelo, edad del mensaje más antiguo
+- **S3**: Latencia de operaciones GET/PUT, tamaño de bucket
 
 ### 10.4 Métricas de Negocio
 - **Tiempo de Subida**: Tiempo para subir un video
@@ -248,80 +258,144 @@ Este plan de pruebas se enfoca en medir la capacidad de estos componentes bajo d
 - **Disponibilidad**: Tiempo de actividad del sistema
 - **Escalabilidad**: Capacidad de crecimiento
 
-## 11. Riesgos y Limitaciones
+## 11. Consideraciones Específicas de AWS
 
-### 11.1 Limitaciones Identificadas
+### 11.1 SQS (Simple Queue Service)
+- **Long Polling**: Configurado con 20 segundos para reducir costos
+- **Visibility Timeout**: 3600 segundos (1 hora) para procesamiento de videos
+- **Dead Letter Queue**: Configurada para mensajes fallidos después de 3 reintentos
+- **Limitaciones**:
+  - Máximo 120,000 mensajes en vuelo
+  - Tamaño máximo de mensaje: 256 KB
+  - Latencia eventual (no tiempo real)
+
+### 11.2 S3 (Simple Storage Service)
+- **Estructura de Prefijos**:
+  - `original/` - Videos subidos por usuarios
+  - `processed/` - Videos procesados con intro/outro
+  - `temp/` - Archivos temporales de procesamiento
+- **Presigned URLs**: Válidas por 1 hora para acceso temporal seguro
+- **Consideraciones de Rendimiento**:
+  - Latencia de transferencia depende del tamaño del archivo
+  - Recomendado: Multipart upload para archivos >100MB
+  - Throughput: ~5,500 GET/s y ~3,500 PUT/s por prefijo
+
+### 11.3 CloudWatch
+- **Embedded Metric Format (EMF)**: Métricas publicadas como JSON en stdout
+- **Namespaces**:
+  - `ANB/Backend` - Métricas de la API
+  - `ANB/Worker` - Métricas del procesador de videos
+- **Dimensiones Automáticas**: InstanceId, AvailabilityZone, InstanceType detectados via IMDS v2
+- **Retención de Métricas**: 15 meses por defecto
+- **Costos**: Basado en número de métricas personalizadas y llamadas a API
+
+## 12. Riesgos y Limitaciones
+
+### 12.1 Limitaciones de Infraestructura
 - **Recursos de Hardware**: Limitaciones significativas del entorno de pruebas (2 cores, 4GB RAM, 25GB almacenamiento)
-- **Red**: Latencia de red puede afectar resultados
+- **Red**: Latencia de red puede afectar resultados (especialmente para transferencias S3)
 - **Datos de Prueba**: Uso de datos sintéticos vs. datos reales
 - **Configuración**: Diferencias entre entorno de pruebas y producción
+- **AWS Academy**: Credenciales temporales con tiempo de expiración (session tokens)
 
-### 11.2 Riesgos de Pruebas
+### 12.2 Riesgos de Pruebas
 - **Saturación de Recursos**: Posible impacto en el sistema host
-- **Datos de Prueba**: Necesidad de anonimización si se usan datos reales
+- **Costos AWS**: Uso de servicios AWS puede generar costos (S3 storage, data transfer, CloudWatch metrics)
+- **Límites de Servicio**: Posible alcance de límites de SQS o S3 durante pruebas de estrés
 - **Tiempo de Ejecución**: Pruebas pueden tomar varias horas
 - **Interferencias**: Otros procesos en el sistema host
+- **Expiración de Credenciales**: AWS Academy session tokens pueden expirar durante pruebas largas
 
-### 11.3 Mitigaciones
+### 12.3 Mitigaciones
 - **Ambiente Aislado**: Uso de contenedores Docker para aislamiento
-- **Monitoreo Continuo**: Supervisión de recursos durante las pruebas
-- **Datos Sintéticos**: Uso de datos de prueba generados
+- **Monitoreo Continuo**: Supervisión de recursos y costos durante las pruebas
+- **Datos Sintéticos**: Uso de datos de prueba generados (dummy_file_50mb.mp4)
 - **Planificación**: Ejecución en horarios de bajo uso del sistema
+- **AWS Budget Alerts**: Configurar alarmas de presupuesto en CloudWatch
+- **Renovación de Credenciales**: Script para renovar session tokens antes de expiración
+- **Límites de Servicio**: Solicitar incremento de límites antes de pruebas si es necesario
 
-## 12. Resultados Esperados
+## 13. Resultados Esperados
 
-### 12.1 Capacidad de la Capa Web
+### 13.1 Capacidad de la Capa Web
 - **Usuarios Concurrentes Máximos**: 300-500 usuarios
 - **RPS Sostenido**: 200-400 requests por segundo
 - **Latencia P95**: < 1 segundo
 - **Tasa de Errores**: < 2%
 
-### 12.2 Rendimiento del Worker
+### 13.2 Rendimiento del Worker
 - **Throughput Base**: 12-15 videos/minuto (4 workers)
 - **Escalabilidad**: Mejora lineal con más workers
-- **Tiempo de Procesamiento**: 4-5 segundos por video (50MB)
-- **Estabilidad**: Cola estable sin crecimiento descontrolado
+- **Tiempo de Procesamiento**: 4-5 segundos por video (50MB) + latencia S3 GET/PUT
+- **Estabilidad**: Cola SQS estable sin crecimiento descontrolado
+- **Visibilidad en SQS**: Mensajes procesados dentro del timeout de 1 hora
 
-### 12.3 Cuellos de Botella Identificados
+### 13.3 Cuellos de Botella Potenciales
 - **Base de Datos**: Posible limitación en consultas concurrentes
-- **Almacenamiento**: I/O de disco para archivos grandes
+- **SQS**: Latencia de polling y visibilidad de mensajes
+- **S3**: Latencia de transferencia para archivos grandes (GET/PUT)
 - **CPU**: Procesamiento de video con FFmpeg
-- **Memoria**: Buffer de video durante procesamiento
+- **Memoria**: Buffer de video durante procesamiento y descarga desde S3
+- **Red**: Ancho de banda para transferencias S3
 
-## 13. Recomendaciones de Escalamiento
+## 14. Recomendaciones de Escalamiento
 
-### 13.1 Escalamiento Horizontal
-- **API Gateway**: Múltiples instancias con load balancer
-- **Workers**: Aumentar número de workers según demanda
-- **Base de Datos**: Read replicas para consultas de solo lectura
-- **Almacenamiento**: Distribución de archivos en múltiples nodos
+### 14.1 Escalamiento Horizontal (Recomendado para AWS)
+- **API Gateway**: Múltiples instancias EC2 con Application Load Balancer
+- **Workers**: Auto Scaling Group basado en métricas de SQS (ApproximateNumberOfMessagesVisible)
+- **Base de Datos**: Amazon RDS con Read Replicas para consultas de solo lectura
+- **SQS**: Escalamiento automático, sin límite de mensajes
+- **S3**: Escalamiento automático, almacenamiento ilimitado
 
-### 13.2 Escalamiento Vertical (Recomendado para este entorno)
-- **CPU**: Aumentar a 4-8 cores para mejor procesamiento de video
-- **Memoria**: Aumentar a 8-16GB para buffers de video y concurrencia
-- **Almacenamiento**: SSD de alto rendimiento (actualmente limitado a 25GB)
-- **Red**: Mayor ancho de banda para transferencia de archivos
+### 14.2 Escalamiento Vertical
+- **CPU**: Aumentar a 4-8 cores para mejor procesamiento de video (tipos EC2: c5.xlarge, c5.2xlarge)
+- **Memoria**: Aumentar a 8-16GB para buffers de video y concurrencia (tipos EC2: m5.large, m5.xlarge)
+- **Red**: Instancias con Enhanced Networking para mejor throughput S3
+- **Almacenamiento Local**: SSD de alto rendimiento para archivos temporales (tipos EC2 con NVMe)
 
-### 13.3 Optimizaciones de Código
-- **Caché**: Implementar Redis para consultas frecuentes
-- **Compresión**: Optimizar archivos de video
-- **Procesamiento Asíncrono**: Mejorar la gestión de colas
-- **Monitoreo**: Implementar alertas proactivas
+### 14.3 Optimizaciones de AWS
+- **S3 Transfer Acceleration**: Mejorar velocidad de uploads/downloads
+- **S3 Intelligent Tiering**: Optimizar costos de almacenamiento
+- **SQS Long Polling**: Ya implementado (20s) para reducir costos
+- **CloudWatch Alarms**: Configurar alertas basadas en métricas (CPUUtilization, QueueDepth)
+- **VPC Endpoints**: Reducir latencia y costos de transferencia S3/SQS
+- **ElastiCache**: Implementar caché para consultas frecuentes (opcional)
 
-### 13.4 Arquitectura de Producción
-- **Microservicios**: Separación de responsabilidades
-- **API Gateway**: Gestión centralizada de tráfico
-- **Service Mesh**: Comunicación entre servicios
-- **Observabilidad**: Monitoreo completo del sistema
+### 14.4 Optimizaciones de Código
+- **Multipart Upload**: Para videos grandes en S3 (>100MB)
+- **Streaming de Video**: Procesamiento por chunks para reducir memoria
+- **Presigned URLs**: Ya implementado para acceso temporal seguro (1h expiry)
+- **Retry Logic**: Ya implementado (exponential backoff, DLQ)
+- **Compresión**: Optimizar parámetros de FFmpeg
 
-## 14. Conclusión
+### 14.5 Arquitectura de Producción
+- **Multi-AZ**: Desplegar en múltiples Availability Zones
+- **Application Load Balancer**: Distribución de tráfico con health checks
+- **Auto Scaling Groups**: Escalamiento automático basado en métricas
+- **RDS Multi-AZ**: Alta disponibilidad de base de datos
+- **CloudWatch Dashboards**: Monitoreo unificado del sistema
+- **AWS Systems Manager**: Gestión de configuración y secretos
 
-Este plan de análisis de capacidad proporciona una metodología estructurada para evaluar el rendimiento del sistema ANB Rising Stars Showcase. Los resultados obtenidos permitirán:
+## 15. Conclusión
+
+Este plan de análisis de capacidad proporciona una metodología estructurada para evaluar el rendimiento del sistema ANB Rising Stars Showcase basado en AWS. Los resultados obtenidos permitirán:
 
 1. **Identificar límites operacionales** del sistema actual
 2. **Proporcionar datos cuantitativos** para decisiones de escalamiento
 3. **Detectar cuellos de botella** antes de que afecten la producción
 4. **Validar SLOs** y objetivos de rendimiento
 5. **Generar recomendaciones** específicas para optimización
+6. **Evaluar el rendimiento de servicios AWS** (SQS, S3, CloudWatch)
+7. **Optimizar costos** de servicios AWS basándose en métricas reales
 
-La ejecución de este plan es fundamental para garantizar que el sistema pueda manejar la carga esperada en producción y proporcionar una base sólida para el crecimiento futuro de la aplicación.
+### Beneficios de la Arquitectura AWS
+
+La migración a servicios AWS nativos proporciona:
+
+- **Escalabilidad Automática**: SQS y S3 escalan automáticamente sin intervención
+- **Alta Disponibilidad**: Servicios administrados con SLA del 99.9%
+- **Observabilidad Integrada**: CloudWatch proporciona métricas y logs unificados
+- **Resiliencia**: Dead Letter Queue para manejo de fallos
+- **Costos Optimizados**: Pago por uso con posibilidad de optimización (Long Polling, S3 Tiering)
+
+La ejecución de este plan es fundamental para garantizar que el sistema pueda manejar la carga esperada en producción y proporcionar una base sólida para el crecimiento futuro de la aplicación en la nube.
