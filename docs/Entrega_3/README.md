@@ -14,7 +14,7 @@ Contiene los archivos necesarios para el despliegue en las instancias de aws,tam
 - `docker-compose.yml` - Configuracion de contenedores Docker
 - `init-database.sh` - Script de inicializacion de base de datos
 - `nginx.conf` - Configuracion del servidor Nginx
-- `setup-nfs-mount.sh` - Script de montaje de NFS
+- `setup-s3.sh` - Script de configuracion de S3
 
 **[Ver documentacion tecnica completa →](../../source/deployment/backend-instance/DEPLOY.md)**
 
@@ -26,7 +26,7 @@ Contiene los archivos necesarios para el despliegue en las instancias de aws,tam
 **Componentes incluidos:**
 - `DEPLOY.md` - Instrucciones de despliegue del worker
 - `docker-compose.yml` - Configuracion de contenedores Docker
-- `setup-nfs-mount.sh` - Script de montaje de NFS
+- `setup-s3.sh` - Script de configuracion de S3
 
 **[Ver documentacion tecnica completa →](../../source/deployment/worker-instance/DEPLOY.md)**
 
@@ -36,17 +36,14 @@ Contiene los archivos necesarios para el despliegue en las instancias de aws,tam
 Contiene los archivos necesarios para el despliegue en las instancias de aws,tambien encontrara las instrucciones de ejecucion.
 
 **Componentes incluidos:**
-- `CHECKLIST.md` - Lista de verificacion para pruebas
 - `DEPLOY.md` - Instrucciones de despliegue de herramientas de prueba
 - `docker-compose.yml` - Configuracion de contenedores Docker
-- `prometheus.yml` - Configuracion de Prometheus para metricas
 - `README.md` - Documentacion del sistema de pruebas
-- `setup-ssh-tunnel.sh` - Script de configuracion de tunel SSH
 
 **[Ver documentacion tecnica completa →](../../source/deployment/performance-instance/DEPLOY.md)**
 
 ### 📊 Diagramas de Arquitectura
-**Ubicacion:** `docs/Entrega_2/diagramas_arquitectura.md`
+**Ubicacion:** `docs/Entrega_3/diagramas_arquitectura.md`
 
 Los diagramas de arquitectura actualizados a la arquitectura de AWS muestran diferentes niveles de abstraccion y detalle del sistema:
 
@@ -66,16 +63,16 @@ Contiene el analisis detallado de capacidad de la aplicacion, incluyendo:
 **[Ver plan de pruebas de capacidad →](../../capacity-planning/plan_de_pruebas.md)**
 
 ### 📦 Resultados Plan de Pruebas de Capacidad
-**Ubicacion:** `capacity-planning/plan_de_pruebas_entrega2.md`
+**Ubicacion:** `capacity-planning/plan_de_pruebas_entrega3.md`
 
 Contiene el analisis detallado de capacidad de la aplicacion, realizado sobre AWS incluyendo:
 - Resultados de pruebas de carga en la capa web
 - Resultados de pruebas de rendimiento del worker
-- Evidencias fotograficas y enlaces a Grafana de cada prueba
+- Evidencias fotograficas 
 - Analisis de capacidad maxima encontrada
 - Metricas de rendimiento y estabilidad del sistema
 
-**[Ver plan de pruebas de capacidad →](../../capacity-planning/pruebas_de_carga_entrega2.md)**
+**[Ver plan de pruebas de capacidad →](../../capacity-planning/pruebas_de_carga_entrega3.md)**
 
 ### 🎥 Video de Sustentacion
 **Ubicacion:** `sustentacion/Entrega_3/`

@@ -3,8 +3,9 @@
 ## Resumen
 Esta instancia EC2 contiene:
 - ✅ Nginx (API Gateway) - Puerto 80
-- ✅ Redis (Message Broker) - Puerto 6379
 - ✅ Backend API (FastAPI) - Puerto 8000
+- ✅ Integración con AWS SQS (Message Broker)
+- ✅ Integración con AWS S3 (Almacenamiento de archivos)
 
 ---
 
@@ -17,15 +18,18 @@ Esta instancia EC2 contiene:
 - ✅ Security Group configurado (ver abajo)
 
 ### 2. Servicios externos creados
-- ✅ Servidor NFS configurado y ejecutándose
 - ✅ RDS PostgreSQL creado y accesible
+- ✅ AWS SQS colas creadas (main queue y DLQ)
+- ✅ AWS S3 bucket creado
 - ⏳ Worker (se desplegará después)
 
 ### 3. Información que necesitas tener a mano
-- IP privada del servidor NFS
 - Endpoint de RDS PostgreSQL
 - Usuario y contraseña de RDS
 - Nombre de la base de datos en RDS
+- SQS Queue URL y DLQ URL
+- S3 Bucket Name
+- AWS credentials (Access Key ID, Secret Access Key)
 
 ---
 
@@ -38,7 +42,6 @@ Esta instancia EC2 contiene:
 | SSH | TCP | 22 | Your IP | Administración SSH |
 | HTTP | TCP | 80 | 0.0.0.0/0 | Nginx - Acceso público |
 | Custom TCP | TCP | 8000 | Your IP | Backend API (debug) |
-| Custom TCP | TCP | 6379 | Worker SG | Redis para Worker |
 
 ### Outbound Rules
 - All traffic (default)
@@ -47,15 +50,16 @@ Esta instancia EC2 contiene:
 
 ## ⚠️ IMPORTANTE: Configuración Previa al Despliegue
 
-**Antes de ejecutar `docker-compose up`**, debes configurar estos 2 archivos con las IPs correctas:
+**Antes de ejecutar `docker-compose up`**, debes configurar el archivo `.env` con los valores correctos:
 
-### 📝 Archivos que DEBES editar:
+### 📝 Archivo que DEBES editar:
 
-| Archivo | Qué configurar | Tipo de IP |
-|---------|----------------|------------|
-| **`.env`** | `DATABASE_URL` (RDS endpoint) | Endpoint RDS |
-| **`.env`** | `BASE_PATH` (URL pública del Backend) | **IP PÚBLICA** de esta instancia |
-| **`setup-nfs-mount.sh`** | `NFS_SERVER_IP` (línea 17) | **IP PRIVADA** del servidor NFS |
+| Archivo | Qué configurar |
+|---------|----------------|
+| **`.env`** | `DATABASE_URL` (RDS endpoint) |
+| **`.env`** | `BASE_PATH` (URL pública del Backend - IP PÚBLICA de esta instancia) |
+| **`.env`** | `SQS_QUEUE_URL` y `SQS_DLQ_URL` |
+| **`.env`** | `S3_BUCKET_NAME` y credenciales AWS |
 
 ### 🔄 ¿Necesitas recrear contenedores después de cambiar configuración?
 
@@ -67,11 +71,6 @@ docker-compose down
 
 # Editar archivos de configuración
 nano .env
-nano setup-nfs-mount.sh
-
-# Si cambiaste setup-nfs-mount.sh, remontar NFS
-sudo umount /mnt/nfs_uploads
-./setup-nfs-mount.sh
 
 # Reconstruir y levantar con nueva configuración
 docker-compose up -d --build
@@ -79,7 +78,7 @@ docker-compose up -d --build
 
 **NO necesitas recrear** si solo cambias:
 - Logs
-- Variables de configuración que no afectan conectividad (como `LOG_LEVEL`, `CORS_ORIGINS`)
+- Variables de configuración que no afectan conectividad (como `CORS_ORIGINS`)
 
 ---
 
@@ -126,6 +125,18 @@ nano .env
 # RDS Database
 DATABASE_URL=postgresql://admin:YourPassword@anb-db.xxx.us-east-1.rds.amazonaws.com:5432/anbdb
 
+# AWS SQS
+USE_SQS=true
+SQS_QUEUE_URL=https://sqs.us-east-1.amazonaws.com/123456789/anb-video-processing
+SQS_DLQ_URL=https://sqs.us-east-1.amazonaws.com/123456789/anb-video-processing-dlq
+
+# AWS S3
+FILE_STORAGE_TYPE=s3
+S3_BUCKET_NAME=anb-videos-bucket
+AWS_ACCESS_KEY_ID=your-access-key
+AWS_SECRET_ACCESS_KEY=your-secret-key
+AWS_REGION=us-east-1
+
 # JWT Secret (generar uno aleatorio)
 SECRET_KEY=tu-clave-secreta-super-segura-minimo-32-caracteres
 
@@ -133,52 +144,7 @@ SECRET_KEY=tu-clave-secreta-super-segura-minimo-32-caracteres
 BASE_PATH=http://<BACKEND_PUBLIC_IP>/api/videos
 ```
 
-### Paso 4: Configurar Almacenamiento (NFS o S3)
-
-Elige **UNA** de las dos opciones según tu `.env`:
-
----
-
-#### **Opción A: Almacenamiento NFS** (Si `FILE_STORAGE_TYPE=local`)
-
-```bash
-# Editar el script con la IP del servidor NFS
-nano setup-nfs-mount.sh
-
-# Cambiar esta línea:
-# NFS_SERVER_IP="REPLACE_WITH_NFS_PRIVATE_IP"
-# Por ejemplo:
-# NFS_SERVER_IP="172.xx.xx.xx"
-
-# Dar permisos de ejecución
-chmod +x setup-nfs-mount.sh
-
-# Ejecutar el script
-./setup-nfs-mount.sh
-```
-
-**Verificar que NFS está montado:**
-
-```bash
-df -h | grep nfs
-ls -la /mnt/nfs_uploads
-```
-
-Deberías ver:
-
-```
-172.31.10.10:/mnt/nfs_share/uploads  50G  1.2G   46G   3% /mnt/nfs_uploads
-
-drwxrwxrwx 5 root root 4096 Jan 15 10:30 .
-drwxr-xr-x 3 root root 4096 Jan 15 10:25 ..
-drwxrwxrwx 2 root root 4096 Jan 15 10:30 original
-drwxrwxrwx 2 root root 4096 Jan 15 10:30 processed
-drwxrwxrwx 2 root root 4096 Jan 15 10:30 temp
-```
-
----
-
-#### **Opción B: Almacenamiento S3** (Si `FILE_STORAGE_TYPE=s3`)
+### Paso 4: Configurar Almacenamiento S3
 
 **Pre-requisito:** Tener creado el bucket S3 y las credenciales configuradas en `.env`
 
@@ -208,15 +174,6 @@ Deberías ver:
 ```
                            PRE original/
                            PRE processed/
-```
-
-**IMPORTANTE:** Después de ejecutar `setup-s3.sh`, editar `docker-compose.yml`:
-
-```bash
-nano docker-compose.yml
-
-# Comentar la línea del volumen NFS (aproximadamente línea 70):
-# - /mnt/nfs_uploads:/app/uploads
 ```
 
 ---
@@ -288,7 +245,6 @@ docker-compose ps
 # Deberías ver:
 # NAME                IMAGE                    STATUS
 # anb-nginx           nginx:alpine             Up (healthy)
-# anb-redis           redis:7-alpine           Up (healthy)
 # anb-backend         backend-instance-backend Up (healthy)
 ```
 
@@ -302,10 +258,6 @@ curl http://localhost/health
 # Health check de Backend
 curl http://localhost:8000/health
 # Debería retornar información de salud del backend
-
-# Verificar Redis
-docker exec -it anb-redis redis-cli ping
-# Debería retornar: PONG
 ```
 
 ### Paso 9: Acceso desde tu máquina local
@@ -335,9 +287,6 @@ docker-compose logs -f backend
 
 # Solo nginx
 docker-compose logs -f nginx
-
-# Solo redis
-docker-compose logs -f redis
 ```
 
 ### Reiniciar servicios
@@ -397,33 +346,30 @@ telnet <RDS_ENDPOINT> 5432
 # Verificar credenciales en .env
 ```
 
-### Error: "NFS mount failed"
+### Error: "Cannot connect to S3"
 
 ```bash
-# Verificar que servidor NFS está corriendo
-ping <NFS_PRIVATE_IP>
+# Verificar credenciales AWS
+aws s3 ls s3://<YOUR_BUCKET_NAME>
 
-# Verificar exports en servidor NFS
-showmount -e <NFS_PRIVATE_IP>
+# Verificar variables de entorno
+docker exec -it anb-backend env | grep AWS
 
-# Ver logs del sistema
-sudo journalctl -xe | grep mount
-
-# Intentar montar manualmente
-sudo mount -t nfs <NFS_IP>:/mnt/nfs_share/uploads /mnt/nfs_uploads
+# Ver logs del backend
+docker-compose logs backend
 ```
 
-### Error: "Redis connection refused"
+### Error: "Cannot connect to SQS"
 
 ```bash
-# Verificar que Redis está corriendo
-docker-compose ps redis
+# Verificar que las colas existen
+aws sqs list-queues
 
-# Ver logs de Redis
-docker-compose logs redis
+# Verificar URL de la cola
+aws sqs get-queue-attributes --queue-url <YOUR_QUEUE_URL>
 
-# Probar conexión
-docker exec -it anb-redis redis-cli ping
+# Ver logs del backend
+docker-compose logs backend
 ```
 
 ### Backend no responde
@@ -473,16 +419,6 @@ docker-compose ps
 
 ## Backup y Rollback
 
-### Crear snapshot del volumen Redis
-
-```bash
-# Exportar datos de Redis
-docker exec anb-redis redis-cli SAVE
-
-# Copiar dump.rdb desde el contenedor
-docker cp anb-redis:/data/dump.rdb ~/redis-backup-$(date +%F).rdb
-```
-
 ### Rollback a versión anterior
 
 ```bash
@@ -509,12 +445,11 @@ Una vez que el Backend esté funcionando correctamente:
 
 ```bash
 # 1. Configurar archivos (ANTES de desplegar)
-nano .env                    # DATABASE_URL, SECRET_KEY, BASE_PATH
-nano setup-nfs-mount.sh      # NFS_SERVER_IP
+nano .env                    # DATABASE_URL, SECRET_KEY, BASE_PATH, SQS_QUEUE_URL, S3_BUCKET_NAME
 
-# 2. Montaje NFS
-chmod +x setup-nfs-mount.sh
-./setup-nfs-mount.sh
+# 2. Configurar S3
+chmod +x setup-s3.sh
+./setup-s3.sh
 
 # 3. Inicializar base de datos (SOLO PRIMERA VEZ)
 chmod +x init-database.sh
