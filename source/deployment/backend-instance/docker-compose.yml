@@ -1,5 +1,17 @@
 version: '3.8'
 
+# ============================================
+# Docker Compose para Backend con AWS SQS
+# ============================================
+# Este archivo es para usar cuando migres a AWS SQS
+# Ya NO incluye Redis (SQS es el message broker)
+#
+# Uso:
+#   docker-compose -f docker-compose.sqs.yml up -d
+#
+# O renombrar este archivo a docker-compose.yml después de migrar
+# ============================================
+
 services:
   # ===== NGINX API GATEWAY =====
   nginx:
@@ -20,40 +32,21 @@ services:
       timeout: 10s
       retries: 3
 
-  # ===== REDIS BROKER =====
-  redis:
-    image: redis:7-alpine
-    container_name: anb-redis
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    networks:
-      - app-network
-    restart: unless-stopped
-    command: redis-server --appendonly yes
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # ===== BACKEND API =====
+  # ===== BACKEND API (Sin Redis - usa AWS SQS) =====
   backend:
     build:
-      context: ../../backend
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: backend/Dockerfile
     container_name: anb-backend
     ports:
       - "8000:8000"
     env_file:
       - .env
-    volumes:
-      # Montaje NFS - se monta desde el host
-      - /mnt/nfs_uploads:/app/uploads
-    depends_on:
-      redis:
-        condition: service_healthy
+    environment:
+      # Asegurar que USE_SQS esté activado
+      - USE_SQS=true
+      # TEST_MODE: true = no envía a cola (para pruebas), false = funcionamiento normal
+      - TEST_MODE=${TEST_MODE}
     networks:
       - app-network
     restart: unless-stopped
@@ -63,12 +56,34 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    # ===== CLOUDWATCH LOGS - Auto Scaling Compatible =====
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: us-east-1
+        awslogs-group: /aws/ec2/anb-backend
+        # awslogs-stream usa el container name (único por instancia EC2)
+        # Si hay múltiples instancias, cada una tiene su propio contenedor
+        awslogs-stream: backend-${HOSTNAME}
+        awslogs-create-group: "true"
+        # Modo non-blocking para no afectar performance si CloudWatch está lento
+        mode: non-blocking
+        max-buffer-size: 25m
 
 networks:
   app-network:
     name: anb-network
     driver: bridge
 
-volumes:
-  redis_data:
-    name: anb-redis-data
+# ============================================
+# NOTAS:
+# ============================================
+# 1. Redis ha sido REMOVIDO - AWS SQS es el message broker
+# 2. Asegurar que USE_SQS=true en .env
+# 3. Configurar SQS_QUEUE_URL y SQS_DLQ_URL en .env
+# 4. Instance Profile debe estar adjunto a la instancia EC2
+# 5. No hay volúmenes de Redis - SQS persiste mensajes automáticamente
+# 6. TEST_MODE=false (producción) o TEST_MODE=true (testing sin cola)
+#    - false: El backend envía tareas a SQS normalmente
+#    - true: El backend NO envía tareas a SQS (para pruebas de carga)
+# ============================================

@@ -8,8 +8,12 @@ from pathlib import Path
 class Config:
     """Configuración del worker de procesamiento de videos"""
     
-    # ===== REDIS BROKER =====
-    REDIS_URL: str = os.getenv('REDIS_URL', 'redis://redis:6379/0')
+    # ===== MESSAGE BROKER (SQS) =====
+    # AWS SQS - único broker soportado
+    AWS_REGION: str = os.getenv('AWS_REGION', 'us-east-1')
+    SQS_QUEUE_URL: str = os.getenv('SQS_QUEUE_URL', '')
+    SQS_DLQ_URL: str = os.getenv('SQS_DLQ_URL', '')
+
     # NO usamos result_backend - PostgreSQL es la única fuente de verdad
     
     # ===== POSTGRESQL =====
@@ -18,8 +22,16 @@ class Config:
         'postgresql://user:password@database:5432/fileprocessing'
     )
     
-    # ===== ALMACENAMIENTO LOCAL (Carpetas compartidas) =====
+    # ===== ALMACENAMIENTO - Soporta Local/NFS y S3 =====
+    STORAGE_TYPE: str = os.getenv('STORAGE_TYPE', 'local')  # 'local' o 's3'
     UPLOAD_BASE_DIR: str = os.getenv('UPLOAD_DIR', '/app/uploads')
+
+    # S3 Configuration (solo si STORAGE_TYPE='s3')
+    AWS_ACCESS_KEY_ID: str = os.getenv('AWS_ACCESS_KEY_ID', '')
+    AWS_SECRET_ACCESS_KEY: str = os.getenv('AWS_SECRET_ACCESS_KEY', '')
+    AWS_SESSION_TOKEN: str = os.getenv('AWS_SESSION_TOKEN', '')  # Para AWS Academy
+    AWS_REGION: str = os.getenv('AWS_REGION', 'us-east-1')
+    S3_BUCKET_NAME: str = os.getenv('S3_BUCKET_NAME', '')
     
     @property
     def ORIGINAL_DIR(self) -> str:
@@ -53,9 +65,10 @@ class Config:
     VIDEO_RESOLUTION_WIDTH: int = 1280  # 720p
     VIDEO_RESOLUTION_HEIGHT: int = 720
     VIDEO_ASPECT_RATIO: str = "16:9"
-    VIDEO_CODEC: str = "libx264"
-    VIDEO_PRESET: str = "fast"  # ultrafast, fast, medium, slow
-    VIDEO_CRF: int = 23  # Constant Rate Factor (18-28 recomendado, menor = mejor calidad)
+    VIDEO_CODEC: str = os.getenv('VIDEO_CODEC', 'libx264')
+    VIDEO_PRESET: str = os.getenv('VIDEO_PRESET', 'ultrafast')  # 4x más rápido que "fast" (2x que veryfast)
+    VIDEO_CRF: int = int(os.getenv('VIDEO_CRF', '28'))  # Archivos 20% más pequeños vs CRF 25, calidad excelente para 720p
+    VIDEO_TUNE: str = os.getenv('VIDEO_TUNE', 'film')  # Optimización para contenido de video
     
     # ===== LOGOS Y MARCA DE AGUA =====
     LOGO_PATH: str = os.getenv('LOGO_PATH', '/app/assets/anb_logo.png')
@@ -84,14 +97,15 @@ class Config:
         """Valida que las configuraciones críticas estén presentes"""
         instance = cls()
         required = [
-            instance.REDIS_URL,
+            instance.SQS_QUEUE_URL,
+            instance.SQS_DLQ_URL,
             instance.DATABASE_URL,
             instance.UPLOAD_BASE_DIR
         ]
         return all(required)
-    
+
     def __repr__(self):
-        return f"<Config(redis={self.REDIS_URL}, db={self.DATABASE_URL})>"
+        return f"<Config(sqs_queue={self.SQS_QUEUE_URL}, db={self.DATABASE_URL})>"
 
 
 # Instancia global

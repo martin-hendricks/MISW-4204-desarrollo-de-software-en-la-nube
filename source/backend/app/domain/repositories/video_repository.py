@@ -22,8 +22,8 @@ class VideoRepositoryInterface(ABC):
         pass
     
     @abstractmethod
-    async def get_public_videos(self) -> List[Video]:
-        """Obtiene todos los videos públicos para votación"""
+    async def get_public_videos(self, skip: int = 0, limit: int = 100) -> List[Video]:
+        """Obtiene videos públicos para votación con paginación"""
         pass
     
     @abstractmethod

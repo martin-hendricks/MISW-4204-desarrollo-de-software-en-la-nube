@@ -42,10 +42,16 @@ Contiene todos los archivos entregables de la primera entrega del proyecto, incl
 
 **[Ver documentación de la Entrega 1 →](docs/Entrega_1/)**
 
-### 📁 [docs/Entrega_2/](docs/Entrega_1/)
+### 📁 [docs/Entrega_2/](docs/Entrega_2/)
 Contiene todos los archivos entregables de la segunda entrega del proyecto, incluyendo diagramas de arquitectura, documentación técnica, y reportes de las pruebas realizadas de la segunda entrega.
 
 **[Ver documentación de la Entrega 2 →](docs/Entrega_2/)**
+
+
+### 📁 [docs/Entrega_3/](docs/Entrega_3/)
+Contiene todos los archivos entregables de la tercera entrega del proyecto, incluyendo diagramas de arquitectura, documentación técnica, y reportes de las pruebas realizadas de la tercera entrega.
+
+**[Ver documentación de la Entrega 3 →](docs/Entrega_3/)**
 
 ## Licencia
 

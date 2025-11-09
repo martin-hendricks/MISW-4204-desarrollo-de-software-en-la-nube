@@ -1,11 +1,11 @@
-# ===== Celery y Broker =====
+# ===== Celery y Broker (SQS only) =====
 celery==5.3.4
-redis==5.0.1
-kombu==5.3.5
+kombu[sqs]==5.3.4  # Incluye kombu base + soporte SQS
+boto3==1.34.25
 
 # ===== Monitoreo =====
 flower==2.0.1
-prometheus-client==0.19.0
+requests==2.31.0
 
 # ===== Procesamiento de Video =====
 ffmpeg-python==0.2.0
@@ -22,6 +22,7 @@ pydantic==2.5.0
 # ===== Utilidades =====
 python-dotenv==1.0.0
 pillow==10.1.0
+psutil==5.9.8
 
 # ===== Testing =====
 pytest==7.4.3

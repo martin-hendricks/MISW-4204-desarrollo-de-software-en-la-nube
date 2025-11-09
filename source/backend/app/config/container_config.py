@@ -12,14 +12,24 @@ from app.config.settings import settings, FileStorageType
 
 def configure_container():
     """Configura el contenedor de dependencias con las implementaciones apropiadas"""
-    
+
     # Configurar almacenamiento de archivos basado en la configuración
     if settings.FILE_STORAGE_TYPE == FileStorageType.LOCAL:
         from app.infrastructure.external_services.local_file_storage import LocalFileStorage
-        container.register_singleton(FileStorageInterface, LocalFileStorage)
+        # Crear instancia con parámetros y registrar
+        local_instance = LocalFileStorage(settings.UPLOAD_DIR)
+        container._services[FileStorageInterface.__name__] = (lambda: local_instance, True)
+        container._singletons[FileStorageInterface.__name__] = local_instance
     elif settings.FILE_STORAGE_TYPE == FileStorageType.S3:
         from app.infrastructure.external_services.s3_file_storage import S3FileStorage
-        container.register_singleton(FileStorageInterface, S3FileStorage)
+        # Crear instancia con parámetros requeridos y registrar
+        s3_instance = S3FileStorage(
+            bucket_name=settings.S3_BUCKET_NAME,
+            region=settings.AWS_REGION,
+            session_token=settings.AWS_SESSION_TOKEN if settings.AWS_SESSION_TOKEN else None
+        )
+        container._services[FileStorageInterface.__name__] = (lambda: s3_instance, True)
+        container._singletons[FileStorageInterface.__name__] = s3_instance
     
     # Configurar autenticación
     from app.infrastructure.external_services.jwt_auth_service import JWTAuthService

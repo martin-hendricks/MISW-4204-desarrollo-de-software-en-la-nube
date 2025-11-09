@@ -1,5 +1,6 @@
 """
 Tarea principal de procesamiento de videos ANB Rising Stars
+MODIFICADO: Soporta almacenamiento Local/NFS y S3
 """
 
 import logging
@@ -16,10 +17,7 @@ from datetime import datetime
 from models import Video, VideoStatus
 from utils.video_processing import video_processor, VideoProcessingError
 from config import config
-from models import Video, VideoStatus
-from utils.video_processing import VideoProcessingError, video_processor
-
-from database import get_db_session
+from storage import get_storage_backend
 
 logger = logging.getLogger(__name__)
 
@@ -59,25 +57,22 @@ def process_video(self, video_id: int) -> Dict:
     """
     Tarea principal de procesamiento de video
 
-    Flujo OPTIMIZADO (sin consultas innecesarias a BD):
-    1. Construir rutas por convención: /app/uploads/original/{video_id}.mp4
-    2. Validar que el archivo original existe (File System directo)
-    3. Procesar video con FFmpeg:
+    Flujo MODIFICADO para soportar Local/NFS y S3:
+    1. Definir claves de almacenamiento (original/{id}.mp4, processed/{id}.mp4)
+    2. Verificar que el archivo original existe en el storage
+    3. Descargar archivo original a directorio temporal
+    4. Procesar video con FFmpeg localmente:
        - Recortar a 30s
        - Escalar a 720p 16:9
        - Agregar logo ANB
        - Eliminar audio
-    4. Agregar cortinillas (intro/outro) si existen
-    5. SOLO DESPUÉS actualizar PostgreSQL con el resultado:
-       - status='processed'
-       - processed_url='/api/videos/{id}/download'
-       - processed_at=NOW()
-
-    IMPORTANTE: El worker NO consulta la BD antes de procesar.
-    Solo usa el video_id para construir las rutas y actualizar el resultado.
+    5. Agregar cortinillas (intro/outro) si existen
+    6. Subir archivo procesado al storage (NFS o S3)
+    7. Actualizar PostgreSQL con el resultado
+    8. Limpiar archivos temporales
 
     Args:
-        video_id: ID del video (se usa para construir rutas por convención)
+        video_id: ID del video
 
     Returns:
         Diccionario con resultado del procesamiento
@@ -87,144 +82,147 @@ def process_video(self, video_id: int) -> Dict:
         SoftTimeLimitExceeded: Si excede el tiempo límite
     """
     temp_files = []
+    storage = get_storage_backend()  # Obtener backend según configuración
 
     try:
-        logger.info(f"🎬 Iniciando procesamiento de video ID: {video_id}")
-        logger.info(f"   Task ID: {self.request.id}")
-        logger.info(f"   Intento: {self.request.retries + 1}/{self.max_retries + 1}")
+        logger.info(f"🎬 Video {video_id}: Iniciando procesamiento")
+        logger.info(f"   Storage: {storage.__class__.__name__}")
+        logger.debug(f"   Task ID: {self.request.id}, Intento: {self.request.retries + 1}/{self.max_retries + 1}")
 
-        # ===== 1. CONSTRUIR RUTAS POR CONVENCIÓN (SIN CONSULTAR BD) =====
-        # El worker NO consulta la BD para saber dónde están los archivos
-        # Usa convención: /app/uploads/original/{video_id}.mp4
-        original_path = os.path.join(config.ORIGINAL_DIR, f"{video_id}.mp4")
-        processed_path = os.path.join(config.PROCESSED_DIR, f"{video_id}.mp4")
+        # ===== 1. DEFINIR RUTAS =====
+        # Remote keys (S3) o rutas relativas (local/NFS)
+        original_key = f"original/{video_id}.mp4"
+        processed_key = f"processed/{video_id}.mp4"
 
-        logger.info(f"📂 Ruta original:  {original_path}")
-        logger.info(f"📂 Ruta procesada: {processed_path}")
+        # Paths locales temporales para procesamiento
+        temp_original = os.path.join(config.TEMP_DIR, f"{video_id}_original.mp4")
+        temp_processed = os.path.join(config.TEMP_DIR, f"{video_id}_processed.mp4")
+        temp_files.extend([temp_original, temp_processed])
 
-        # ===== 2. VALIDAR QUE EL ARCHIVO ORIGINAL EXISTE =====
-        if not os.path.exists(original_path):
-            error_msg = f"Archivo original no encontrado: {original_path}"
+        logger.debug(f"📂 Remote: {original_key} -> {processed_key}")
+        logger.debug(f"📂 Local temp: {temp_original} -> {temp_processed}")
+
+        # ===== 2. VERIFICAR QUE EXISTE EL ARCHIVO ORIGINAL =====
+        if not storage.file_exists(original_key):
+            error_msg = f"Archivo original no encontrado: {storage.get_full_path(original_key)}"
             logger.error(f"❌ {error_msg}")
             raise VideoProcessingError(error_msg)
 
-        # Obtener tamaño del archivo original para métricas
-        file_size_bytes = os.path.getsize(original_path)
+        # ===== 3. DESCARGAR ARCHIVO ORIGINAL =====
+        logger.debug("📥 Descargando archivo original...")
+        storage.download_file(original_key, temp_original)
+
+        # Obtener tamaño para métricas
+        file_size_bytes = os.path.getsize(temp_original)
         file_size_mb = file_size_bytes / (1024 * 1024)
-        logger.info(f"✅ Archivo original encontrado: {file_size_mb:.2f} MB")
+        logger.debug(f"✅ Archivo descargado: {file_size_mb:.2f} MB")
 
-        # Registrar métrica de tamaño de archivo
+        # Registrar métrica de tamaño de archivo en CloudWatch
         try:
-            from metrics import video_file_size_bytes
-            video_file_size_bytes.observe(file_size_bytes)
-        except ImportError as e:
-            logger.warning(f"Could not import metrics: {e}")  # Métricas no disponibles, continuar sin ellas
+            from metrics import cw_metrics
+            from cloudwatch.cloudwatch_metrics import MetricUnit
 
-        # ===== 3. PROCESAR VIDEO CON FFMPEG =====
+            cw_metrics.record_histogram(
+                histogram_name="VideoFileSize",
+                value=file_size_bytes,
+                unit=MetricUnit.BYTES,
+                dimensions={"TaskName": "process_video"}
+            )
+        except ImportError:
+            pass
 
-        logger.info("⚙️ Procesando con FFmpeg...")
+        # ===== 4. PROCESAR VIDEO CON FFMPEG =====
+        logger.debug("⚙️ Procesando con FFmpeg...")
         video_processor.process_video(
-            input_path=original_path, output_path=processed_path, add_logo=True
+            input_path=temp_original,
+            output_path=temp_processed,
+            add_logo=True
         )
 
-        temp_files.append(processed_path)
-        logger.info(f"✅ Video procesado: {processed_path}")
+        # Verificar que se creó el archivo procesado
+        if not os.path.exists(temp_processed):
+            raise VideoProcessingError(f"No se generó el video procesado: {temp_processed}")
 
-        # Validar video procesado
-        if not video_processor.validate_video(processed_path):
+        file_size = os.path.getsize(temp_processed)
+        logger.info(f"✅ Video procesado: {temp_processed} ({file_size} bytes)")
+
+        # Validar video
+        if not video_processor.validate_video(temp_processed):
             logger.warning("⚠️ Video procesado no cumple todas las validaciones")
 
-        # ===== 4. AGREGAR CORTINILLAS (OPCIONAL) =====
-        # Si existen archivos de intro/outro, agregarlos
-        if os.path.exists(config.INTRO_VIDEO_PATH) or os.path.exists(
-            config.OUTRO_VIDEO_PATH
-        ):
-            logger.info("🎬 Agregando cortinillas...")
-            # Crear archivo temporal para video con cortinillas
+        # ===== 5. AGREGAR CORTINILLAS (OPCIONAL) =====
+        if os.path.exists(config.INTRO_VIDEO_PATH) or os.path.exists(config.OUTRO_VIDEO_PATH):
+            logger.debug("🎬 Agregando cortinillas...")
             temp_with_intros = os.path.join(config.TEMP_DIR, f"{video_id}_with_intros.mp4")
+            temp_files.append(temp_with_intros)
 
             video_processor.add_intro_outro(
-                video_path=processed_path, output_path=temp_with_intros
+                video_path=temp_processed,
+                output_path=temp_with_intros
             )
 
-            # Reemplazar el archivo procesado con el que tiene cortinillas
             if os.path.exists(temp_with_intros):
-                # Eliminar el archivo sin cortinillas
-                if os.path.exists(processed_path):
-                    os.remove(processed_path)
-                    logger.info(f"🗑️  Eliminado archivo sin cortinillas: {processed_path}")
-                
-                # Mover el archivo con cortinillas al nombre final
-                os.rename(temp_with_intros, processed_path)
-                logger.info(f"✅ Cortinillas agregadas y archivo final: {processed_path}")
-            else:
-                logger.warning("⚠️ No se pudo agregar cortinillas, usando video sin cortinillas")
+                # Usar el archivo con cortinillas
+                os.remove(temp_processed)
+                os.rename(temp_with_intros, temp_processed)
+                logger.info(f"✅ Cortinillas agregadas: {temp_processed}")
 
-        # ===== 5. ACTUALIZAR BASE DE DATOS CON RESULTADO =====
-        # SOLO AHORA consultamos la BD para actualizar el resultado
+        # ===== 6. SUBIR ARCHIVO PROCESADO =====
+        logger.debug("📤 Subiendo archivo procesado...")
+        storage.upload_file(temp_processed, processed_key)
+        logger.info(f"✅ Archivo subido: {storage.get_full_path(processed_key)}")
+
+        # ===== 7. ACTUALIZAR BASE DE DATOS CON RESULTADO =====
         db = get_db_session()
         video = db.query(Video).filter(Video.id == video_id).first()
 
         if not video:
-            logger.warning(
-                f"⚠️ Video {video_id} no encontrado en BD, pero el archivo fue procesado"
-            )
-            logger.info(f"   Archivo procesado guardado en: {processed_path}")
-            db.close()  # Cerrar sesión antes de salir
-            # El video fue procesado exitosamente aunque no esté en BD
+            logger.warning(f"⚠️ Video {video_id} no encontrado en BD")
+            db.close()
             return {
                 "status": "success",
                 "video_id": video_id,
-                "processed_path": processed_path,
+                "processed_key": processed_key,
                 "warning": "Video no encontrado en BD",
             }
 
-        # Actualizar registro en BD
-        video.status = VideoStatus.processed  # SQLAlchemy maneja el enum automáticamente
+        # Actualizar registro
+        video.status = VideoStatus.processed
         video.processed_at = datetime.utcnow()
-        
-        # Generar URL pública para el video procesado
-        # El backend puede servir el archivo desde /app/uploads/processed/{video_id}_processed.mp4
-        # Ejemplo: https://anb.com/api/videos/{video_id}/download
+
+        # Generar URL pública
         base_path = os.getenv("BASE_PATH", "http://localhost:80/api/videos")
         video.processed_url = f"{base_path}/processed/{video_id}"
 
-        # Campos que NO existen en init.sql:
-        # - processed_path (ruta interna, el worker la conoce por convención)
-        # - processed_duration (metadata)
-        # - error_message (para errores)
-
         db.commit()
 
-        # Obtener info del video para logging
-        video_info = video_processor.get_video_info(processed_path)
+        # Métricas finales
+        video_info = video_processor.get_video_info(temp_processed)
         duration = int(video_info["duration"])
+        file_size_mb = video_info["size_bytes"] / (1024 * 1024)
 
-        logger.info("=" * 60)
-        logger.info(f"✅ Video {video_id} procesado exitosamente")
-        logger.info(f"   Path procesado: {processed_path}")
-        logger.info(f"   Duración: {duration}s")
-        logger.info(f"   URL pública: {video.processed_url}")
-        # Calcular tiempo total de procesamiento (manejar timezone)
         from datetime import timezone
         now_utc = datetime.now(timezone.utc)
         if video.uploaded_at.tzinfo is None:
-            # Si uploaded_at es naive, asumir UTC
             uploaded_utc = video.uploaded_at.replace(tzinfo=timezone.utc)
         else:
             uploaded_utc = video.uploaded_at
-        processing_time = (now_utc - uploaded_utc).total_seconds()
-        logger.info(f"   Tiempo total: ~{int(processing_time)}s")
-        logger.info("=" * 60)
-        
-        db.close()  # Cerrar sesión antes de salir
+        processing_time = int((now_utc - uploaded_utc).total_seconds())
+
+        logger.info(
+            f"✅ Video {video_id}: Procesado exitosamente "
+            f"({duration}s, {file_size_mb:.1f}MB, {processing_time}s) - {video.processed_url}"
+        )
+
+        db.close()
 
         return {
             "status": "success",
             "video_id": video_id,
-            "processed_path": processed_path,
+            "processed_key": processed_key,
             "duration": duration,
             "task_id": self.request.id,
+            "storage_type": config.STORAGE_TYPE
         }
 
     except SoftTimeLimitExceeded:
@@ -267,12 +265,14 @@ def process_video(self, video_id: int) -> Dict:
         raise
 
     finally:
-        # Limpiar archivos temporales (opcional)
-        # for temp_file in temp_files:
-        #     if os.path.exists(temp_file):
-        #         os.remove(temp_file)
-
-        logger.info(f"🧹 Procesamiento finalizado para video {video_id}")
+        # ===== 8. LIMPIAR ARCHIVOS TEMPORALES =====
+        for temp_file in temp_files:
+            try:
+                if os.path.exists(temp_file):
+                    os.remove(temp_file)
+                    logger.debug(f"🗑️ Eliminado: {temp_file}")
+            except Exception as e:
+                logger.warning(f"⚠️ No se pudo eliminar {temp_file}: {e}")
 
 
 @app.task(name="tasks.video_processor.handle_failed_video", queue="dlq")

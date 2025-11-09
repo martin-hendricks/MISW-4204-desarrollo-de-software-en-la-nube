@@ -34,16 +34,16 @@ class VideoStatusEnum(str, enum.Enum):
 class VideoModel(Base):
     """Modelo SQLAlchemy para Videos"""
     __tablename__ = "videos"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     player_id = Column(Integer, ForeignKey("players.id"), nullable=False, index=True)
     title = Column(String(200), nullable=False)
-    status = Column(Enum(VideoStatusEnum, name='video_status', create_type=False, values_callable=lambda x: [e.value for e in x]), default=VideoStatusEnum.UPLOADED, nullable=False)
+    status = Column(Enum(VideoStatusEnum, name='video_status', create_type=False, values_callable=lambda x: [e.value for e in x]), default=VideoStatusEnum.UPLOADED, nullable=False, index=True)  # Agregado índice
     original_url = Column(String(500))
     processed_url = Column(String(500))
     uploaded_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     processed_at = Column(DateTime(timezone=True), nullable=True)
-    
+
     # Relaciones
     player = relationship("PlayerModel", back_populates="videos")
     votes = relationship("VoteModel", back_populates="video", cascade="all, delete-orphan")
@@ -52,17 +52,17 @@ class VideoModel(Base):
 class VoteModel(Base):
     """Modelo SQLAlchemy para Votes"""
     __tablename__ = "votes"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     video_id = Column(Integer, ForeignKey("videos.id"), nullable=False, index=True)
     player_id = Column(Integer, ForeignKey("players.id"), nullable=False, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-    
+
     # Relaciones
     video = relationship("VideoModel", back_populates="votes")
     player = relationship("PlayerModel", back_populates="votes")
-    
-    # Constraint para evitar votos duplicados
+
+    # Constraint para evitar votos duplicados e índice compuesto para optimizar queries
     __table_args__ = (
         {'sqlite_autoincrement': True},
     )

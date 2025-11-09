@@ -3,29 +3,20 @@ API de Health Checks para el Worker ANB Rising Stars
 Este servicio corre en paralelo al worker de Celery
 """
 from fastapi import FastAPI, status
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import Dict, Optional
 import logging
-
-from prometheus_client import CONTENT_TYPE_LATEST
+import asyncio
+import psutil
+import os
 
 from config import config
 from database import test_db_connection
-from celery_app import app as celery_app
 
-# Importar métricas del módulo centralizado (multiprocess-safe)
-from metrics import (
-    celery_tasks_total,
-    celery_tasks_failed,
-    celery_task_duration,
-    video_processing_duration,
-    celery_active_tasks,
-    celery_reserved_tasks,
-    celery_queue_length,
-    video_file_size_bytes,
-    generate_multiprocess_metrics
-)
+# Importar métricas de CloudWatch
+from metrics import cw_metrics, current_process
+from cloudwatch.cloudwatch_metrics import MetricUnit
 
 # Configurar logging
 logging.basicConfig(level=config.LOG_LEVEL)
@@ -67,52 +58,60 @@ def read_root():
 @app.get("/metrics")
 def metrics():
     """
-    Endpoint de métricas para Prometheus
-    Expone métricas en formato Prometheus
+    Endpoint de compatibilidad con Prometheus (deprecado)
+    Las métricas ahora se publican a CloudWatch automáticamente
     """
-    try:
-        # Actualizar gauges con información actual de Celery
-        inspect = celery_app.control.inspect()
+    return {
+        "message": "Metrics migrated to CloudWatch",
+        "namespace": os.getenv("CLOUDWATCH_NAMESPACE", "ANB/Worker"),
+        "service": "VideoProcessor",
+        "documentation": "Check AWS CloudWatch console for metrics"
+    }
 
-        # Obtener tareas activas
-        active = inspect.active()
-        if active:
-            total_active = sum(len(tasks) for tasks in active.values())
-            celery_active_tasks.set(total_active)
-        else:
-            celery_active_tasks.set(0)
 
-        # Obtener tareas reservadas
-        reserved = inspect.reserved()
-        if reserved:
-            total_reserved = sum(len(tasks) for tasks in reserved.values())
-            celery_reserved_tasks.set(total_reserved)
-        else:
-            celery_reserved_tasks.set(0)
+# ===== MÉTRICAS DE SISTEMA Y CELERY (Background Task) =====
+@app.on_event("startup")
+async def start_metrics_collection():
+    """
+    Publica métricas de sistema y Celery cada 60 segundos a CloudWatch
+    """
+    async def publish_worker_metrics():
+        while True:
+            try:
+                await asyncio.sleep(60)  # Publicar cada 60 segundos
 
-        # Obtener tamaño de colas de Redis
-        try:
-            import redis
-            r = redis.from_url(config.REDIS_URL)
+                # 1. Métricas del proceso Worker
+                process_cpu = current_process.cpu_percent(interval=0.1)
+                mem_info = current_process.memory_info()
+                process_memory_mb = mem_info.rss / (1024 * 1024)
+                process_memory_percent = current_process.memory_percent()
 
-            # Medir colas de Celery (las colas en Redis se llaman "celery" por defecto)
-            video_queue_length = r.llen('video_processing')  # Cola de procesamiento de video
-            dlq_length = r.llen('dlq')  # Dead Letter Queue
+                # 2. Métricas del sistema completo
+                system_cpu = psutil.cpu_percent(interval=0.1)
+                system_memory = psutil.virtual_memory()
 
-            celery_queue_length.labels(queue_name='video_processing').set(video_queue_length or 0)
-            celery_queue_length.labels(queue_name='dlq').set(dlq_length or 0)
+                # Publicar métricas del worker a CloudWatch
+                # NOTA: ActiveTasks/ReservedTasks no disponibles con SQS
+                # AWS SQS publica sus propias métricas: ApproximateNumberOfMessagesVisible, etc.
+                cw_metrics.put_metrics(
+                    metrics=[
+                        {"name": "ProcessCPU", "value": process_cpu, "unit": MetricUnit.PERCENT},
+                        {"name": "ProcessMemoryMB", "value": process_memory_mb, "unit": MetricUnit.MEGABYTES},
+                        {"name": "ProcessMemoryPercent", "value": process_memory_percent, "unit": MetricUnit.PERCENT},
+                        {"name": "SystemCPU", "value": system_cpu, "unit": MetricUnit.PERCENT},
+                        {"name": "SystemMemoryPercent", "value": system_memory.percent, "unit": MetricUnit.PERCENT}
+                    ],
+                    dimensions={"MetricType": "System"}
+                )
 
-        except Exception as e:
-            logger.warning(f"Error obteniendo tamaño de colas Redis: {e}")
+                logger.debug(f"[SYSTEM METRICS] CPU: {process_cpu:.1f}% | Memory: {process_memory_mb:.1f}MB")
 
-    except Exception as e:
-        logger.warning(f"Error actualizando métricas de Celery: {e}")
+            except Exception as e:
+                logger.error(f"Error publishing worker metrics: {e}")
 
-    # Generar respuesta en formato Prometheus (multiprocess-safe)
-    return Response(
-        content=generate_multiprocess_metrics(),
-        media_type=CONTENT_TYPE_LATEST
-    )
+    # Iniciar tarea en background
+    asyncio.create_task(publish_worker_metrics())
+    logger.info("Worker metrics background task started (60s interval)")
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -151,21 +150,20 @@ def detailed_health_check():
         all_healthy = False
         messages.append(f"PostgreSQL error: {str(e)}")
     
-    # 2. Check Redis (broker)
+    # 2. Check SQS (broker)
     try:
-        celery_app.backend.client.ping()
-        checks["redis"] = True
-    except:
-        try:
-            # Intentar ping directo
-            import redis
-            r = redis.from_url(config.REDIS_URL)
-            r.ping()
-            checks["redis"] = True
-        except Exception as e:
-            checks["redis"] = False
-            all_healthy = False
-            messages.append(f"Redis error: {str(e)}")
+        import boto3
+        sqs = boto3.client('sqs', region_name=config.AWS_REGION)
+        # Verificar que la cola existe
+        sqs.get_queue_attributes(
+            QueueUrl=config.SQS_QUEUE_URL,
+            AttributeNames=['ApproximateNumberOfMessages']
+        )
+        checks["sqs"] = True
+    except Exception as e:
+        checks["sqs"] = False
+        all_healthy = False
+        messages.append(f"SQS error: {str(e)}")
     
     # 3. Check directorios de almacenamiento
     try:
@@ -203,7 +201,7 @@ def detailed_health_check():
         "version": "1.0.0",
         "checks": checks,
         "config": {
-            "redis_url": config.REDIS_URL.split('@')[-1] if '@' in config.REDIS_URL else config.REDIS_URL,
+            "sqs_queue": config.SQS_QUEUE_URL,
             "upload_dir": config.UPLOAD_BASE_DIR,
             "max_retries": config.CELERY_TASK_MAX_RETRIES,
             "concurrency": config.CELERY_WORKER_CONCURRENCY
@@ -221,66 +219,33 @@ def detailed_health_check():
 def celery_stats():
     """
     Estadísticas del worker de Celery
-    Muestra información sobre tareas activas, reservadas, etc.
+    NOTA: No disponible con SQS (requiere colas temporales)
     """
-    try:
-        # Obtener estadísticas del worker
-        inspect = celery_app.control.inspect()
-        
-        stats = {
-            "active_tasks": inspect.active(),
-            "reserved_tasks": inspect.reserved(),
-            "registered_tasks": inspect.registered(),
-            "stats": inspect.stats(),
-        }
-        
-        return {
-            "status": "success",
-            "celery_stats": stats
-        }
-    except Exception as e:
-        logger.error(f"Error obteniendo stats de Celery: {e}")
-        return JSONResponse(
-            content={
-                "status": "error",
-                "message": str(e)
-            },
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+    return JSONResponse(
+        content={
+            "status": "unavailable",
+            "message": "Celery inspect() not available with SQS broker (requires temporary reply queues)",
+            "broker": "SQS"
+        },
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE
+    )
 
 
 @app.get("/celery/ping")
 def celery_ping():
     """
     Ping a los workers de Celery
-    Verifica que hay workers activos escuchando
+    NOTA: No disponible con SQS (requiere colas temporales)
     """
-    try:
-        result = celery_app.control.ping(timeout=5)
-        
-        if result:
-            return {
-                "status": "success",
-                "workers_online": len(result),
-                "workers": result
-            }
-        else:
-            return JSONResponse(
-                content={
-                    "status": "no_workers",
-                    "message": "No hay workers de Celery activos"
-                },
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE
-            )
-    except Exception as e:
-        logger.error(f"Error haciendo ping a Celery: {e}")
-        return JSONResponse(
-            content={
-                "status": "error",
-                "message": str(e)
-            },
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+    return JSONResponse(
+        content={
+            "status": "unavailable",
+            "message": "Celery ping() not available with SQS broker (requires temporary reply queues)",
+            "broker": "SQS",
+            "suggestion": "Use /health/detailed endpoint instead"
+        },
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE
+    )
 
 
 if __name__ == "__main__":

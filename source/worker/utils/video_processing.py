@@ -38,6 +38,7 @@ class VideoProcessor:
         self.codec = config.VIDEO_CODEC
         self.preset = config.VIDEO_PRESET
         self.crf = config.VIDEO_CRF
+        self.tune = config.VIDEO_TUNE
 
     def get_video_info(self, video_path: str) -> Dict:
         """
@@ -131,12 +132,8 @@ class VideoProcessor:
             raise FileNotFoundError(f"Video de entrada no encontrado: {input_path}")
 
         try:
-            logger.info(f"🎬 Procesando video: {input_path}")
-
-            # Log antes de obtener info del video
-            logger.info(f"🔍 Llamando a get_video_info para: {input_path}")
             info = self.get_video_info(input_path)
-            logger.info(
+            logger.debug(
                 f"📹 Video original: {info['duration']:.2f}s, "
                 f"{info['width']}x{info['height']}, "
                 f"{info['size_bytes'] / (1024 * 1024):.2f}MB"
@@ -145,8 +142,15 @@ class VideoProcessor:
             # Asegurar que el directorio de salida existe
             os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
-            # ===== CONSTRUIR PIPELINE DE PROCESAMIENTO CORREGIDO =====
-            stream = ffmpeg.input(input_path, t=self.max_duration)
+            # ===== CONSTRUIR PIPELINE DE PROCESAMIENTO OPTIMIZADO =====
+            # Optimización: ss=0 + t=30 + accurate_seek = solo lee primeros 30s del archivo
+            # Crítico para videos largos (1-2 horas): evita decodificar todo el video
+            stream = ffmpeg.input(
+                input_path,
+                ss=0,  # Desde el inicio
+                t=self.max_duration,  # Solo 30 segundos
+                accurate_seek=None  # Seek preciso y eficiente
+            )
             stream = stream.filter("scale", self.width, self.height)
             stream = stream.filter("setsar", 1)
 
@@ -156,32 +160,37 @@ class VideoProcessor:
                     logo = ffmpeg.input(logo_file)
                     position = self._get_logo_position()
                     stream = stream.overlay(logo, x=position[0], y=position[1])
-                    logger.info(f"✅ Logo agregado en posición: {config.LOGO_POSITION}")
+                    logger.debug(f"✅ Logo agregado en posición: {config.LOGO_POSITION}")
                 else:
                     logger.warning(f"⚠️ Logo no encontrado: {logo_file}, se omite")
 
-            # Output con configuración optimizada y sin audio
+            # Output con configuración optimizada
             stream = ffmpeg.output(
                 stream,
                 output_path,
                 vcodec=self.codec,
                 preset=self.preset,
                 crf=self.crf,
+                tune=self.tune,  # Optimización para contenido de video (film)
+                threads=1,  # 1 thread por worker (concurrency=2, 2 CPUs total)
                 format="mp4",
                 an=None,  # Elimina el audio
-                movflags="+faststart",
-                pix_fmt="yuv420p",
+                movflags="+faststart",  # Optimizado para streaming web
+                pix_fmt="yuv420p",  # Máxima compatibilidad
             )
 
-            # Ejecutar FFmpeg
-            logger.info("⚙️ Ejecutando FFmpeg...")
-            ffmpeg.run(
-                stream,
-                overwrite_output=True,
-                capture_stdout=True,
-                capture_stderr=True,
-                quiet=True,
-            )
+            # Ejecutar FFmpeg (silencioso, solo muestra errores)
+            try:
+                ffmpeg.run(
+                    stream,
+                    overwrite_output=True,
+                    quiet=True  # Silenciar output normal de FFmpeg
+                )
+            except ffmpeg.Error as e:
+                # Solo mostrar error si falla, limitado a primeros 500 caracteres
+                error_output = e.stderr.decode()[:500] if hasattr(e, 'stderr') and e.stderr else str(e)
+                logger.error(f"❌ FFmpeg falló: {error_output}")
+                raise VideoProcessingError(f"Error en FFmpeg: {error_output}")
 
             # Verificar que se creó el archivo
             if not os.path.exists(output_path):
@@ -191,7 +200,7 @@ class VideoProcessor:
 
             # Obtener info del video procesado
             processed_info = self.get_video_info(output_path)
-            logger.info(
+            logger.debug(
                 f"✅ Video procesado: {processed_info['duration']:.2f}s, "
                 f"{processed_info['width']}x{processed_info['height']}, "
                 f"{processed_info['size_bytes'] / (1024 * 1024):.2f}MB"
@@ -199,12 +208,9 @@ class VideoProcessor:
 
             return output_path
 
-        except ffmpeg.Error as e:
-            error_msg = e.stderr.decode() if e.stderr else str(e)
-            logger.error(f"❌ Error de FFmpeg: {error_msg}")
-            raise VideoProcessingError(
-                f"Error procesando video con FFmpeg: {error_msg}"
-            )
+        except VideoProcessingError:
+            # Re-lanzar errores de FFmpeg ya manejados
+            raise
 
         except Exception as e:
             logger.error(f"❌ Error procesando video: {e}")
@@ -261,7 +267,7 @@ class VideoProcessor:
                 videos_to_concat.append(
                     ffmpeg.input(intro_file, t=config.MAX_INTRO_DURATION)
                 )
-                logger.info(f"📽️ Intro agregado: {intro_file}")
+                logger.debug(f"📽️ Intro agregado: {intro_file}")
 
             # Video principal
             videos_to_concat.append(ffmpeg.input(video_path))
@@ -272,11 +278,11 @@ class VideoProcessor:
                 videos_to_concat.append(
                     ffmpeg.input(outro_file, t=config.MAX_OUTRO_DURATION)
                 )
-                logger.info(f"📽️ Outro agregado: {outro_file}")
+                logger.debug(f"📽️ Outro agregado: {outro_file}")
 
             # Concatenar videos si hay intro/outro
             if len(videos_to_concat) > 1:
-                logger.info("🎬 Concatenando videos con cortinillas...")
+                logger.debug("🎬 Concatenando videos con cortinillas...")
 
                 joined = ffmpeg.concat(*videos_to_concat, v=1, a=0)
                 output = ffmpeg.output(
@@ -284,21 +290,29 @@ class VideoProcessor:
                     output_path,
                     vcodec=self.codec,
                     preset=self.preset,
-                    **{"movflags": "+faststart"},
+                    crf=self.crf,
+                    tune=self.tune,
+                    threads=1,
+                    movflags="+faststart",
+                    pix_fmt="yuv420p",
                 )
-                ffmpeg.run(
-                    output,
-                    overwrite_output=True,
-                    capture_stdout=True,
-                    capture_stderr=True,
-                    quiet=True,
-                )
+                # Ejecutar FFmpeg para concatenación (silencioso)
+                try:
+                    ffmpeg.run(
+                        output,
+                        overwrite_output=True,
+                        quiet=True  # Silenciar output de FFmpeg
+                    )
+                except ffmpeg.Error as e:
+                    error_output = e.stderr.decode()[:500] if hasattr(e, 'stderr') and e.stderr else str(e)
+                    logger.error(f"❌ FFmpeg falló en cortinillas: {error_output}")
+                    raise VideoProcessingError(f"Error concatenando cortinillas: {error_output}")
 
-                logger.info("✅ Cortinillas agregadas exitosamente")
+                logger.debug("✅ Cortinillas agregadas exitosamente")
                 return output_path
             else:
                 # No hay intro/outro, retornar el video original
-                logger.info("ℹ️ No se encontraron cortinillas, se omite este paso")
+                logger.debug("ℹ️ No se encontraron cortinillas, se omite este paso")
                 return video_path
 
         except Exception as e:
@@ -339,7 +353,7 @@ class VideoProcessor:
                     all_valid = False
 
             if all_valid:
-                logger.info("✅ Video válido - cumple con todas las especificaciones")
+                logger.debug("✅ Video válido - cumple con todas las especificaciones")
 
             return all_valid
 

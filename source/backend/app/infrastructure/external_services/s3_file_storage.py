@@ -6,11 +6,20 @@ from app.shared.interfaces.file_storage import FileStorageInterface, LocationTyp
 
 class S3FileStorage(FileStorageInterface):
     """Implementación de almacenamiento de archivos en AWS S3"""
-    
-    def __init__(self, bucket_name: str, region: str = "us-east-1"):
+
+    def __init__(self, bucket_name: str, region: str = "us-east-1", session_token: str = None):
         self.bucket_name = bucket_name
         self.region = region
-        self.s3_client = boto3.client('s3', region_name=region)
+
+        # Configurar cliente S3 con session token (para AWS Academy)
+        if session_token:
+            self.s3_client = boto3.client(
+                's3',
+                region_name=region,
+                aws_session_token=session_token
+            )
+        else:
+            self.s3_client = boto3.client('s3', region_name=region)
     
     def _get_s3_key(self, filename: str, location: LocationType) -> str:
         """Obtiene la clave S3 basada en la ubicación"""
