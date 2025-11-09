@@ -21,7 +21,8 @@
       <img width="1248" height="606" alt="image" src="https://github.com/user-attachments/assets/e9e2e7a0-50bb-4109-b8d9-65e9b713a3c1" />
  ## **Concluciones - Prueba de Sanidad (Smoke Test)**
  
-En términos generales, la prueba de **smoke test** no presentó cambios significativos con respecto a la segunda entrega. Esto se debe a que, para este escenario, la instancia disponible logra resolver satisfactoriamente las solicitudes entrantes sin requerir escalamiento de la arquitectura.
+- En términos generales, la prueba de **smoke test** no presentó cambios significativos con respecto a la segunda entrega. Esto se debe a que, para este escenario, la instancia disponible logra resolver satisfactoriamente las solicitudes entrantes sin requerir escalamiento de la arquitectura.
+
 --------------------------------------------------------------------------------------------------------------------------------------------------
 #### 4.1.2.2 **Prueba de Escalamiento (Ramp-up)**
 - **Estrategia**: Iniciar en 0 usuarios y aumentar gradualmente hasta X usuarios en 3 minutos, mantener 5 minutos
