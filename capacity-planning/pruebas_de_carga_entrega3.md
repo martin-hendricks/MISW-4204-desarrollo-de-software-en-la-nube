@@ -99,7 +99,7 @@
       ## Monitoreo de la maquina directamente con las herramientas de linux htop
       <img width="1234" height="947" alt="image" src="https://github.com/user-attachments/assets/93a9b05f-944b-438c-87e5-3a095305757d" />
 
-      ## Monitoreo de la maquina mediante la herramienta CloudWatch sobre el comportamiento de la maquina
+      ## Monitoreo de la maquina mediante la herramienta CloudWatch
       <img width="1133" height="1345" alt="image" src="https://github.com/user-attachments/assets/bbb85982-12f4-4b06-976a-4a6f4578a459" />
       <img width="1151" height="607" alt="image" src="https://github.com/user-attachments/assets/8cca0986-519b-4443-a51d-e39992033c2a" />
       <img width="1112" height="637" alt="image" src="https://github.com/user-attachments/assets/c85417b9-10ad-45e9-ad4b-416e3acd3658" />
