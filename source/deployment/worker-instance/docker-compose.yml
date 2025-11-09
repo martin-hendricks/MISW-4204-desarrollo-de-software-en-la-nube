@@ -1,19 +1,16 @@
 version: '3.8'
 
-# ===== CONFIGURACIÓN DE ALMACENAMIENTO =====
-# Este docker-compose soporta dos modos de almacenamiento:
+# ============================================
+# Docker Compose para Worker con AWS SQS y S3
+# ============================================
+# Este archivo usa AWS SQS como message broker y S3 para almacenamiento
+# Ya NO incluye NFS ni Redis
 #
-# MODO 1 - NFS (Almacenamiento compartido en red):
-#   - Mantener el volumen: /mnt/nfs_uploads:/app/uploads
-#   - En .env: STORAGE_TYPE=local
-#   - Ejecutar ./setup-nfs-mount.sh antes de docker-compose up
-#
-# MODO 2 - S3 (Amazon S3):
-#   - Comentar la línea del volumen NFS (línea 31)
-#   - En .env: STORAGE_TYPE=s3, configurar AWS_ACCESS_KEY_ID, S3_BUCKET_NAME, etc.
-#   - Ejecutar ./setup-s3.sh antes de docker-compose up
-#
-# Para cambiar de modo, solo edita el .env y comenta/descomenta el volumen
+# Uso:
+#   1. Configurar .env con credenciales AWS (mismo bucket y colas que Backend)
+#   2. Ejecutar ./setup-s3.sh
+#   3. docker-compose up -d
+# ============================================
 
 services:
   # ===== WORKER - Procesamiento de Videos =====
@@ -26,12 +23,6 @@ services:
       - "8001:8001"  # Health API
     env_file:
       - .env
-    #volumes:
-      # ===== ALMACENAMIENTO =====
-      # NFS: Mantener esta línea activa si STORAGE_TYPE=local en .env
-      # S3:  Comentar esta línea si STORAGE_TYPE=s3 en .env
-      #- /mnt/nfs_uploads:/app/uploads
-      # Nota: Los assets (logo, intro, outro) están incluidos en la imagen Docker
     networks:
       - worker-network
     restart: unless-stopped
