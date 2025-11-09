@@ -9,7 +9,7 @@
 
 ### 4.1.2 Escenarios de Prueba
 
-#### **Prueba de Sanidad (Smoke Test)**
+#### 4.1.2.1 **Prueba de Sanidad (Smoke Test)**
 - **Usuarios**: 5 usuarios concurrentes
 - **Duración**: 1 minuto
 - **Objetivo**: Validar que el sistema responde correctamente y la telemetría está activa
@@ -21,8 +21,8 @@
 <img width="1385" height="1141" alt="smocke-test-5 usuario-grafa" src="" />
 
  #### **Concluciones - Prueba de Sanidad (Smoke Test)**
-
-#### **Prueba de Escalamiento (Ramp-up)**
+--------------------------------------------------------------------------------------------------------------------------------------------------
+#### 4.1.2.2 **Prueba de Escalamiento (Ramp-up)**
 - **Estrategia**: Iniciar en 0 usuarios y aumentar gradualmente hasta X usuarios en 3 minutos, mantener 5 minutos
 - **Niveles de Prueba**: 100 → 200 → 300 → 400 → 500 usuarios (se saturo maquina en 300 usuarios)
 - **Objetivo**: Encontrar la capacidad máxima sin degradación significativa
@@ -42,8 +42,8 @@
     - <img width="1385" height="1141" alt="rtamup-100-grafana" src="" />
 
 #### **Concluciones - Prueba de Escalamiento (Ramp-up)**
-
-#### **Prueba Sostenida**
+------------------------------------------------------------------------------------------------------------------------------------------
+#### 4.1.2.3 **Prueba Sostenida**
 
 - **Usuarios**: 80% de la capacidad máxima encontrada (cap maxima 300 usuarios, se realizo prueba con 240 usuarios)
 - **Duración**: 5 minutos
@@ -74,11 +74,9 @@
 
 ### 4.2.2 Escenarios de Prueba
 
-#### **Pruebas de Saturación**
+#### 4.2.2.1 **Pruebas de Saturación**
 - **Objetivo**: Envio de 20 videos
 - **Estrategia**: Aumentar progresivamente la cantidad de tareas en la cola
-
-### 4.2.3 Configuraciones de Prueba
 - **Tamaños de Video**: 50MB
 - **Concurrencia de Worker**: 1, 2, 4 procesos/hilos por nodo
 - **Tiempo de Espera**: Envio de 20 videos
@@ -87,7 +85,7 @@
  <img width="2144" height="1106" alt="image (17)" src="" />
 
 #### **Concluciones - Pruebas de Saturación**
-
+---------------------------------------------------------------------------------------------------------------------------------
 
 
 
