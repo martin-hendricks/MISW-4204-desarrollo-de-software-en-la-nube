@@ -52,7 +52,7 @@
     <img width="2954" height="1228" alt="image" src="https://github.com/user-attachments/assets/788b7d48-4793-47a7-9824-9dbc38fa7053" />
     <img width="1346" height="320" alt="image" src="https://github.com/user-attachments/assets/4d794a25-b9f8-4309-baa5-c5a4569a1f1b" />
     
-#### **Concluciones - Prueba de Escalamiento (Ramp-up)**
+## **Concluciones - Prueba de Escalamiento (Ramp-up)**
 
 Las pruebas realizadas mediante **ramp-up** permitieron observar el comportamiento del Auto Scaling Group y su respuesta ante incrementos progresivos de carga. La arquitectura escaló automáticamente según la configuración predefinida en la plantilla de lanzamiento.
 
