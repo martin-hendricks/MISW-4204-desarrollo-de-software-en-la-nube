@@ -13,7 +13,6 @@ import os
 
 from config import config
 from database import test_db_connection
-from celery_app import app as celery_app
 
 # Importar métricas de CloudWatch
 from metrics import cw_metrics, current_process
@@ -91,62 +90,21 @@ async def start_metrics_collection():
                 system_cpu = psutil.cpu_percent(interval=0.1)
                 system_memory = psutil.virtual_memory()
 
-                # 3. Métricas de Celery
-                inspect = celery_app.control.inspect()
-
-                # Tareas activas
-                active = inspect.active()
-                total_active = sum(len(tasks) for tasks in active.values()) if active else 0
-
-                # Tareas reservadas
-                reserved = inspect.reserved()
-                total_reserved = sum(len(tasks) for tasks in reserved.values()) if reserved else 0
-
-                # 4. Tamaño de colas (Redis o SQS)
-                video_queue_length = 0
-                dlq_length = 0
-
-                if not config.USE_SQS:
-                    # Solo para Redis (SQS no tiene concepto de queue length directamente accesible)
-                    try:
-                        import redis
-                        r = redis.from_url(config.REDIS_URL)
-                        video_queue_length = r.llen('video_processing') or 0
-                        dlq_length = r.llen('dlq') or 0
-                    except Exception as e:
-                        logger.warning(f"Error obteniendo tamaño de colas Redis: {e}")
-
-                # Publicar todas las métricas del worker
+                # Publicar métricas del worker a CloudWatch
+                # NOTA: ActiveTasks/ReservedTasks no disponibles con SQS
+                # AWS SQS publica sus propias métricas: ApproximateNumberOfMessagesVisible, etc.
                 cw_metrics.put_metrics(
                     metrics=[
                         {"name": "ProcessCPU", "value": process_cpu, "unit": MetricUnit.PERCENT},
                         {"name": "ProcessMemoryMB", "value": process_memory_mb, "unit": MetricUnit.MEGABYTES},
                         {"name": "ProcessMemoryPercent", "value": process_memory_percent, "unit": MetricUnit.PERCENT},
                         {"name": "SystemCPU", "value": system_cpu, "unit": MetricUnit.PERCENT},
-                        {"name": "SystemMemoryPercent", "value": system_memory.percent, "unit": MetricUnit.PERCENT},
-                        {"name": "ActiveTasks", "value": total_active, "unit": MetricUnit.COUNT},
-                        {"name": "ReservedTasks", "value": total_reserved, "unit": MetricUnit.COUNT}
+                        {"name": "SystemMemoryPercent", "value": system_memory.percent, "unit": MetricUnit.PERCENT}
                     ],
                     dimensions={"MetricType": "System"}
                 )
 
-                # Publicar métricas de colas por separado (con dimensión de nombre de cola)
-                if not config.USE_SQS:
-                    cw_metrics.put_metric(
-                        metric_name="QueueLength",
-                        value=video_queue_length,
-                        unit=MetricUnit.COUNT,
-                        dimensions={"QueueName": "video_processing"}
-                    )
-
-                    cw_metrics.put_metric(
-                        metric_name="QueueLength",
-                        value=dlq_length,
-                        unit=MetricUnit.COUNT,
-                        dimensions={"QueueName": "dlq"}
-                    )
-
-                logger.debug(f"[SYSTEM METRICS] CPU: {process_cpu:.1f}% | Memory: {process_memory_mb:.1f}MB | Active Tasks: {total_active}")
+                logger.debug(f"[SYSTEM METRICS] CPU: {process_cpu:.1f}% | Memory: {process_memory_mb:.1f}MB")
 
             except Exception as e:
                 logger.error(f"Error publishing worker metrics: {e}")
@@ -192,21 +150,20 @@ def detailed_health_check():
         all_healthy = False
         messages.append(f"PostgreSQL error: {str(e)}")
     
-    # 2. Check Redis (broker)
+    # 2. Check SQS (broker)
     try:
-        celery_app.backend.client.ping()
-        checks["redis"] = True
-    except:
-        try:
-            # Intentar ping directo
-            import redis
-            r = redis.from_url(config.REDIS_URL)
-            r.ping()
-            checks["redis"] = True
-        except Exception as e:
-            checks["redis"] = False
-            all_healthy = False
-            messages.append(f"Redis error: {str(e)}")
+        import boto3
+        sqs = boto3.client('sqs', region_name=config.AWS_REGION)
+        # Verificar que la cola existe
+        sqs.get_queue_attributes(
+            QueueUrl=config.SQS_QUEUE_URL,
+            AttributeNames=['ApproximateNumberOfMessages']
+        )
+        checks["sqs"] = True
+    except Exception as e:
+        checks["sqs"] = False
+        all_healthy = False
+        messages.append(f"SQS error: {str(e)}")
     
     # 3. Check directorios de almacenamiento
     try:
@@ -244,7 +201,7 @@ def detailed_health_check():
         "version": "1.0.0",
         "checks": checks,
         "config": {
-            "redis_url": config.REDIS_URL.split('@')[-1] if '@' in config.REDIS_URL else config.REDIS_URL,
+            "sqs_queue": config.SQS_QUEUE_URL,
             "upload_dir": config.UPLOAD_BASE_DIR,
             "max_retries": config.CELERY_TASK_MAX_RETRIES,
             "concurrency": config.CELERY_WORKER_CONCURRENCY
@@ -262,66 +219,33 @@ def detailed_health_check():
 def celery_stats():
     """
     Estadísticas del worker de Celery
-    Muestra información sobre tareas activas, reservadas, etc.
+    NOTA: No disponible con SQS (requiere colas temporales)
     """
-    try:
-        # Obtener estadísticas del worker
-        inspect = celery_app.control.inspect()
-        
-        stats = {
-            "active_tasks": inspect.active(),
-            "reserved_tasks": inspect.reserved(),
-            "registered_tasks": inspect.registered(),
-            "stats": inspect.stats(),
-        }
-        
-        return {
-            "status": "success",
-            "celery_stats": stats
-        }
-    except Exception as e:
-        logger.error(f"Error obteniendo stats de Celery: {e}")
-        return JSONResponse(
-            content={
-                "status": "error",
-                "message": str(e)
-            },
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+    return JSONResponse(
+        content={
+            "status": "unavailable",
+            "message": "Celery inspect() not available with SQS broker (requires temporary reply queues)",
+            "broker": "SQS"
+        },
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE
+    )
 
 
 @app.get("/celery/ping")
 def celery_ping():
     """
     Ping a los workers de Celery
-    Verifica que hay workers activos escuchando
+    NOTA: No disponible con SQS (requiere colas temporales)
     """
-    try:
-        result = celery_app.control.ping(timeout=5)
-        
-        if result:
-            return {
-                "status": "success",
-                "workers_online": len(result),
-                "workers": result
-            }
-        else:
-            return JSONResponse(
-                content={
-                    "status": "no_workers",
-                    "message": "No hay workers de Celery activos"
-                },
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE
-            )
-    except Exception as e:
-        logger.error(f"Error haciendo ping a Celery: {e}")
-        return JSONResponse(
-            content={
-                "status": "error",
-                "message": str(e)
-            },
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+    return JSONResponse(
+        content={
+            "status": "unavailable",
+            "message": "Celery ping() not available with SQS broker (requires temporary reply queues)",
+            "broker": "SQS",
+            "suggestion": "Use /health/detailed endpoint instead"
+        },
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE
+    )
 
 
 if __name__ == "__main__":

@@ -8,13 +8,8 @@ from pathlib import Path
 class Config:
     """Configuración del worker de procesamiento de videos"""
     
-    # ===== MESSAGE BROKER (Redis o SQS) =====
-    USE_SQS: bool = os.getenv('USE_SQS', 'false').lower() == 'true'
-
-    # Redis (broker actual)
-    REDIS_URL: str = os.getenv('REDIS_URL', 'redis://redis:6379/0')
-
-    # AWS SQS (broker alternativo para autoscaling)
+    # ===== MESSAGE BROKER (SQS) =====
+    # AWS SQS - único broker soportado
     AWS_REGION: str = os.getenv('AWS_REGION', 'us-east-1')
     SQS_QUEUE_URL: str = os.getenv('SQS_QUEUE_URL', '')
     SQS_DLQ_URL: str = os.getenv('SQS_DLQ_URL', '')
@@ -102,14 +97,15 @@ class Config:
         """Valida que las configuraciones críticas estén presentes"""
         instance = cls()
         required = [
-            instance.REDIS_URL,
+            instance.SQS_QUEUE_URL,
+            instance.SQS_DLQ_URL,
             instance.DATABASE_URL,
             instance.UPLOAD_BASE_DIR
         ]
         return all(required)
-    
+
     def __repr__(self):
-        return f"<Config(redis={self.REDIS_URL}, db={self.DATABASE_URL})>"
+        return f"<Config(sqs_queue={self.SQS_QUEUE_URL}, db={self.DATABASE_URL})>"
 
 
 # Instancia global
