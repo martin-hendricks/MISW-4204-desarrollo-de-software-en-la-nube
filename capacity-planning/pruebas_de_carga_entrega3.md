@@ -86,7 +86,7 @@
 ### 4.2.2 Escenarios de Prueba
 
 #### 4.2.2.1 **Pruebas de Saturación**
-- **Objetivo**: Envio de 20 videos
+- **Objetivo**: Envio de 100 videos
 - **Estrategia**: Aumentar progresivamente la cantidad de tareas en la cola
 - **Tamaños de Video**: 50MB
 - **Concurrencia de Worker**: 1, 2, 4 procesos/hilos por nodo
@@ -107,8 +107,48 @@
 
       
 
-#### **Concluciones - Pruebas de Saturación**
----------------------------------------------------------------------------------------------------------------------------------
+#### **Conclusiones - Pruebas de Saturación**
+
+**Tabla de Capacidad por Configuración:**
+
+| Configuración | Videos Procesados | Throughput | Tiempo Promedio | CPU Utilization |
+|---------------|-------------------|------------|-----------------|-----------------|
+| 1 nodo × 4 hilos | 2 videos | ~3.6 videos/min | 33 segundos | 100% (saturado) |
+| 1 nodo × 4 hilos | 4 videos | ~7.3 videos/min | 33.1 segundos | 100% (pico sostenido) |
+
+**Puntos de Saturación y Cuellos de Botella:**
+
+1. **CPU (Crítico)**:
+   - Utilización sostenida al 100% durante todo el procesamiento
+   - Cuello de botella principal que limita throughput
+   - Decodificación FFmpeg consume todos los cores disponibles
+
+2. **Cola SQS (Estable)**:
+   - Tendencia descendente ~0 (consumo eficiente)
+   - Pico de ~100 mensajes visible al inicio, procesados gradualmente
+   - Edad del mensaje se mantiene bajo umbral crítico (< 500s)
+
+3. **Memoria (Aceptable)**:
+   - Uso entre 40-63% (no es cuello de botella)
+   - Suficiente para buffers de video en memoria
+
+4. **Latencia de Procesamiento**:
+   - P99: ~34.2 segundos por video (50MB)
+   - P95: ~34 segundos
+   - Promedio: ~33 segundos
+   - **Muy consistente**, baja variabilidad entre percentiles
+
+5. **Distribución de Tareas**:
+   - 100% éxito (25/25 y 17/17 tareas completadas sin fallos)
+   - 0 mensajes en Dead Letter Queue
+   - Retry logic no activado
+
+**Throughput Real vs Esperado:**
+- **Esperado**: ~18.5 videos/min a 200 MB
+- **Obtenido**: ~3.6-7.3 videos/min a 50 MB (4x más pequeño)
+- **Proyección a 200MB**: ~0.9-1.8 videos/min (CPU saturado, escala linealmente con tamaño)
+
+**Conclusión**: El **CPU es el cuello de botella crítico**. Con 100% de utilización sostenida, el throughput está limitado por la capacidad de cómputo para decodificación FFmpeg. Para alcanzar 18.5 videos/min se requiere escalamiento vertical (más cores) o horizontal (más workers).
 
 
 
