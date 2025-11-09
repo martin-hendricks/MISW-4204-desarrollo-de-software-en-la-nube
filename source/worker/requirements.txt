@@ -1,6 +1,5 @@
-# ===== Celery y Broker =====
+# ===== Celery y Broker (SQS only) =====
 celery==5.3.4
-redis==5.0.1
 kombu[sqs]==5.3.4  # Incluye kombu base + soporte SQS
 boto3==1.34.25
 
