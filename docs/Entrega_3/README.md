@@ -222,16 +222,7 @@ Configuración de balanceador de carga de aplicación para distribuir el tráfic
   - Sticky Sessions habilitadas (basadas en cookies)
 
 **Flujo de Tráfico:**
-```
-Internet → ALB (DNS público)
-           ↓
-    Target Group (Health Checks)
-           ↓
-    ┌──────┴──────┬──────────┬──────────┐
-    ↓             ↓          ↓          ↓
-Backend 1    Backend 2  Backend 3  Backend 4
-(EC2 Auto Scaling Group Instances)
-```
+
 
 **Características del ALB:**
 - ✅ **Distribución de carga**: Round Robin entre instancias saludables
@@ -240,14 +231,6 @@ Backend 1    Backend 2  Backend 3  Backend 4
 - ✅ **Sticky Sessions**: Mantiene sesiones de usuario en la misma instancia
 - ✅ **Integración con Auto Scaling**: Registro/desregistro automático de instancias
 - ✅ **Métricas en CloudWatch**: RequestCount, TargetResponseTime, HealthyHostCount
-
-**Métricas monitoreadas:**
-- `HealthyHostCount`: Número de instancias saludables en el Target Group
-- `UnHealthyHostCount`: Número de instancias no saludables
-- `RequestCount`: Total de solicitudes procesadas
-- `TargetResponseTime`: Tiempo de respuesta promedio de las instancias
-- `HTTPCode_Target_2XX_Count`: Respuestas exitosas
-- `HTTPCode_Target_5XX_Count`: Errores del servidor
 
 ---
 
