@@ -164,6 +164,12 @@ Configuración de escalamiento automático para la capa web del sistema, permiti
 - **Cooldown**: 300 segundos
 - **Objetivo**: Optimizar uso de recursos
 
+<img width="3624" height="686" alt="image" src="https://github.com/user-attachments/assets/eb57f200-e462-44d2-a5b3-92a9c1105633" />
+
+<img width="3594" height="2042" alt="image" src="https://github.com/user-attachments/assets/0a48d1fb-fd2d-4bce-aebc-06cae9e1a22d" />
+
+<img width="720" height="401" alt="image_720" src="https://github.com/user-attachments/assets/c6b89fb7-97d4-4010-a399-e33c476a7992" />
+
 ---
 
 ### 🔀 Configuración de Application Load Balancer (ALB)
@@ -210,6 +216,7 @@ Configuración de balanceador de carga de aplicación para distribuir el tráfic
   - Distribuye carga usando algoritmo Round Robin
   - Sticky Sessions habilitadas (basadas en cookies)
 
+<img width="3594" height="2002" alt="image" src="https://github.com/user-attachments/assets/c02757fb-d70b-44b0-a1b2-c6772d821a29" />
 
 ---
 
