@@ -8,11 +8,14 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better caching
-COPY requirements.txt .
+COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Copy cloudwatch module (shared with worker)
+COPY ../cloudwatch /app/cloudwatch
+
 # Copy application code
-COPY . .
+COPY backend /app
 
 # Create uploads directory
 RUN mkdir -p /app/uploads/original /app/uploads/processed /app/uploads/temp

@@ -163,17 +163,26 @@ def task_prerun_handler(task_id=None, task=None, **kwargs):
 
 @task_postrun.connect
 def task_postrun_handler(task_id=None, task=None, state=None, **kwargs):
-    """Hook después de ejecutar una tarea - calcular duración"""
+    """Hook después de ejecutar una tarea - calcular duración y publicar a CloudWatch"""
     if task_id in task_start_times:
         duration = time.time() - task_start_times[task_id]
         task_name = task.name.split('.')[-1]
 
-        # Importar métricas del módulo centralizado
+        # Publicar duración de la tarea a CloudWatch
         try:
-            from metrics import celery_task_duration
-            celery_task_duration.labels(task_name=task_name).observe(duration)
+            from metrics import cw_metrics
+            from cloudwatch.cloudwatch_metrics import MetricUnit
+
+            cw_metrics.record_histogram(
+                histogram_name="TaskDuration",
+                value=duration,
+                unit=MetricUnit.SECONDS,
+                dimensions={"TaskName": task_name}
+            )
+
+            logger.debug(f"[METRICS] Task {task_name} duration: {duration:.2f}s")
         except ImportError as e:
-            logger.warning(f"Could not import metrics: {e}")
+            logger.warning(f"Could not import CloudWatch metrics: {e}")
 
         del task_start_times[task_id]
 
@@ -184,12 +193,19 @@ def task_success_handler(sender=None, result=None, **kwargs):
     task_name = sender.name.split('.')[-1]
     logger.info(f"✅ Tarea exitosa: {task_name}")
 
-    # Incrementar contador de métricas
+    # Incrementar contador de métricas en CloudWatch
     try:
-        from metrics import celery_tasks_total
-        celery_tasks_total.labels(task_name=task_name, status='success').inc()
+        from metrics import cw_metrics
+        from cloudwatch.cloudwatch_metrics import MetricUnit
+
+        cw_metrics.put_metric(
+            metric_name="TaskCount",
+            value=1,
+            unit=MetricUnit.COUNT,
+            dimensions={"TaskName": task_name, "Status": "Success"}
+        )
     except ImportError as e:
-        logger.warning(f"Could not import metrics: {e}")
+        logger.warning(f"Could not import CloudWatch metrics: {e}")
 
 
 @task_failure.connect
@@ -201,13 +217,25 @@ def task_failure_handler(sender=None, task_id=None, exception=None, traceback=No
     logger.error(f"❌ Tarea fallida: {task_name} (ID: {task_id})")
     logger.error(f"   Error: {exception}")
 
-    # Incrementar contadores de métricas
+    # Incrementar contadores de métricas en CloudWatch
     try:
-        from metrics import celery_tasks_total, celery_tasks_failed
-        celery_tasks_total.labels(task_name=task_name, status='failed').inc()
-        celery_tasks_failed.labels(task_name=task_name, error_type=error_type).inc()
+        from metrics import cw_metrics
+        from cloudwatch.cloudwatch_metrics import MetricUnit
+
+        # Publicar múltiples métricas de fallo
+        cw_metrics.put_metrics(
+            metrics=[
+                {"name": "TaskCount", "value": 1, "unit": MetricUnit.COUNT},
+                {"name": "TaskFailure", "value": 1, "unit": MetricUnit.COUNT}
+            ],
+            dimensions={
+                "TaskName": task_name,
+                "Status": "Failed",
+                "ErrorType": error_type
+            }
+        )
     except ImportError as e:
-        logger.warning(f"Could not import metrics: {e}")
+        logger.warning(f"Could not import CloudWatch metrics: {e}")
 
 
 @task_retry.connect
@@ -217,12 +245,19 @@ def task_retry_handler(sender=None, reason=None, **kwargs):
     logger.warning(f"🔄 Reintentando tarea: {task_name}")
     logger.warning(f"   Razón: {reason}")
 
-    # Incrementar contador de métricas
+    # Incrementar contador de métricas en CloudWatch
     try:
-        from metrics import celery_tasks_total
-        celery_tasks_total.labels(task_name=task_name, status='retry').inc()
+        from metrics import cw_metrics
+        from cloudwatch.cloudwatch_metrics import MetricUnit
+
+        cw_metrics.put_metric(
+            metric_name="TaskCount",
+            value=1,
+            unit=MetricUnit.COUNT,
+            dimensions={"TaskName": task_name, "Status": "Retry"}
+        )
     except ImportError as e:
-        logger.warning(f"Could not import metrics: {e}")
+        logger.warning(f"Could not import CloudWatch metrics: {e}")
 
 
 # ===== IMPORTAR TAREAS =====

@@ -1,12 +1,12 @@
 from fastapi import FastAPI, Request, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from prometheus_client import Counter, Histogram, Gauge, generate_latest, CONTENT_TYPE_LATEST
 import time
 import os
 import asyncio
 import logging
 import psutil
+import sys
 
 # Configurar logger
 logger = logging.getLogger(__name__)
@@ -15,50 +15,16 @@ logger = logging.getLogger(__name__)
 from app.config.container_config import configure_container
 from app.config.settings import settings
 
-# ===== MÉTRICAS DE PROMETHEUS =====
-# Definir métricas manualmente (igual que en worker)
-http_requests_total = Counter(
-    'http_requests_total',
-    'Total HTTP requests',
-    ['method', 'endpoint', 'status']
-)
+# ===== MÉTRICAS DE CLOUDWATCH =====
+# Agregar directorio cloudwatch al path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
-http_request_duration_seconds = Histogram(
-    'http_request_duration_seconds',
-    'HTTP request duration in seconds',
-    ['method', 'endpoint'],
-    buckets=[0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1.0, 2.5, 5.0, 7.5, 10.0]
-)
+from cloudwatch.cloudwatch_metrics import CloudWatchMetrics, MetricUnit
 
-http_requests_in_progress = Gauge(
-    'http_requests_in_progress',
-    'HTTP requests currently in progress'
-)
-
-# Métricas de sistema
-process_cpu_usage = Gauge(
-    'process_cpu_usage_percent',
-    'CPU usage percentage of the backend process'
-)
-
-process_memory_usage = Gauge(
-    'process_memory_usage_bytes',
-    'Memory usage in bytes of the backend process'
-)
-
-process_memory_percent = Gauge(
-    'process_memory_usage_percent',
-    'Memory usage percentage of the backend process'
-)
-
-system_cpu_usage = Gauge(
-    'system_cpu_usage_percent',
-    'System-wide CPU usage percentage'
-)
-
-system_memory_usage = Gauge(
-    'system_memory_usage_percent',
-    'System-wide memory usage percentage'
+# Inicializar cliente CloudWatch
+cw_metrics = CloudWatchMetrics(
+    namespace=os.getenv("CLOUDWATCH_NAMESPACE", "ANB/Backend"),
+    service_name="API"
 )
 
 # Obtener el proceso actual para métricas
@@ -73,43 +39,64 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# ===== MIDDLEWARE DE PROMETHEUS =====
+# ===== MIDDLEWARE DE CLOUDWATCH =====
 @app.middleware("http")
-async def prometheus_middleware(request: Request, call_next):
-    """Middleware para capturar métricas de todas las requests"""
-    # Excluir el endpoint /metrics de las métricas
-    if request.url.path == "/metrics":
+async def cloudwatch_middleware(request: Request, call_next):
+    """Middleware para capturar métricas de todas las requests y enviarlas a CloudWatch"""
+    # Excluir endpoints internos de las métricas
+    if request.url.path in ["/metrics", "/health", "/docs", "/redoc", "/openapi.json"]:
         return await call_next(request)
 
     method = request.method
     endpoint = request.url.path
-
-    # Incrementar contador de requests en progreso
-    http_requests_in_progress.inc()
-    current_value = http_requests_in_progress._value.get()
-    logger.info(f"[METRICS DEBUG] Incremented gauge. Current value: {current_value}. Path: {endpoint}")
-
-    # Iniciar timer
     start_time = time.time()
 
     try:
         # Procesar request
         response = await call_next(request)
 
-        # Calcular duración
-        duration = time.time() - start_time
-
-        # Registrar métricas
+        # Calcular duración en milisegundos
+        duration_ms = (time.time() - start_time) * 1000
         status = response.status_code
-        http_requests_total.labels(method=method, endpoint=endpoint, status=status).inc()
-        http_request_duration_seconds.labels(method=method, endpoint=endpoint).observe(duration)
 
+        # Publicar múltiples métricas en un solo EMF log (eficiente)
+        cw_metrics.put_metrics(
+            metrics=[
+                {"name": "RequestCount", "value": 1, "unit": MetricUnit.COUNT},
+                {"name": "RequestDuration", "value": duration_ms, "unit": MetricUnit.MILLISECONDS},
+                {"name": "ErrorCount", "value": 1 if status >= 500 else 0, "unit": MetricUnit.COUNT},
+                {"name": "Success", "value": 1 if 200 <= status < 300 else 0, "unit": MetricUnit.COUNT}
+            ],
+            dimensions={
+                "Method": method,
+                "Endpoint": endpoint,
+                "StatusCode": str(status)
+            }
+        )
+
+        logger.debug(f"[METRICS] {method} {endpoint} - {status} - {duration_ms:.2f}ms")
         return response
-    finally:
-        # Decrementar contador de requests en progreso (siempre se ejecuta)
-        http_requests_in_progress.dec()
-        current_value = http_requests_in_progress._value.get()
-        logger.info(f"[METRICS DEBUG] Decremented gauge. Current value: {current_value}. Path: {endpoint}")
+
+    except Exception as e:
+        # Capturar errores y registrar métricas
+        duration_ms = (time.time() - start_time) * 1000
+
+        cw_metrics.put_metrics(
+            metrics=[
+                {"name": "RequestCount", "value": 1, "unit": MetricUnit.COUNT},
+                {"name": "ErrorCount", "value": 1, "unit": MetricUnit.COUNT},
+                {"name": "RequestDuration", "value": duration_ms, "unit": MetricUnit.MILLISECONDS}
+            ],
+            dimensions={
+                "Method": method,
+                "Endpoint": endpoint,
+                "StatusCode": "500",
+                "ErrorType": type(e).__name__
+            }
+        )
+
+        logger.error(f"[METRICS] {method} {endpoint} - ERROR: {e}")
+        raise
 
 # Configurar CORS
 app.add_middleware(
@@ -134,29 +121,49 @@ app.include_router(auth.router)
 app.include_router(videos.router)
 app.include_router(public.router)
 
-# ===== ENDPOINT DE MÉTRICAS =====
-@app.get("/metrics")
-async def metrics():
-    """Endpoint para exponer métricas de Prometheus"""
-    try:
-        # Actualizar métricas del proceso actual
-        process_cpu_usage.set(current_process.cpu_percent(interval=0.1))
+# ===== MÉTRICAS DE SISTEMA (Background Task) =====
+@app.on_event("startup")
+async def start_system_metrics():
+    """
+    Publica métricas de sistema (CPU, memoria) cada 60 segundos a CloudWatch
+    Estas métricas se ejecutan en background para no bloquear requests
+    """
+    async def publish_system_metrics():
+        while True:
+            try:
+                await asyncio.sleep(60)  # Publicar cada 60 segundos
 
-        mem_info = current_process.memory_info()
-        process_memory_usage.set(mem_info.rss)  # RSS = Resident Set Size (memoria física)
-        process_memory_percent.set(current_process.memory_percent())
+                # Obtener métricas del proceso Backend
+                process_cpu = current_process.cpu_percent(interval=0.1)
+                mem_info = current_process.memory_info()
+                process_memory_mb = mem_info.rss / (1024 * 1024)  # Convertir a MB
+                process_memory_percent = current_process.memory_percent()
 
-        # Actualizar métricas del sistema completo
-        system_cpu_usage.set(psutil.cpu_percent(interval=0.1))
-        system_memory_usage.set(psutil.virtual_memory().percent)
+                # Obtener métricas del sistema completo
+                system_cpu = psutil.cpu_percent(interval=0.1)
+                system_memory = psutil.virtual_memory()
 
-    except Exception as e:
-        logger.warning(f"Error actualizando métricas de sistema: {e}")
+                # Publicar todas las métricas de sistema en un solo batch
+                cw_metrics.put_metrics(
+                    metrics=[
+                        {"name": "ProcessCPU", "value": process_cpu, "unit": MetricUnit.PERCENT},
+                        {"name": "ProcessMemoryMB", "value": process_memory_mb, "unit": MetricUnit.MEGABYTES},
+                        {"name": "ProcessMemoryPercent", "value": process_memory_percent, "unit": MetricUnit.PERCENT},
+                        {"name": "SystemCPU", "value": system_cpu, "unit": MetricUnit.PERCENT},
+                        {"name": "SystemMemoryPercent", "value": system_memory.percent, "unit": MetricUnit.PERCENT},
+                        {"name": "SystemMemoryAvailableMB", "value": system_memory.available / (1024 * 1024), "unit": MetricUnit.MEGABYTES}
+                    ],
+                    dimensions={"MetricType": "System"}
+                )
 
-    return Response(
-        content=generate_latest(),
-        media_type=CONTENT_TYPE_LATEST
-    )
+                logger.debug(f"[SYSTEM METRICS] CPU: {process_cpu:.1f}% | Memory: {process_memory_mb:.1f}MB ({process_memory_percent:.1f}%)")
+
+            except Exception as e:
+                logger.error(f"Error publishing system metrics: {e}")
+
+    # Iniciar tarea en background
+    asyncio.create_task(publish_system_metrics())
+    logger.info("System metrics background task started (60s interval)")
 
 @app.get("/")
 def read_root():
@@ -168,13 +175,18 @@ def read_root():
         "file_storage": settings.FILE_STORAGE_TYPE.value
     }
 
-@app.get("/test-gauge")
-async def test_gauge():
-    """Endpoint de prueba para verificar que el gauge funciona"""
-    http_requests_in_progress.inc()
-    await asyncio.sleep(5)  # Mantener incrementado por 5 segundos
-    http_requests_in_progress.dec()
-    return {"message": "Gauge test completed"}
+@app.get("/metrics")
+async def metrics():
+    """
+    Endpoint de compatibilidad con Prometheus (deprecado)
+    Las métricas ahora se publican a CloudWatch automáticamente
+    """
+    return {
+        "message": "Metrics migrated to CloudWatch",
+        "namespace": os.getenv("CLOUDWATCH_NAMESPACE", "ANB/Backend"),
+        "service": "API",
+        "documentation": "Check AWS CloudWatch console for metrics"
+    }
 
 @app.get("/health")
 def health_check():
