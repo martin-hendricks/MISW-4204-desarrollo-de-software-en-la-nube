@@ -2,7 +2,7 @@
 
 Este directorio contiene todos los archivos entregables de la Tercera entrega del proyecto ANB Rising Stars Showcase, incluyendo diagramas de arquitectura AWS, documentacion tecnica de servicios cloud y reportes de las pruebas de rendimiento realizadas en la nube.
 
-## 🎯 Resumen Ejecutivo
+## Resumen
 
 Esta entrega representa la **migración completa del sistema ANB Rising Stars a AWS Cloud**, implementando una arquitectura cloud-native que reemplaza los servicios locales por servicios administrados de AWS.
 
