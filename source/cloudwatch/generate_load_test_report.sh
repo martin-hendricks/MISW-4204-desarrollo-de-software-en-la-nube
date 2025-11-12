@@ -16,12 +16,15 @@ START_TIME="${1:-$(date -u -d '30 minutes ago' +%Y-%m-%dT%H:%M:%SZ)}"
 END_TIME="${2:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
 AWS_REGION="${AWS_REGION:-us-east-1}"
 
-# IDs de recursos (configurar según tu infraestructura)
-# IMPORTANTE: Obtener estos valores de forma segura, NO hardcodearlos aquí
-BACKEND_INSTANCE="${BACKEND_INSTANCE_ID:-}"
-WORKER_INSTANCE="${WORKER_INSTANCE_ID:-}"
+# Nombres de servicios (compatibles con Auto Scaling - NO necesitas cambiar IDs)
+BACKEND_SERVICE="${BACKEND_SERVICE:-API}"
+WORKER_SERVICE="${WORKER_SERVICE:-VideoProcessor}"
 QUEUE_NAME="${SQS_QUEUE_NAME:-video-processing-queue}"
 DB_INSTANCE="${DB_INSTANCE_ID:-}"
+
+# OPCIONAL: IDs de instancias específicas (solo para métricas EC2 individuales)
+BACKEND_INSTANCE="${BACKEND_INSTANCE_ID:-}"
+WORKER_INSTANCE="${WORKER_INSTANCE_ID:-}"
 
 echo "============================================="
 echo "    LOAD TEST REPORT - CloudWatch Metrics"
@@ -45,11 +48,12 @@ fi
 echo "=== BACKEND METRICS ==="
 echo ""
 
-# Backend: p95 Latency
+# Backend: p95 Latency (agregado de TODAS las instancias del servicio)
 echo -n "✅ Backend p95 Latency (target: ≤1000ms): "
 P95_LATENCY=$(aws cloudwatch get-metric-statistics \
   --namespace ANB/Backend \
   --metric-name RequestDuration \
+  --dimensions Name=Service,Value="$BACKEND_SERVICE" \
   --start-time "$START_TIME" \
   --end-time "$END_TIME" \
   --period 1800 \
@@ -71,11 +75,12 @@ else
 fi
 echo ""
 
-# Backend: Error Rate
+# Backend: Error Rate (agregado de TODAS las instancias del servicio)
 echo -n "✅ Backend Error Rate (target: ≤5%): "
 ERRORS=$(aws cloudwatch get-metric-statistics \
   --namespace ANB/Backend \
   --metric-name ErrorCount \
+  --dimensions Name=Service,Value="$BACKEND_SERVICE" \
   --start-time "$START_TIME" \
   --end-time "$END_TIME" \
   --period 1800 \
@@ -87,6 +92,7 @@ ERRORS=$(aws cloudwatch get-metric-statistics \
 REQUESTS=$(aws cloudwatch get-metric-statistics \
   --namespace ANB/Backend \
   --metric-name RequestCount \
+  --dimensions Name=Service,Value="$BACKEND_SERVICE" \
   --start-time "$START_TIME" \
   --end-time "$END_TIME" \
   --period 1800 \
@@ -108,9 +114,11 @@ else
 fi
 echo ""
 
-# Backend: CPU Peak (solo si se configuró BACKEND_INSTANCE)
+# Backend: CPU Peak
+# Nota: EC2 metrics requieren InstanceId individual o usar Auto Scaling Group metrics
+echo -n "🔍 Backend CPU Peak: "
 if [ -n "$BACKEND_INSTANCE" ]; then
-    echo -n "🔍 Backend CPU Peak: "
+    # Modo instancia específica (útil si no hay Auto Scaling)
     CPU_PEAK=$(aws cloudwatch get-metric-statistics \
       --namespace AWS/EC2 \
       --metric-name CPUUtilization \
@@ -122,16 +130,19 @@ if [ -n "$BACKEND_INSTANCE" ]; then
       --region "$AWS_REGION" \
       --query 'Datapoints[0].Maximum' \
       --output text 2>/dev/null || echo "N/A")
+else
+    # Modo Auto Scaling Group (agrega todas las instancias)
+    echo -e "${YELLOW}InstanceId not set - use Auto Scaling Group metrics or set BACKEND_INSTANCE_ID${NC}"
+    echo ""
+    CPU_PEAK="N/A"
+fi
 
-    if [ "$CPU_PEAK" != "None" ] && [ "$CPU_PEAK" != "N/A" ]; then
-        CPU_INT=$(printf "%.0f" "$CPU_PEAK")
-        if [ "$CPU_INT" -ge 80 ]; then
-            echo -e "${RED}${CPU_PEAK}% (degraded) ⚠️${NC}"
-        else
-            echo -e "${GREEN}${CPU_PEAK}% (healthy) ✅${NC}"
-        fi
+if [ "$CPU_PEAK" != "None" ] && [ "$CPU_PEAK" != "N/A" ]; then
+    CPU_INT=$(printf "%.0f" "$CPU_PEAK")
+    if [ "$CPU_INT" -ge 80 ]; then
+        echo -e "${RED}${CPU_PEAK}% (degraded) ⚠️${NC}"
     else
-        echo -e "${YELLOW}No data available${NC}"
+        echo -e "${GREEN}${CPU_PEAK}% (healthy) ✅${NC}"
     fi
     echo ""
 fi
@@ -208,11 +219,12 @@ else
 fi
 echo ""
 
-# Worker: Throughput
+# Worker: Throughput (agregado de TODAS las instancias del servicio)
 echo -n "✅ Worker Throughput (MB/min): "
 BYTES=$(aws cloudwatch get-metric-statistics \
   --namespace ANB/Worker \
   --metric-name VideoFileSize \
+  --dimensions Name=Service,Value="$WORKER_SERVICE" \
   --start-time "$START_TIME" \
   --end-time "$END_TIME" \
   --period 1800 \
@@ -238,11 +250,12 @@ else
 fi
 echo ""
 
-# Worker: Failed Tasks
+# Worker: Failed Tasks (agregado de TODAS las instancias del servicio)
 echo -n "✅ Worker Failed Tasks: "
 FAILED_TASKS=$(aws cloudwatch get-metric-statistics \
   --namespace ANB/Worker \
   --metric-name TaskFailure \
+  --dimensions Name=Service,Value="$WORKER_SERVICE" \
   --start-time "$START_TIME" \
   --end-time "$END_TIME" \
   --period 1800 \
@@ -268,7 +281,13 @@ echo "    END REPORT"
 echo "============================================="
 echo ""
 echo "💡 Tips:"
-echo "   - Configure variables de entorno: BACKEND_INSTANCE_ID, WORKER_INSTANCE_ID, SQS_QUEUE_NAME"
-echo "   - Para habilitar métricas EC2: aws ec2 monitor-instances --instance-ids i-XXXXX"
+echo "   - Métricas custom agregadas por Service (compatible con Auto Scaling)"
+echo "   - Variables de entorno opcionales: BACKEND_INSTANCE_ID, WORKER_INSTANCE_ID (solo para CPU individual)"
+echo "   - Para Auto Scaling Group CPU: usa AWS/EC2 metrics con dimensión AutoScalingGroupName"
 echo "   - Para habilitar métricas S3: ver source/cloudwatch/README.md"
+echo ""
+echo "🔄 Auto Scaling Compatible:"
+echo "   - Custom metrics (p95, error rate, throughput): ✅ Auto-agregadas por Service"
+echo "   - SQS metrics: ✅ Auto-agregadas por QueueName"
+echo "   - EC2 CPU: ⚠️  Requiere InstanceId específico o Auto Scaling Group metrics"
 echo ""

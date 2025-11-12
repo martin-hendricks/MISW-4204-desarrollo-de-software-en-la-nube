@@ -129,6 +129,28 @@ Todos los KPIs de pruebas de carga se pueden medir con métricas **100% gratuita
 
 ---
 
+## 🔄 Auto Scaling Compatible
+
+**¿Usas Auto Scaling?** Las métricas custom se agregan automáticamente por `Service` → **NO necesitas actualizar dashboards** cuando se crean nuevas instancias.
+
+**📖 Guía completa**: [AUTO_SCALING_GUIDE.md](./AUTO_SCALING_GUIDE.md)
+
+**Resumen rápido**:
+- ✅ Métricas custom (p95, error rate, throughput): Agregadas por `Service=API` o `Service=VideoProcessor`
+- ✅ SQS metrics: Agregadas por `QueueName`
+- ⚠️ EC2 CPU/Memoria: Usar `AutoScalingGroupName` o listar instancias dinámicamente
+
+```bash
+# Query que funciona con 1 o N instancias
+aws cloudwatch get-metric-statistics \
+  --namespace ANB/Backend \
+  --metric-name RequestDuration \
+  --dimensions Name=Service,Value=API \  # ← Agrega TODAS las instancias
+  --extended-statistics p95
+```
+
+---
+
 ## 🚀 Setup Rápido (AWS Academy)
 
 ### 1. Asignar LabInstanceProfile a EC2
