@@ -8,6 +8,12 @@ El diagrama de componentes muestra la estructura interna del Backend API, detall
 
 <img width="1400" height="1440" alt="image" src="https://github.com/user-attachments/assets/659a6132-b95d-45e9-8ba3-a05446f488df" />
 
+## 2. Diagrama de Despliegue
+
+El diagrama de despliegue muestra la estructura de despliegue para cada componente.
+
+<img width="3216" height="2370" alt="image (26)" src="https://github.com/user-attachments/assets/835f48f7-de3f-408c-93ef-cba491dbec64" />
+
 
 **Capas principales:**
 - **Routers**: Definicion de endpoints de la API REST
