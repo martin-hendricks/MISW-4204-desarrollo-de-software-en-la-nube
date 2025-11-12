@@ -12,7 +12,7 @@ COPY worker/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy cloudwatch module (shared with backend)
-COPY ../cloudwatch /app/cloudwatch
+COPY cloudwatch /app/cloudwatch
 
 # Copiar código de la aplicación
 COPY worker /app

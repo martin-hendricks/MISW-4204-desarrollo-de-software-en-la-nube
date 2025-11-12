@@ -39,7 +39,9 @@ services:
 
   # Task Processor Worker (Celery + FastAPI Health Checks)
   worker:
-    build: ./worker
+    build:
+      context: .
+      dockerfile: worker/Dockerfile
     ports:
       - "8001:8001"  # Health API
     environment:
