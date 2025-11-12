@@ -1,0 +1,155 @@
+@startuml Diagrama de Despliegue AWS - ANB Rising Stars Showcase
+
+skinparam defaultFontSize 12
+skinparam linetype ortho
+skinparam node {
+    BackgroundColor LightBlue
+    BorderColor DarkBlue
+}
+
+title Diagrama de Despliegue - Arquitectura AWS
+
+cloud "AWS Cloud" {
+    
+    node "Load Balancer" as ELB {
+        artifact "Application Load Balancer" as alb
+    }
+    
+    node "Auto Scaling Group" as ASG {
+        artifact "Launch Template" as lt
+        
+        node "EC2 Instance\nBackend 1" as Backend1 {
+            component [Backend API] as BE1
+        }
+        
+        node "EC2 Instance\nBackend 2" as Backend2 {
+            component [Backend API] as BE2
+        }
+        
+        node "EC2 Instance\nBackend N" as BackendN {
+            component [Backend API] as BEN
+        }
+    }
+    
+    node "RDS Service" as RDSService {
+        database "PostgreSQL\nDatabase" as RDS
+    }
+    
+    node "Target Group" as TG {
+        artifact "Backend Targets" as targets
+    }
+    
+    node "EC2 Instance\nWorker" as WorkerInstance {
+        component [Worker] as Worker
+    }
+    
+    node "SQS Service" as SQSService {
+        artifact "Video Processing Queue" as queue
+    }
+    
+    node "S3 Service" as S3Service {
+        artifact "S3 Bucket\nanb-videos" as bucket
+        folder "original/" as original
+        folder "processed/" as processed
+    }
+    
+    node "CloudWatch Service" as CWService {
+        artifact "Metrics" as metrics
+        artifact "Logs" as logs
+        artifact "Alarms" as alarms
+    }
+}
+
+' Conexiones de despliegue
+ELB --> ASG : "distribuye tráfico"
+ASG --> TG : "registra instancias"
+TG --> Backend1 : "health checks"
+TG --> Backend2 : "health checks"
+TG --> BackendN : "health checks"
+
+' Conexiones de aplicación
+Backend1 --> RDSService : "consulta/escribe datos"
+Backend2 --> RDSService : "consulta/escribe datos"
+BackendN --> RDSService : "consulta/escribe datos"
+
+Backend1 --> SQSService : "publica tareas"
+Backend2 --> SQSService : "publica tareas"
+BackendN --> SQSService : "publica tareas"
+
+Backend1 --> S3Service : "escribe videos"
+Backend2 --> S3Service : "escribe videos"
+BackendN --> S3Service : "escribe videos"
+
+Backend1 --> CWService : "métricas/logs"
+Backend2 --> CWService : "métricas/logs"
+BackendN --> CWService : "métricas/logs"
+
+SQSService --> WorkerInstance : "consume tareas"
+WorkerInstance --> RDSService : "actualiza estado videos"
+WorkerInstance --> S3Service : "lee/escribe videos"
+WorkerInstance --> CWService : "métricas/logs"
+
+' Conexiones internas S3
+bucket --> original
+bucket --> processed
+
+' Conexiones internas CloudWatch
+CWService --> metrics
+CWService --> logs
+CWService --> alarms
+
+note right of ELB
+  Application Load Balancer
+  Distribuye tráfico HTTP/HTTPS
+  a múltiples instancias backend
+end note
+
+note right of ASG
+  Auto Scaling Group
+  Escala automáticamente
+  según métricas de CloudWatch
+  (CPU, memoria, requests)
+end note
+
+note right of TG
+  Target Group
+  Agrupa instancias backend
+  para health checks y
+  balanceo de carga
+end note
+
+note right of WorkerInstance
+  Instancia EC2 dedicada
+  para procesamiento
+  asíncrono de videos
+end note
+
+note right of SQSService
+  Amazon SQS
+  Cola de mensajes
+  gestionada por AWS
+end note
+
+note right of S3Service
+  Amazon S3
+  Almacenamiento de objetos
+  - original/: videos originales
+  - processed/: videos procesados
+end note
+
+note right of CWService
+  Amazon CloudWatch
+  Monitoreo, métricas,
+  logs y alarmas
+end note
+
+note right of RDSService
+  Amazon RDS
+  Base de datos PostgreSQL
+  gestionada por AWS
+  Compartida por todas las
+  instancias backend y worker
+end note
+
+@enduml
+

@@ -1,0 +1,79 @@
+@startuml Diagrama de Componentes AWS - ANB Rising Stars Showcase
+
+skinparam componentStyle rectangle
+skinparam defaultFontSize 12
+skinparam linetype ortho
+
+title Diagrama de Componentes - Arquitectura AWS
+
+package "AWS Cloud" {
+    
+    component [ELB\nElastic Load Balancer] as ELB #LightBlue
+    
+    component [Auto Scaling] as AutoScaling #LightGreen
+    
+    component [Target Group\nBackend] as TargetGroup #LightYellow
+    
+    component [Backend] as Backend #LightCoral
+    
+    component [SQS Queue] as SQS #LightPink
+    
+    component [Worker] as Worker #LightCyan
+    
+    component [S3 Bucket] as S3 #LightSalmon
+    
+    component [CloudWatch] as CloudWatch #LightGray
+}
+
+' Flujo de tráfico
+ELB --> AutoScaling : "distribuye tráfico"
+AutoScaling --> TargetGroup : "gestiona instancias"
+TargetGroup --> Backend : "enruta requests"
+
+' Interacciones Backend
+Backend --> SQS : "publica tareas"
+Backend --> S3 : "escribe videos"
+Backend --> CloudWatch : "envía métricas"
+
+' Interacciones Worker
+SQS --> Worker : "consume tareas"
+Worker --> S3 : "lee/escribe videos"
+Worker --> CloudWatch : "envía métricas"
+
+note right of ELB
+  Punto de entrada único
+  Distribuye tráfico HTTP/HTTPS
+end note
+
+note right of AutoScaling
+  Escala automáticamente
+  instancias backend según carga
+end note
+
+note right of TargetGroup
+  Agrupa instancias
+  del componente Backend
+end note
+
+note right of SQS
+  Cola de mensajes para
+  procesamiento asíncrono
+end note
+
+note right of Worker
+  Procesa videos
+  de forma asíncrona
+end note
+
+note right of S3
+  Almacenamiento de
+  videos originales y procesados
+end note
+
+note right of CloudWatch
+  Monitoreo y métricas
+  del sistema
+end note
+
+@enduml
+
