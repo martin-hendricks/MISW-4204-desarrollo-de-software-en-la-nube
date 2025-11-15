@@ -2,7 +2,18 @@
 
 ###############################################################################
 # Script para configurar S3 como almacenamiento en la instancia Backend
-# Este script valida la configuración de S3 y crea el bucket si no existe
+#
+# NOTA: Este script es OPCIONAL si usas IAM Role (LabRole en AWS Academy)
+#
+# Opciones de configuración:
+# 1. IAM Role (RECOMENDADO): Asigna LabRole a la instancia EC2
+#    - No necesitas credenciales en .env
+#    - No necesitas ejecutar este script
+#    - Más seguro y automático
+#
+# 2. Credenciales manuales (AWS Academy): Ejecuta este script
+#    - Necesitas AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY en .env
+#    - Útil para desarrollo local
 ###############################################################################
 
 set -e

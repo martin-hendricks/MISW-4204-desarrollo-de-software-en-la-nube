@@ -56,19 +56,15 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-    # ===== CLOUDWATCH LOGS - Auto Scaling Compatible =====
+    # ===== LOCAL LOGGING - $0 CloudWatch Cost =====
+    # Logs guardados localmente en lugar de CloudWatch Logs
+    # Para ver logs: docker logs anb-backend
+    # Para debug: docker exec -it anb-backend tail -f /var/log/app.log
     logging:
-      driver: awslogs
+      driver: json-file
       options:
-        awslogs-region: us-east-1
-        awslogs-group: /aws/ec2/anb-backend
-        # awslogs-stream usa el container name (único por instancia EC2)
-        # Si hay múltiples instancias, cada una tiene su propio contenedor
-        awslogs-stream: backend-${HOSTNAME}
-        awslogs-create-group: "true"
-        # Modo non-blocking para no afectar performance si CloudWatch está lento
-        mode: non-blocking
-        max-buffer-size: 25m
+        max-size: "10m"
+        max-file: "3"
 
 networks:
   app-network:
@@ -86,4 +82,11 @@ networks:
 # 6. TEST_MODE=false (producción) o TEST_MODE=true (testing sin cola)
 #    - false: El backend envía tareas a SQS normalmente
 #    - true: El backend NO envía tareas a SQS (para pruebas de carga)
+#
+# LOGS Y COSTOS:
+# 7. Logging driver cambiado a json-file (local) para $0 en CloudWatch
+# 8. Para métricas de pruebas de carga: usa AWS native metrics (FREE)
+#    Ver: source/cloudwatch/LOAD_TESTING_METRICS.md
+# 9. awslogs driver fue REMOVIDO para evitar costos de CloudWatch Logs
+#    (~$1/month con 53k requests/day)
 # ============================================

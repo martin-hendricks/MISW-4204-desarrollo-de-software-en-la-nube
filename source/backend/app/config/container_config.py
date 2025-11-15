@@ -23,9 +23,13 @@ def configure_container():
     elif settings.FILE_STORAGE_TYPE == FileStorageType.S3:
         from app.infrastructure.external_services.s3_file_storage import S3FileStorage
         # Crear instancia con parámetros requeridos y registrar
+        # Si hay credenciales en .env, las usa (AWS Academy)
+        # Si NO hay credenciales, usa IAM Role de la instancia EC2 (producción)
         s3_instance = S3FileStorage(
             bucket_name=settings.S3_BUCKET_NAME,
             region=settings.AWS_REGION,
+            access_key=settings.AWS_ACCESS_KEY_ID if settings.AWS_ACCESS_KEY_ID else None,
+            secret_key=settings.AWS_SECRET_ACCESS_KEY if settings.AWS_SECRET_ACCESS_KEY else None,
             session_token=settings.AWS_SESSION_TOKEN if settings.AWS_SESSION_TOKEN else None
         )
         container._services[FileStorageInterface.__name__] = (lambda: s3_instance, True)

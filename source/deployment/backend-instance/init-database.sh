@@ -92,9 +92,42 @@ else
     exit 1
 fi
 
-# ===== VERIFICAR SI LA BD YA EXISTE =====
+# ===== VERIFICAR SI LA BASE DE DATOS EXISTE =====
 echo ""
-echo "🔍 Verificando estado de la base de datos..."
+echo "🔍 Verificando si la base de datos existe..."
+
+# Verificar si la base de datos existe conectándose a 'postgres'
+DB_EXISTS=$(PGPASSWORD="$DB_PASS" psql \
+    -h "$DB_HOST" \
+    -U "$DB_USER" \
+    -d "postgres" \
+    -p "$DB_PORT" \
+    -t -c "SELECT 1 FROM pg_database WHERE datname = '$DB_NAME';" 2>/dev/null | xargs)
+
+if [ "$DB_EXISTS" != "1" ]; then
+    echo "⚠️  Base de datos '$DB_NAME' no existe"
+    echo "🔨 Creando base de datos '$DB_NAME'..."
+
+    PGPASSWORD="$DB_PASS" psql \
+        -h "$DB_HOST" \
+        -U "$DB_USER" \
+        -d "postgres" \
+        -p "$DB_PORT" \
+        -c "CREATE DATABASE \"$DB_NAME\";"
+
+    if [ $? -eq 0 ]; then
+        echo "✅ Base de datos '$DB_NAME' creada exitosamente"
+    else
+        echo "❌ Error al crear la base de datos"
+        exit 1
+    fi
+else
+    echo "✅ Base de datos '$DB_NAME' ya existe"
+fi
+
+# ===== VERIFICAR SI LA BD YA TIENE TABLAS =====
+echo ""
+echo "🔍 Verificando estado de las tablas..."
 
 # Intentar conectar y verificar si existen las tablas
 TABLE_CHECK=$(PGPASSWORD="$DB_PASS" psql \

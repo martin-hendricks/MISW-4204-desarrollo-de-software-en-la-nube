@@ -85,29 +85,34 @@ class CloudWatchMetrics:
         try:
             import requests
 
-            # IMDS v2: Primero obtener token
-            token_url = 'http://169.254.169.254/latest/api/token'
+            # IMDS v2: Primero obtener token (método seguro recomendado por AWS)
+            # La IP 169.254.169.254 es el AWS Instance Metadata Service (IMDS)
+            # - Solo accesible desde DENTRO de instancias EC2 (no desde Internet)
+            # - IMDSv2 requiere token de sesión (previene SSRF attacks)
+            # - Documentación: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-metadata.html
+            imds_base = 'http://169.254.169.254'
+            token_url = f'{imds_base}/latest/api/token'
             token_headers = {'X-aws-ec2-metadata-token-ttl-seconds': '21600'}
             token_response = requests.put(token_url, headers=token_headers, timeout=0.5)
             token = token_response.text
 
             headers = {'X-aws-ec2-metadata-token': token}
 
-            # Obtener metadata de instancia
+            # Obtener metadata de instancia (solo metadata pública, NO credenciales)
             instance_id = requests.get(
-                'http://169.254.169.254/latest/meta-data/instance-id',
+                f'{imds_base}/latest/meta-data/instance-id',
                 headers=headers,
                 timeout=0.5
             ).text
 
             availability_zone = requests.get(
-                'http://169.254.169.254/latest/meta-data/placement/availability-zone',
+                f'{imds_base}/latest/meta-data/placement/availability-zone',
                 headers=headers,
                 timeout=0.5
             ).text
 
             instance_type = requests.get(
-                'http://169.254.169.254/latest/meta-data/instance-type',
+                f'{imds_base}/latest/meta-data/instance-type',
                 headers=headers,
                 timeout=0.5
             ).text
