@@ -19,13 +19,15 @@ from app.config.settings import settings
 # Agregar directorio cloudwatch al path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
-from cloudwatch.cloudwatch_metrics import CloudWatchMetrics, MetricUnit
+from cloudwatch.cloudwatch_metrics import MetricUnit
+import boto3
 
-# Inicializar cliente CloudWatch
-cw_metrics = CloudWatchMetrics(
-    namespace=os.getenv("CLOUDWATCH_NAMESPACE", "ANB/Backend"),
-    service_name="API"
-)
+# Constantes para CloudWatch
+CLOUDWATCH_NAMESPACE = "ANB/Backend"
+CLOUDWATCH_SERVICE = "API"
+
+# Inicializar cliente CloudWatch directo (sin metadata de instancia)
+cw_client = boto3.client('cloudwatch', region_name=os.getenv('AWS_REGION', 'us-east-1'))
 
 # Crear la aplicación FastAPI
 app = FastAPI(
@@ -76,19 +78,30 @@ async def cloudwatch_middleware(request: Request, call_next):
         duration_ms = (time.time() - start_time) * 1000
         status = response.status_code
 
-        # Publicar múltiples métricas en un solo EMF log (eficiente)
-        cw_metrics.put_metrics(
-            metrics=[
-                {"name": "RequestCount", "value": 1, "unit": MetricUnit.COUNT},
-                {"name": "RequestDuration", "value": duration_ms, "unit": MetricUnit.MILLISECONDS},
-                {"name": "ErrorCount", "value": 1 if status >= 500 else 0, "unit": MetricUnit.COUNT},
-                {"name": "Success", "value": 1 if 200 <= status < 300 else 0, "unit": MetricUnit.COUNT}
-            ],
-            dimensions={
-                "Method": method,
-                "Endpoint": endpoint,
-                "StatusCode": str(status)
-            }
+        # Publicar métricas SIN metadata de instancia (solo dimensiones esenciales)
+        cw_client.put_metric_data(
+            Namespace=CLOUDWATCH_NAMESPACE,
+            MetricData=[
+                {
+                    'MetricName': 'RequestCount',
+                    'Value': 1,
+                    'Unit': MetricUnit.COUNT.value,
+                    'Dimensions': [
+                        {"Name": "Method", "Value": method},
+                        {"Name": "Endpoint", "Value": endpoint},
+                        {"Name": "StatusCode", "Value": str(status)}
+                    ]
+                },
+                {
+                    'MetricName': 'RequestDuration',
+                    'Value': duration_ms,
+                    'Unit': MetricUnit.MILLISECONDS.value,
+                    'Dimensions': [
+                        {"Name": "Method", "Value": method},
+                        {"Name": "Endpoint", "Value": endpoint}
+                    ]
+                }
+            ]
         )
 
         logger.debug(f"[METRICS] {method} {endpoint} - {status} - {duration_ms:.2f}ms")
@@ -98,18 +111,40 @@ async def cloudwatch_middleware(request: Request, call_next):
         # Capturar errores y registrar métricas
         duration_ms = (time.time() - start_time) * 1000
 
-        cw_metrics.put_metrics(
-            metrics=[
-                {"name": "RequestCount", "value": 1, "unit": MetricUnit.COUNT},
-                {"name": "ErrorCount", "value": 1, "unit": MetricUnit.COUNT},
-                {"name": "RequestDuration", "value": duration_ms, "unit": MetricUnit.MILLISECONDS}
-            ],
-            dimensions={
-                "Method": method,
-                "Endpoint": endpoint,
-                "StatusCode": "500",
-                "ErrorType": type(e).__name__
-            }
+        # Publicar métricas SIN metadata de instancia
+        cw_client.put_metric_data(
+            Namespace=CLOUDWATCH_NAMESPACE,
+            MetricData=[
+                {
+                    'MetricName': 'RequestCount',
+                    'Value': 1,
+                    'Unit': MetricUnit.COUNT.value,
+                    'Dimensions': [
+                        {"Name": "Method", "Value": method},
+                        {"Name": "Endpoint", "Value": endpoint},
+                        {"Name": "StatusCode", "Value": "500"}
+                    ]
+                },
+                {
+                    'MetricName': 'ErrorCount',
+                    'Value': 1,
+                    'Unit': MetricUnit.COUNT.value,
+                    'Dimensions': [
+                        {"Name": "Method", "Value": method},
+                        {"Name": "Endpoint", "Value": endpoint},
+                        {"Name": "ErrorType", "Value": type(e).__name__}
+                    ]
+                },
+                {
+                    'MetricName': 'RequestDuration',
+                    'Value': duration_ms,
+                    'Unit': MetricUnit.MILLISECONDS.value,
+                    'Dimensions': [
+                        {"Name": "Method", "Value": method},
+                        {"Name": "Endpoint", "Value": endpoint}
+                    ]
+                }
+            ]
         )
 
         logger.error(f"[METRICS] {method} {endpoint} - ERROR: {e}")
@@ -155,11 +190,14 @@ async def start_heartbeat_metrics():
                 await asyncio.sleep(300)  # Publicar cada 5 minutos (optimizado para costos)
 
                 # Solo publicar heartbeat para confirmar que el servicio está activo
-                cw_metrics.put_metrics(
-                    metrics=[
-                        {"name": "ServiceHeartbeat", "value": 1, "unit": MetricUnit.COUNT}
-                    ],
-                    dimensions={"MetricType": "Health"}
+                cw_client.put_metric_data(
+                    Namespace=CLOUDWATCH_NAMESPACE,
+                    MetricData=[{
+                        'MetricName': 'ServiceHeartbeat',
+                        'Value': 1,
+                        'Unit': MetricUnit.COUNT.value,
+                        'Dimensions': [{"Name": "MetricType", "Value": "Health"}]
+                    }]
                 )
 
                 logger.debug(f"[HEARTBEAT] Service is alive")
