@@ -22,6 +22,11 @@ SQS_DLQ_URL = os.getenv('SQS_DLQ_URL', '')
 USE_S3 = os.getenv('USE_S3', 'true').lower() == 'true'
 S3_BUCKET_NAME = os.getenv('S3_BUCKET_NAME', '')
 
+# Credenciales AWS (opcionales - si no están, se usa IAM Role del EC2/LabRole)
+AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID', '')
+AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY', '')
+AWS_SESSION_TOKEN = os.getenv('AWS_SESSION_TOKEN', '')  # Para AWS Academy
+
 # Ruta base donde el worker espera encontrar los videos originales
 # Para S3: carpeta "original/" en el bucket
 # Para Local: '/app/uploads/original'
@@ -105,7 +110,24 @@ def check_sqs_connection() -> bool:
         log("Verificando conexión a AWS SQS...")
 
         # Crear cliente de SQS
-        sqs_client = boto3.client('sqs', region_name=AWS_REGION)
+        # Prioridad:
+        # 1. Credenciales explícitas (desarrollo/testing con AWS Academy)
+        # 2. IAM Role de la instancia EC2 (producción - recomendado, como LabRole)
+        if AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY:
+            # Opción 1: Credenciales explícitas (AWS Academy con session token)
+            sqs_client = boto3.client(
+                'sqs',
+                region_name=AWS_REGION,
+                aws_access_key_id=AWS_ACCESS_KEY_ID,
+                aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+                aws_session_token=AWS_SESSION_TOKEN if AWS_SESSION_TOKEN else None
+            )
+            log("   - Usando credenciales explícitas (AWS Academy)", "INFO")
+        else:
+            # Opción 2: IAM Role (instancia EC2 con LabRole)
+            # boto3 automáticamente usa el Instance Profile
+            sqs_client = boto3.client('sqs', region_name=AWS_REGION)
+            log("   - Usando IAM Role de la instancia EC2 (LabRole)", "INFO")
 
         # Verificar que la cola principal existe
         if not SQS_QUEUE_URL:
@@ -155,7 +177,24 @@ def check_s3_bucket() -> bool:
             return False
 
         # Crear cliente de S3
-        s3_client = boto3.client('s3', region_name=AWS_REGION)
+        # Prioridad:
+        # 1. Credenciales explícitas (desarrollo/testing con AWS Academy)
+        # 2. IAM Role de la instancia EC2 (producción - recomendado, como LabRole)
+        if AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY:
+            # Opción 1: Credenciales explícitas (AWS Academy con session token)
+            s3_client = boto3.client(
+                's3',
+                region_name=AWS_REGION,
+                aws_access_key_id=AWS_ACCESS_KEY_ID,
+                aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+                aws_session_token=AWS_SESSION_TOKEN if AWS_SESSION_TOKEN else None
+            )
+            log("   - Usando credenciales explícitas (AWS Academy)", "INFO")
+        else:
+            # Opción 2: IAM Role (instancia EC2 con LabRole)
+            # boto3 automáticamente usa el Instance Profile
+            s3_client = boto3.client('s3', region_name=AWS_REGION)
+            log("   - Usando IAM Role de la instancia EC2 (LabRole)", "INFO")
 
         # Verificar que el bucket existe
         try:
@@ -210,7 +249,23 @@ def check_upload_folder() -> bool:
 def upload_file_to_s3(local_path: str, s3_key: str) -> bool:
     """Sube un archivo local a S3."""
     try:
-        s3_client = boto3.client('s3', region_name=AWS_REGION)
+        # Crear cliente de S3
+        # Prioridad:
+        # 1. Credenciales explícitas (desarrollo/testing con AWS Academy)
+        # 2. IAM Role de la instancia EC2 (producción - recomendado, como LabRole)
+        if AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY:
+            # Opción 1: Credenciales explícitas (AWS Academy con session token)
+            s3_client = boto3.client(
+                's3',
+                region_name=AWS_REGION,
+                aws_access_key_id=AWS_ACCESS_KEY_ID,
+                aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+                aws_session_token=AWS_SESSION_TOKEN if AWS_SESSION_TOKEN else None
+            )
+        else:
+            # Opción 2: IAM Role (instancia EC2 con LabRole)
+            # boto3 automáticamente usa el Instance Profile
+            s3_client = boto3.client('s3', region_name=AWS_REGION)
 
         # Subir archivo
         s3_client.upload_file(
@@ -411,7 +466,20 @@ def run_test(num_videos: int, video_path: str, timeout: int = DEFAULT_TIMEOUT, d
         # Solo monitoreamos la cola para ver cuántos mensajes quedan
         try:
             log("\n   Monitoreando la cola de SQS...")
-            sqs_client = boto3.client('sqs', region_name=AWS_REGION)
+
+            # Crear cliente de SQS con las mismas credenciales que antes
+            if AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY:
+                sqs_client = boto3.client(
+                    'sqs',
+                    region_name=AWS_REGION,
+                    aws_access_key_id=AWS_ACCESS_KEY_ID,
+                    aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+                    aws_session_token=AWS_SESSION_TOKEN if AWS_SESSION_TOKEN else None
+                )
+            else:
+                # Usar IAM Role de la instancia EC2
+                sqs_client = boto3.client('sqs', region_name=AWS_REGION)
+
             total_tasks = len(result_group)
 
             while elapsed_time < timeout:
