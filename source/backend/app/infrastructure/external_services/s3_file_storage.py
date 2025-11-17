@@ -7,18 +7,29 @@ from app.shared.interfaces.file_storage import FileStorageInterface, LocationTyp
 class S3FileStorage(FileStorageInterface):
     """Implementación de almacenamiento de archivos en AWS S3"""
 
-    def __init__(self, bucket_name: str, region: str = "us-east-1", session_token: str = None):
+    def __init__(self, bucket_name: str, region: str = "us-east-1",
+                 access_key: str = None, secret_key: str = None, session_token: str = None):
         self.bucket_name = bucket_name
         self.region = region
 
-        # Configurar cliente S3 con session token (para AWS Academy)
-        if session_token:
+        # Configurar cliente S3
+        # Prioridad:
+        # 1. Credenciales explícitas (desarrollo/testing)
+        # 2. IAM Role de la instancia EC2 (producción - recomendado)
+        # 3. Variables de entorno o ~/.aws/credentials (fallback)
+
+        if access_key and secret_key:
+            # Opción 1: Credenciales explícitas (AWS Academy con session token)
             self.s3_client = boto3.client(
                 's3',
                 region_name=region,
+                aws_access_key_id=access_key,
+                aws_secret_access_key=secret_key,
                 aws_session_token=session_token
             )
         else:
+            # Opción 2: IAM Role (instancia EC2 con LabRole)
+            # boto3 automáticamente usa el Instance Profile
             self.s3_client = boto3.client('s3', region_name=region)
     
     def _get_s3_key(self, filename: str, location: LocationType) -> str:

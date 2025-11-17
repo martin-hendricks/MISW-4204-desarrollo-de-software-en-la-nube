@@ -99,23 +99,34 @@ class S3Storage(StorageInterface):
     Descarga archivos bajo demanda y sube resultados
     """
 
-    def __init__(self, bucket_name: str, region: str = 'us-east-1', session_token: str = None):
+    def __init__(self, bucket_name: str, region: str = 'us-east-1',
+                 access_key: str = None, secret_key: str = None, session_token: str = None):
         try:
             import boto3
             self.bucket_name = bucket_name
             self.region = region
 
-            # Configurar cliente S3 con session token (para AWS Academy)
-            if session_token:
+            # Configurar cliente S3
+            # Prioridad:
+            # 1. Credenciales explícitas (desarrollo/testing con AWS Academy)
+            # 2. IAM Role de la instancia EC2 (producción - recomendado)
+            # 3. Variables de entorno o ~/.aws/credentials (fallback)
+
+            if access_key and secret_key:
+                # Opción 1: Credenciales explícitas (AWS Academy con session token)
                 self.s3_client = boto3.client(
                     's3',
                     region_name=region,
+                    aws_access_key_id=access_key,
+                    aws_secret_access_key=secret_key,
                     aws_session_token=session_token
                 )
-                logger.info(f"☁️ S3Storage inicializado con session token: bucket={bucket_name}, region={region}")
+                logger.info(f"☁️ S3Storage inicializado con credenciales explícitas: bucket={bucket_name}, region={region}")
             else:
+                # Opción 2: IAM Role (instancia EC2 con LabRole)
+                # boto3 automáticamente usa el Instance Profile
                 self.s3_client = boto3.client('s3', region_name=region)
-                logger.info(f"☁️ S3Storage inicializado: bucket={bucket_name}, region={region}")
+                logger.info(f"☁️ S3Storage inicializado con IAM Role: bucket={bucket_name}, region={region}")
         except ImportError:
             raise ImportError("boto3 no está instalado. Ejecuta: pip install boto3")
 
@@ -172,10 +183,14 @@ def get_storage_backend() -> StorageInterface:
     storage_type = os.getenv('STORAGE_TYPE', 'local').lower()
 
     if storage_type == 's3':
+        # Si hay credenciales en .env, las usa (AWS Academy)
+        # Si NO hay credenciales, usa IAM Role de la instancia EC2 (producción)
         return S3Storage(
             bucket_name=config.S3_BUCKET_NAME,
             region=config.AWS_REGION,
-            session_token=config.AWS_SESSION_TOKEN
+            access_key=config.AWS_ACCESS_KEY_ID if config.AWS_ACCESS_KEY_ID else None,
+            secret_key=config.AWS_SECRET_ACCESS_KEY if config.AWS_SECRET_ACCESS_KEY else None,
+            session_token=config.AWS_SESSION_TOKEN if config.AWS_SESSION_TOKEN else None
         )
     else:
         return LocalStorage(base_dir=config.UPLOAD_BASE_DIR)

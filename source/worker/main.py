@@ -69,49 +69,43 @@ def metrics():
     }
 
 
-# ===== MÉTRICAS DE SISTEMA Y CELERY (Background Task) =====
+# ===== HEARTBEAT METRICS (Background Task) =====
 @app.on_event("startup")
-async def start_metrics_collection():
+async def start_heartbeat_metrics():
     """
-    Publica métricas de sistema y Celery cada 60 segundos a CloudWatch
+    Publica heartbeat cada 5 minutos para confirmar que el worker está activo
+
+    NOTA: Métricas de CPU/Memoria del sistema se obtienen de EC2 CloudWatch (gratuitas).
+    Para habilitar métricas detalladas de memoria en EC2:
+    - Instalar CloudWatch Agent en la instancia
+    - Las métricas aparecerán en namespace CWAgent
+
+    NOTA: Métricas de cola SQS están disponibles GRATIS en CloudWatch:
+    - ApproximateNumberOfMessagesVisible (profundidad de cola)
+    - ApproximateAgeOfOldestMessage (latencia de cola)
+    - NumberOfMessagesSent/Received
     """
-    async def publish_worker_metrics():
+    async def publish_heartbeat():
         while True:
             try:
-                await asyncio.sleep(60)  # Publicar cada 60 segundos
+                await asyncio.sleep(300)  # Publicar cada 5 minutos (optimizado para costos)
 
-                # 1. Métricas del proceso Worker
-                process_cpu = current_process.cpu_percent(interval=0.1)
-                mem_info = current_process.memory_info()
-                process_memory_mb = mem_info.rss / (1024 * 1024)
-                process_memory_percent = current_process.memory_percent()
-
-                # 2. Métricas del sistema completo
-                system_cpu = psutil.cpu_percent(interval=0.1)
-                system_memory = psutil.virtual_memory()
-
-                # Publicar métricas del worker a CloudWatch
-                # NOTA: ActiveTasks/ReservedTasks no disponibles con SQS
-                # AWS SQS publica sus propias métricas: ApproximateNumberOfMessagesVisible, etc.
+                # Solo publicar heartbeat para confirmar que el worker está activo
                 cw_metrics.put_metrics(
                     metrics=[
-                        {"name": "ProcessCPU", "value": process_cpu, "unit": MetricUnit.PERCENT},
-                        {"name": "ProcessMemoryMB", "value": process_memory_mb, "unit": MetricUnit.MEGABYTES},
-                        {"name": "ProcessMemoryPercent", "value": process_memory_percent, "unit": MetricUnit.PERCENT},
-                        {"name": "SystemCPU", "value": system_cpu, "unit": MetricUnit.PERCENT},
-                        {"name": "SystemMemoryPercent", "value": system_memory.percent, "unit": MetricUnit.PERCENT}
+                        {"name": "ServiceHeartbeat", "value": 1, "unit": MetricUnit.COUNT}
                     ],
-                    dimensions={"MetricType": "System"}
+                    dimensions={"MetricType": "Health"}
                 )
 
-                logger.debug(f"[SYSTEM METRICS] CPU: {process_cpu:.1f}% | Memory: {process_memory_mb:.1f}MB")
+                logger.debug("[HEARTBEAT] Worker is alive")
 
             except Exception as e:
-                logger.error(f"Error publishing worker metrics: {e}")
+                logger.error(f"Error publishing heartbeat: {e}")
 
     # Iniciar tarea en background
-    asyncio.create_task(publish_worker_metrics())
-    logger.info("Worker metrics background task started (60s interval)")
+    asyncio.create_task(publish_heartbeat())
+    logger.info("Heartbeat metrics background task started (5min interval - cost optimized)")
 
 
 @app.get("/health", response_model=HealthResponse)
