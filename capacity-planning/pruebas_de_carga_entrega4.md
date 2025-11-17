@@ -21,8 +21,6 @@ docker exec producer python producer.py --num-videos 20 --video-file ./assets/du
 
 <img width="1223" height="1540" alt="screencapture-us-east-1-console-aws-amazon-cloudwatch-home-2025-11-16-18_21_45" src="https://github.com/user-attachments/assets/6a946051-648e-4879-90f5-c0037f4f4f1d" />
 
-- Métricas de throughput
-
 
 
 ### 1.2 Prueba con Video Grande - 10 Videos (100MB)
