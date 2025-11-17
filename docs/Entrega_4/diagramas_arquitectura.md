@@ -12,7 +12,7 @@ El diagrama de componentes muestra la estructura interna del Backend API, detall
 
 El diagrama de despliegue muestra la estructura de despliegue para cada componente.
 
-<img width="3216" height="2370" alt="image (26)" src="https://github.com/user-attachments/assets/835f48f7-de3f-408c-93ef-cba491dbec64" />
+<img width="1632" height="2358" alt="aws_architecture_diagram" src="https://github.com/user-attachments/assets/a76ccad1-56b4-4d87-af0e-9c638db5c949" />
 
 
 **Capas principales:**
