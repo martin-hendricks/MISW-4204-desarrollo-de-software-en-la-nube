@@ -298,21 +298,12 @@ docker exec producer python producer.py --num-videos 200 --video-file ./assets/d
 **Mejoras propuestas:**
 
 **Inmediatas (Optimización de Auto Escalado):**
-- **Monitoreo de escalado**: Configurar alertas cuando se activen nuevas instancias
 - **Validación de políticas**: Verificar que el escalado se active correctamente al 70% CPU
 - **Optimización de workers**: Configurar 1 worker por núcleo de CPU por instancia
 - **Balanceamiento de carga**: Asegurar distribución uniforme entre instancias escaladas
 
 **Mediano Plazo (Memoria y Concurrencia):**
 - **Incremento de RAM**: Upgrade a 8 GB para soportar 20-30 workers concurrentes por instancia
-- **Gestión de memoria**: Implementar streaming de archivos para reducir footprint
-- **Cache inteligente**: Sistema de cache para videos frecuentemente accedidos
-- **Métricas personalizadas**: Agregar métricas de cola de trabajos para escalado más preciso
 
-**Largo Plazo (Escalabilidad Avanzada):**
-- **Auto-scaling multi-métrica**: Escalado basado en CPU + memoria + longitud de cola
-- **Procesamiento asíncrono**: Queue distribuida con Redis Cluster
-- **Especialización de workers**: Workers dedicados por tamaño de archivo
-- **Monitoring proactivo**: Dashboard en tiempo real del comportamiento del auto escalado
-- **Almacenamiento optimizado**: Migrar a EBS gp3 o instancias con almacenamiento NVMe
+
 
