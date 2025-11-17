@@ -1,5 +1,29 @@
 # Pruebas de Carga - Entrega 4
 
+## Configuración del Sistema de Auto Escalado
+
+### Política de Escalado: worker-cpu-scale-up
+
+**Configuración de la Política:**
+- **Nombre**: worker-cpu-scale-up
+- **Tipo de política**: Escalado de seguimiento de destino
+- **Estado**: Habilitado
+- **Métrica objetivo**: Utilización promedio de la CPU en 70%
+- **Acción de escalado**: Agregar o eliminar unidades de capacidad según sea necesario
+- **Tiempo de preparación**: 120 segundos para que las instancias se incluyan en la métrica
+- **Escalado descendente**: Habilitado
+
+**Análisis de la Configuración:**
+- **Umbral del 70%**: Configuración adecuada basada en las pruebas que muestran degradación significativa >70% CPU
+- **Tiempo de preparación (120s)**: Permite inicialización completa de workers antes de recibir carga
+- **Seguimiento de destino**: Automáticamente ajusta la capacidad para mantener el objetivo
+- **Escalado bidireccional**: Permite tanto scale-up como scale-down según demanda
+
+
+- Las pruebas identificaron saturación del sistema cuando CPU >70%
+- El auto escalado activará nuevas instancias antes de alcanzar el punto crítico
+- Tiempo de 120s es suficiente para inicialización de contenedores Docker y workers de Celery
+
 
 ## 1. Pruebas Sostenidas (Medir Throughput Estable)
 
@@ -251,17 +275,44 @@ docker exec producer python producer.py --num-videos 200 --video-file ./assets/d
 - Throughput óptimo de 8.3 videos por minuto bajo condiciones ideales
 - Capacidad de 350-400 MB por minuto en procesamiento sostenido
 
-**Limitaciones identificadas:**
+**Impacto del Auto Escalado Configurado:**
+- **Prevención proactiva**: La política activará escalado al 70% CPU, antes del punto crítico identificado
+- **Capacidad expandida**: Auto escalado permitirá manejar cargas >150 videos mediante instancias adicionales
+- **Tiempo de respuesta**: 120 segundos de preparación es adecuado para la inicialización observada
+- **Eficiencia de recursos**: Escalado descendente optimizará costos durante períodos de baja demanda
+- **Eliminación del cuello de botella**: Múltiples instancias distribuirán la carga de CPU identificada como limitante
+- **Throughput proyectado**: Con auto escalado, capacidad teórica de 16-25 videos/minuto (2-3 instancias)
+
+**Limitaciones identificadas (Pre-Auto Escalado):**
 - **CPU como cuello de botella principal**: 2 núcleos insuficientes para cargas >100 videos
+  - *Mitigado por*: Auto escalado agregará instancias antes del 70% CPU
 - **Memoria limitada**: 2 GB RAM restringe concurrencia a 10-12 workers máximo
+  - *Mitigado por*: Nuevas instancias proporcionarán memoria adicional
 - **Degradación exponencial**: Tiempo de procesamiento aumenta >200% después de 150 videos
+  - *Mitigado por*: Distribución de carga entre múltiples instancias
 - **Saturación de recursos**: Sistema alcanza límites físicos con utilización CPU >70%
+  - *Resuelto por*: Política configurada para escalar exactamente en este umbral
 - **I/O constraints**: EBS estándar limita throughput de disco bajo carga alta
+  - *Parcialmente mitigado*: Múltiples instancias distribuyen I/O
 
 **Mejoras propuestas:**
 
-**Inmediatas (Cuello de Botella de CPU):**
-- **Upgrade de instancia**: Migrar a t3.medium (2 vCPU → 4 vCPU) o t3.large (8 vCPU)
-- **Optimización de workers**: Configurar 1 worker por núcleo de CPU disponible
-- **Procesamiento distribuido**: Implementar múltiples workers especializados por tipo de video
+**Inmediatas (Optimización de Auto Escalado):**
+- **Monitoreo de escalado**: Configurar alertas cuando se activen nuevas instancias
+- **Validación de políticas**: Verificar que el escalado se active correctamente al 70% CPU
+- **Optimización de workers**: Configurar 1 worker por núcleo de CPU por instancia
+- **Balanceamiento de carga**: Asegurar distribución uniforme entre instancias escaladas
+
+**Mediano Plazo (Memoria y Concurrencia):**
+- **Incremento de RAM**: Upgrade a 8 GB para soportar 20-30 workers concurrentes por instancia
+- **Gestión de memoria**: Implementar streaming de archivos para reducir footprint
+- **Cache inteligente**: Sistema de cache para videos frecuentemente accedidos
+- **Métricas personalizadas**: Agregar métricas de cola de trabajos para escalado más preciso
+
+**Largo Plazo (Escalabilidad Avanzada):**
+- **Auto-scaling multi-métrica**: Escalado basado en CPU + memoria + longitud de cola
+- **Procesamiento asíncrono**: Queue distribuida con Redis Cluster
+- **Especialización de workers**: Workers dedicados por tamaño de archivo
+- **Monitoring proactivo**: Dashboard en tiempo real del comportamiento del auto escalado
+- **Almacenamiento optimizado**: Migrar a EBS gp3 o instancias con almacenamiento NVMe
 
