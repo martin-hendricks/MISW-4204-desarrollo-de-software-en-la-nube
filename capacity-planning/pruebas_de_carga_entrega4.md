@@ -57,7 +57,7 @@
 
 Las pruebas realizadas mediante **ramp-up** con 100 y 200 usuarios concurrentes permitieron observar el comportamiento del Auto Scaling Group no presento errores debido al correcto autoescalamiento de las instancias, llegando a consumir un pico maximo de cpu de 65% y un desenso de forma repentina. 
 
-En la prueba de **ramp-up** de 0 a 300 usuario evidenciamos degradación de servicio debido a que tuvo llego a un pico maximo de 75% en la instnacia principal y cuando se encontraba escalando evidenciamos que mientras escalaba la siguiente instancia el balanceador verificaba que estaba lista y le enviaba las peticiones pero los servicios interrnos como el docker y el aplicativo aun se encintraban creando por lo cual la instancia ec2 comenzo a devolver 404, para proximas entrergas vamos a revisar a fondo si esta hipotesis es la acertada
+En la prueba de **ramp-up** de 0 a 300 usuario evidenciamos degradación del servicio debido a que tuvo llego a un pico máximo de 75% en la instancia principal y cuando se encontraba escalando evidenciamos que la siguiente instancia el balanceador verificaba que estaba lista y le enviaba las peticiones pero los servicios internos como el docker y el aplicativo aún se encontraban levantando por lo cual la instancia ec2 comenzo a devolver 404, para próximas entrergas vamos a revisar a fondo si esta hipótesis es la acertada.
 
 ------------------------------------------------------------------------------------------------------------------------------------------
 #### 4.1.2.3 **Prueba Sostenida**
