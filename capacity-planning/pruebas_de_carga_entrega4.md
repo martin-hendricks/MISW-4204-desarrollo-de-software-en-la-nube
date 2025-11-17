@@ -208,12 +208,10 @@ docker exec producer python producer.py --num-videos 200 --video-file ./assets/d
 **2. Limitaciones de Memoria (Cuello de Botella Secundario):**
 - 2 GB de RAM limitan el número de procesos concurrentes
 - Cada worker de Celery consume ~100-150 MB de memoria base
-- Procesamiento de videos grandes requiere buffers adicionales en memoria
 - Sistema alcanza swap cuando procesa >12-15 videos simultáneamente
 
 **3. I/O de Almacenamiento (Impacto Moderado):**
 - Lectura/escritura de videos grandes impacta en latencia
-- EBS estándar puede limitar IOPS bajo carga alta
 - Transferencia de 350-400 MB/min cercana al límite de throughput de disco
 
 **Análisis por Componente del Cuello de Botella:**
@@ -240,20 +238,11 @@ docker exec producer python producer.py --num-videos 200 --video-file ./assets/d
 
 **Para CPU (Prioridad Alta):**
 - Upgrade a instancia con 4+ núcleos (t3.medium o superior)
-- Implementar procesamiento paralelo distribuido
-- Optimizar algoritmos de procesamiento de video
-- Considerar GPU para transcoding (instancias P3)
 
 **Para Memoria (Prioridad Media):**
 - Upgrade a 4-8 GB de RAM para mayor concurrencia
-- Implementar streaming de archivos para reducir buffers
 - Optimizar gestión de memoria en workers de Celery
-- Configurar swap en SSD para mejor rendimiento
 
-**Para I/O (Prioridad Baja):**
-- Migrar a EBS gp3 para mayor IOPS
-- Implementar cache de archivos frecuentes
-- Considerar almacenamiento local NVMe (instancias i3)
 
 ### Conclusiones
 
@@ -262,20 +251,12 @@ docker exec producer python producer.py --num-videos 200 --video-file ./assets/d
 - Throughput óptimo de 8.3 videos por minuto bajo condiciones ideales
 - Capacidad de 350-400 MB por minuto en procesamiento sostenido
 
-**Recomendaciones de configuración:**
-- Establecer límite de cola en 150 videos para mantener rendimiento
-- Implementar balanceador de carga para cargas >100 videos
-- Configurar auto-scaling cuando la utilización de CPU supere 60%
-- Considerar procesamiento paralelo para videos >75MB
-
 **Limitaciones identificadas:**
 - **CPU como cuello de botella principal**: 2 núcleos insuficientes para cargas >100 videos
 - **Memoria limitada**: 2 GB RAM restringe concurrencia a 10-12 workers máximo
 - **Degradación exponencial**: Tiempo de procesamiento aumenta >200% después de 150 videos
 - **Saturación de recursos**: Sistema alcanza límites físicos con utilización CPU >70%
-- **Falta de escalabilidad horizontal**: Sin capacidad de distribución de carga
 - **I/O constraints**: EBS estándar limita throughput de disco bajo carga alta
-- **Sin mecanismo de recuperación**: Ausencia de failover ante saturación de recursos
 
 **Mejoras propuestas:**
 
@@ -283,16 +264,4 @@ docker exec producer python producer.py --num-videos 200 --video-file ./assets/d
 - **Upgrade de instancia**: Migrar a t3.medium (2 vCPU → 4 vCPU) o t3.large (8 vCPU)
 - **Optimización de workers**: Configurar 1 worker por núcleo de CPU disponible
 - **Procesamiento distribuido**: Implementar múltiples workers especializados por tipo de video
-
-**Mediano Plazo (Memoria y Concurrencia):**
-- **Incremento de RAM**: Upgrade a 8 GB para soportar 20-30 workers concurrentes
-- **Gestión de memoria**: Implementar streaming de archivos para reducir footprint
-- **Cache inteligente**: Sistema de cache para videos frecuentemente accedidos
-
-**Largo Plazo (Escalabilidad):**
-- **Auto-scaling horizontal**: Cluster de instancias con balanceador de carga
-- **Procesamiento asíncrono**: Queue distribuida con Redis Cluster
-- **Especialización de workers**: Workers dedicados por tamaño de archivo
-- **Monitoring proactivo**: Alertas basadas en utilización de CPU y memoria
-- **Almacenamiento optimizado**: Migrar a EBS gp3 o instancias con almacenamiento NVMe
 
