@@ -1,15 +1,14 @@
 """
-Módulo centralizado para métricas CloudWatch usando Embedded Metric Format (EMF)
+Módulo centralizado para métricas CloudWatch usando boto3 PutMetricData API
 Compatible con Backend (FastAPI) y Worker (Celery multiprocess)
 
-EMF permite publicar métricas a CloudWatch mediante logs estructurados en JSON,
-lo cual es más eficiente y no requiere llamadas API síncronas.
+Publica métricas directamente a CloudWatch mediante boto3, sin necesidad de CloudWatch Agent.
 
 Características:
 - Auto-detección de metadata de instancia EC2 (InstanceId, AvailabilityZone, etc.)
 - Soporte para métricas individuales y batch
-- Compatible con CloudWatch Agent y Lambda
-- Zero latency (async logging)
+- Batching automático para reducir API calls
+- Free tier: 1M API calls/mes + 10k métricas custom/mes
 """
 
 import json
@@ -19,6 +18,8 @@ import sys
 from enum import Enum
 from typing import Dict, List, Optional
 import logging
+import boto3
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +72,9 @@ class CloudWatchMetrics:
         self.enable_logging = enable_logging
         self.instance_metadata = self._get_instance_metadata()
 
+        # Inicializar cliente boto3 CloudWatch
+        self.cloudwatch = boto3.client('cloudwatch', region_name=os.getenv('AWS_REGION', 'us-east-1'))
+
         logger.info(f"CloudWatch Metrics initialized - Namespace: {namespace}, Service: {service_name}")
         logger.debug(f"Instance metadata: {self.instance_metadata}")
 
@@ -85,29 +89,34 @@ class CloudWatchMetrics:
         try:
             import requests
 
-            # IMDS v2: Primero obtener token
-            token_url = 'http://169.254.169.254/latest/api/token'
+            # IMDS v2: Primero obtener token (método seguro recomendado por AWS)
+            # La IP 169.254.169.254 es el AWS Instance Metadata Service (IMDS)
+            # - Solo accesible desde DENTRO de instancias EC2 (no desde Internet)
+            # - IMDSv2 requiere token de sesión (previene SSRF attacks)
+            # - Documentación: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-metadata.html
+            imds_base = 'http://169.254.169.254'
+            token_url = f'{imds_base}/latest/api/token'
             token_headers = {'X-aws-ec2-metadata-token-ttl-seconds': '21600'}
             token_response = requests.put(token_url, headers=token_headers, timeout=0.5)
             token = token_response.text
 
             headers = {'X-aws-ec2-metadata-token': token}
 
-            # Obtener metadata de instancia
+            # Obtener metadata de instancia (solo metadata pública, NO credenciales)
             instance_id = requests.get(
-                'http://169.254.169.254/latest/meta-data/instance-id',
+                f'{imds_base}/latest/meta-data/instance-id',
                 headers=headers,
                 timeout=0.5
             ).text
 
             availability_zone = requests.get(
-                'http://169.254.169.254/latest/meta-data/placement/availability-zone',
+                f'{imds_base}/latest/meta-data/placement/availability-zone',
                 headers=headers,
                 timeout=0.5
             ).text
 
             instance_type = requests.get(
-                'http://169.254.169.254/latest/meta-data/instance-type',
+                f'{imds_base}/latest/meta-data/instance-type',
                 headers=headers,
                 timeout=0.5
             ).text
@@ -137,7 +146,7 @@ class CloudWatchMetrics:
         timestamp: Optional[int] = None
     ):
         """
-        Publica una métrica individual a CloudWatch usando EMF
+        Publica una métrica individual a CloudWatch usando boto3
 
         Args:
             metric_name: Nombre de la métrica (ej: "RequestDuration")
@@ -160,25 +169,22 @@ class CloudWatchMetrics:
             **(dimensions or {})
         }
 
-        # Formato EMF (Embedded Metric Format)
-        emf_log = {
-            "_aws": {
-                "Timestamp": timestamp or int(time.time() * 1000),
-                "CloudWatchMetrics": [{
-                    "Namespace": self.namespace,
-                    "Dimensions": [list(all_dimensions.keys())],
-                    "Metrics": [{
-                        "Name": metric_name,
-                        "Unit": unit.value
-                    }]
-                }]
-            },
-            **all_dimensions,  # Valores de dimensiones
-            metric_name: value  # Valor de la métrica
-        }
+        # Convertir dimensiones a formato CloudWatch
+        cw_dimensions = [{"Name": k, "Value": v} for k, v in all_dimensions.items()]
 
-        # EMF: escribir JSON a stdout (CloudWatch Agent o Lambda lo parsea automáticamente)
-        print(json.dumps(emf_log), file=sys.stdout, flush=True)
+        try:
+            self.cloudwatch.put_metric_data(
+                Namespace=self.namespace,
+                MetricData=[{
+                    'MetricName': metric_name,
+                    'Value': value,
+                    'Unit': unit.value,
+                    'Timestamp': datetime.fromtimestamp(timestamp / 1000) if timestamp else datetime.now(),
+                    'Dimensions': cw_dimensions
+                }]
+            )
+        except Exception as e:
+            logger.error(f"Error publishing metric {metric_name}: {e}")
 
     def put_metrics(
         self,
@@ -187,7 +193,7 @@ class CloudWatchMetrics:
         timestamp: Optional[int] = None
     ):
         """
-        Publica múltiples métricas en un solo EMF log (más eficiente)
+        Publica múltiples métricas en una sola llamada API (batching - más eficiente)
 
         Args:
             metrics: Lista de métricas con formato:
@@ -212,32 +218,30 @@ class CloudWatchMetrics:
             **(dimensions or {})
         }
 
-        # Construir definiciones de métricas y valores
-        metric_definitions = []
-        metric_values = {}
+        # Convertir dimensiones a formato CloudWatch
+        cw_dimensions = [{"Name": k, "Value": v} for k, v in all_dimensions.items()]
+
+        # Construir lista de métricas
+        metric_data = []
+        ts = datetime.fromtimestamp(timestamp / 1000) if timestamp else datetime.now()
 
         for metric in metrics:
-            metric_definitions.append({
-                "Name": metric["name"],
-                "Unit": metric["unit"].value
+            metric_data.append({
+                'MetricName': metric["name"],
+                'Value': metric["value"],
+                'Unit': metric["unit"].value,
+                'Timestamp': ts,
+                'Dimensions': cw_dimensions
             })
-            metric_values[metric["name"]] = metric["value"]
 
-        # Formato EMF con múltiples métricas
-        emf_log = {
-            "_aws": {
-                "Timestamp": timestamp or int(time.time() * 1000),
-                "CloudWatchMetrics": [{
-                    "Namespace": self.namespace,
-                    "Dimensions": [list(all_dimensions.keys())],
-                    "Metrics": metric_definitions
-                }]
-            },
-            **all_dimensions,
-            **metric_values
-        }
-
-        print(json.dumps(emf_log), file=sys.stdout, flush=True)
+        try:
+            # Publicar todas las métricas en una sola llamada API (batching)
+            self.cloudwatch.put_metric_data(
+                Namespace=self.namespace,
+                MetricData=metric_data
+            )
+        except Exception as e:
+            logger.error(f"Error publishing metrics batch: {e}")
 
     def increment_counter(
         self,

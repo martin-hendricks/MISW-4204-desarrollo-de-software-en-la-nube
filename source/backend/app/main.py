@@ -5,8 +5,8 @@ import time
 import os
 import asyncio
 import logging
-import psutil
 import sys
+import random
 
 # Configurar logger
 logger = logging.getLogger(__name__)
@@ -19,16 +19,15 @@ from app.config.settings import settings
 # Agregar directorio cloudwatch al path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
-from cloudwatch.cloudwatch_metrics import CloudWatchMetrics, MetricUnit
+from cloudwatch.cloudwatch_metrics import MetricUnit
+import boto3
 
-# Inicializar cliente CloudWatch
-cw_metrics = CloudWatchMetrics(
-    namespace=os.getenv("CLOUDWATCH_NAMESPACE", "ANB/Backend"),
-    service_name="API"
-)
+# Constantes para CloudWatch
+CLOUDWATCH_NAMESPACE = "ANB/Backend"
+CLOUDWATCH_SERVICE = "API"
 
-# Obtener el proceso actual para métricas
-current_process = psutil.Process(os.getpid())
+# Inicializar cliente CloudWatch directo (sin metadata de instancia)
+cw_client = boto3.client('cloudwatch', region_name=os.getenv('AWS_REGION', 'us-east-1'))
 
 # Crear la aplicación FastAPI
 app = FastAPI(
@@ -40,15 +39,35 @@ app = FastAPI(
 )
 
 # ===== MIDDLEWARE DE CLOUDWATCH =====
+# Configuración de sampling para optimización de costos
+EXCLUDED_PATHS = {"/metrics", "/docs", "/redoc", "/openapi.json"}
+SAMPLED_PATHS = {"/health": 0.1, "/": 0.2}  # path: sample_rate (0.1 = 10%, 0.2 = 20%)
+
 @app.middleware("http")
 async def cloudwatch_middleware(request: Request, call_next):
-    """Middleware para capturar métricas de todas las requests y enviarlas a CloudWatch"""
-    # Excluir endpoints internos de las métricas
-    if request.url.path in ["/metrics", "/health", "/docs", "/redoc", "/openapi.json"]:
+    """
+    Middleware para capturar métricas de todas las requests y enviarlas a CloudWatch
+
+    Optimizaciones de costos implementadas:
+    - Excluye endpoints internos (/metrics, /docs, /redoc, /openapi.json)
+    - Sampling en endpoints de health check (10% de requests)
+    - Sampling en endpoint raíz (20% de requests)
+    """
+    path = request.url.path
+
+    # Excluir endpoints internos de las métricas completamente
+    if path in EXCLUDED_PATHS:
         return await call_next(request)
 
+    # Aplicar sampling para endpoints de alta frecuencia
+    if path in SAMPLED_PATHS:
+        sample_rate = SAMPLED_PATHS[path]
+        if random.random() > sample_rate:
+            # Skip métrica (solo procesar el request)
+            return await call_next(request)
+
     method = request.method
-    endpoint = request.url.path
+    endpoint = path
     start_time = time.time()
 
     try:
@@ -59,19 +78,30 @@ async def cloudwatch_middleware(request: Request, call_next):
         duration_ms = (time.time() - start_time) * 1000
         status = response.status_code
 
-        # Publicar múltiples métricas en un solo EMF log (eficiente)
-        cw_metrics.put_metrics(
-            metrics=[
-                {"name": "RequestCount", "value": 1, "unit": MetricUnit.COUNT},
-                {"name": "RequestDuration", "value": duration_ms, "unit": MetricUnit.MILLISECONDS},
-                {"name": "ErrorCount", "value": 1 if status >= 500 else 0, "unit": MetricUnit.COUNT},
-                {"name": "Success", "value": 1 if 200 <= status < 300 else 0, "unit": MetricUnit.COUNT}
-            ],
-            dimensions={
-                "Method": method,
-                "Endpoint": endpoint,
-                "StatusCode": str(status)
-            }
+        # Publicar métricas SIN metadata de instancia (solo dimensiones esenciales)
+        cw_client.put_metric_data(
+            Namespace=CLOUDWATCH_NAMESPACE,
+            MetricData=[
+                {
+                    'MetricName': 'RequestCount',
+                    'Value': 1,
+                    'Unit': MetricUnit.COUNT.value,
+                    'Dimensions': [
+                        {"Name": "Method", "Value": method},
+                        {"Name": "Endpoint", "Value": endpoint},
+                        {"Name": "StatusCode", "Value": str(status)}
+                    ]
+                },
+                {
+                    'MetricName': 'RequestDuration',
+                    'Value': duration_ms,
+                    'Unit': MetricUnit.MILLISECONDS.value,
+                    'Dimensions': [
+                        {"Name": "Method", "Value": method},
+                        {"Name": "Endpoint", "Value": endpoint}
+                    ]
+                }
+            ]
         )
 
         logger.debug(f"[METRICS] {method} {endpoint} - {status} - {duration_ms:.2f}ms")
@@ -81,18 +111,40 @@ async def cloudwatch_middleware(request: Request, call_next):
         # Capturar errores y registrar métricas
         duration_ms = (time.time() - start_time) * 1000
 
-        cw_metrics.put_metrics(
-            metrics=[
-                {"name": "RequestCount", "value": 1, "unit": MetricUnit.COUNT},
-                {"name": "ErrorCount", "value": 1, "unit": MetricUnit.COUNT},
-                {"name": "RequestDuration", "value": duration_ms, "unit": MetricUnit.MILLISECONDS}
-            ],
-            dimensions={
-                "Method": method,
-                "Endpoint": endpoint,
-                "StatusCode": "500",
-                "ErrorType": type(e).__name__
-            }
+        # Publicar métricas SIN metadata de instancia
+        cw_client.put_metric_data(
+            Namespace=CLOUDWATCH_NAMESPACE,
+            MetricData=[
+                {
+                    'MetricName': 'RequestCount',
+                    'Value': 1,
+                    'Unit': MetricUnit.COUNT.value,
+                    'Dimensions': [
+                        {"Name": "Method", "Value": method},
+                        {"Name": "Endpoint", "Value": endpoint},
+                        {"Name": "StatusCode", "Value": "500"}
+                    ]
+                },
+                {
+                    'MetricName': 'ErrorCount',
+                    'Value': 1,
+                    'Unit': MetricUnit.COUNT.value,
+                    'Dimensions': [
+                        {"Name": "Method", "Value": method},
+                        {"Name": "Endpoint", "Value": endpoint},
+                        {"Name": "ErrorType", "Value": type(e).__name__}
+                    ]
+                },
+                {
+                    'MetricName': 'RequestDuration',
+                    'Value': duration_ms,
+                    'Unit': MetricUnit.MILLISECONDS.value,
+                    'Dimensions': [
+                        {"Name": "Method", "Value": method},
+                        {"Name": "Endpoint", "Value": endpoint}
+                    ]
+                }
+            ]
         )
 
         logger.error(f"[METRICS] {method} {endpoint} - ERROR: {e}")
@@ -121,49 +173,41 @@ app.include_router(auth.router)
 app.include_router(videos.router)
 app.include_router(public.router)
 
-# ===== MÉTRICAS DE SISTEMA (Background Task) =====
+# ===== HEARTBEAT METRICS (Background Task) =====
 @app.on_event("startup")
-async def start_system_metrics():
+async def start_heartbeat_metrics():
     """
-    Publica métricas de sistema (CPU, memoria) cada 60 segundos a CloudWatch
-    Estas métricas se ejecutan en background para no bloquear requests
+    Publica heartbeat cada 5 minutos para confirmar que el servicio está activo
+
+    NOTA: Métricas de CPU/Memoria del sistema se obtienen de EC2 CloudWatch (gratuitas).
+    Para habilitar métricas detalladas de memoria en EC2:
+    - Instalar CloudWatch Agent en la instancia
+    - Las métricas aparecerán en namespace CWAgent
     """
-    async def publish_system_metrics():
+    async def publish_heartbeat():
         while True:
             try:
-                await asyncio.sleep(60)  # Publicar cada 60 segundos
+                await asyncio.sleep(300)  # Publicar cada 5 minutos (optimizado para costos)
 
-                # Obtener métricas del proceso Backend
-                process_cpu = current_process.cpu_percent(interval=0.1)
-                mem_info = current_process.memory_info()
-                process_memory_mb = mem_info.rss / (1024 * 1024)  # Convertir a MB
-                process_memory_percent = current_process.memory_percent()
-
-                # Obtener métricas del sistema completo
-                system_cpu = psutil.cpu_percent(interval=0.1)
-                system_memory = psutil.virtual_memory()
-
-                # Publicar todas las métricas de sistema en un solo batch
-                cw_metrics.put_metrics(
-                    metrics=[
-                        {"name": "ProcessCPU", "value": process_cpu, "unit": MetricUnit.PERCENT},
-                        {"name": "ProcessMemoryMB", "value": process_memory_mb, "unit": MetricUnit.MEGABYTES},
-                        {"name": "ProcessMemoryPercent", "value": process_memory_percent, "unit": MetricUnit.PERCENT},
-                        {"name": "SystemCPU", "value": system_cpu, "unit": MetricUnit.PERCENT},
-                        {"name": "SystemMemoryPercent", "value": system_memory.percent, "unit": MetricUnit.PERCENT},
-                        {"name": "SystemMemoryAvailableMB", "value": system_memory.available / (1024 * 1024), "unit": MetricUnit.MEGABYTES}
-                    ],
-                    dimensions={"MetricType": "System"}
+                # Solo publicar heartbeat para confirmar que el servicio está activo
+                cw_client.put_metric_data(
+                    Namespace=CLOUDWATCH_NAMESPACE,
+                    MetricData=[{
+                        'MetricName': 'ServiceHeartbeat',
+                        'Value': 1,
+                        'Unit': MetricUnit.COUNT.value,
+                        'Dimensions': [{"Name": "MetricType", "Value": "Health"}]
+                    }]
                 )
 
-                logger.debug(f"[SYSTEM METRICS] CPU: {process_cpu:.1f}% | Memory: {process_memory_mb:.1f}MB ({process_memory_percent:.1f}%)")
+                logger.debug(f"[HEARTBEAT] Service is alive")
 
             except Exception as e:
-                logger.error(f"Error publishing system metrics: {e}")
+                logger.error(f"Error publishing heartbeat: {e}")
 
     # Iniciar tarea en background
-    asyncio.create_task(publish_system_metrics())
-    logger.info("System metrics background task started (60s interval)")
+    asyncio.create_task(publish_heartbeat())
+    logger.info("Heartbeat metrics background task started (5min interval - cost optimized)")
 
 @app.get("/")
 def read_root():

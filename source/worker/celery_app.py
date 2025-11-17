@@ -18,6 +18,10 @@ logger = logging.getLogger(__name__)
 # Diccionario para trackear tiempos de inicio de tareas
 task_start_times = {}
 
+# Constantes para CloudWatch
+CLOUDWATCH_NAMESPACE = "ANB/Worker"
+CLOUDWATCH_SERVICE = "VideoProcessor"
+
 # Crear aplicación Celery
 app = Celery('anb_video_processor')
 
@@ -113,11 +117,22 @@ def task_postrun_handler(task_id=None, task=None, state=None, **kwargs):
             from metrics import cw_metrics
             from cloudwatch.cloudwatch_metrics import MetricUnit
 
-            cw_metrics.record_histogram(
-                histogram_name="TaskDuration",
-                value=duration,
-                unit=MetricUnit.SECONDS,
-                dimensions={"TaskName": task_name}
+            # Publicar métrica con mínimas dimensiones para facilitar queries en CloudWatch
+            import boto3
+            import os
+
+            cw_client = boto3.client('cloudwatch', region_name=os.getenv('AWS_REGION', 'us-east-1'))
+            # Override para publicar SIN metadata de instancia (solo dimensiones esenciales)
+            cw_client.put_metric_data(
+                Namespace=CLOUDWATCH_NAMESPACE,
+                MetricData=[{
+                    'MetricName': 'TaskDuration',
+                    'Value': duration,
+                    'Unit': MetricUnit.SECONDS.value,
+                    'Dimensions': [
+                        {"Name": "TaskName", "Value": task_name}
+                    ]
+                }]
             )
 
             logger.debug(f"[METRICS] Task {task_name} duration: {duration:.2f}s")
@@ -135,14 +150,23 @@ def task_success_handler(sender=None, result=None, **kwargs):
 
     # Incrementar contador de métricas en CloudWatch
     try:
-        from metrics import cw_metrics
         from cloudwatch.cloudwatch_metrics import MetricUnit
+        import boto3
+        import os
 
-        cw_metrics.put_metric(
-            metric_name="TaskCount",
-            value=1,
-            unit=MetricUnit.COUNT,
-            dimensions={"TaskName": task_name, "Status": "Success"}
+        cw_client = boto3.client('cloudwatch', region_name=os.getenv('AWS_REGION', 'us-east-1'))
+        # Publicar SIN metadata de instancia (solo dimensiones esenciales)
+        cw_client.put_metric_data(
+            Namespace=CLOUDWATCH_NAMESPACE,
+            MetricData=[{
+                'MetricName': 'TaskCount',
+                'Value': 1,
+                'Unit': MetricUnit.COUNT.value,
+                'Dimensions': [
+                    {"Name": "TaskName", "Value": task_name},
+                    {"Name": "Status", "Value": "Success"}
+                ]
+            }]
         )
     except ImportError as e:
         logger.warning(f"Could not import CloudWatch metrics: {e}")
@@ -159,20 +183,33 @@ def task_failure_handler(sender=None, task_id=None, exception=None, traceback=No
 
     # Incrementar contadores de métricas en CloudWatch
     try:
-        from metrics import cw_metrics
-        from cloudwatch.cloudwatch_metrics import MetricUnit
+        from cloudwatch.cloudwatch_metrics import CloudWatchMetrics, MetricUnit
+        import boto3
 
-        # Publicar múltiples métricas de fallo
-        cw_metrics.put_metrics(
-            metrics=[
-                {"name": "TaskCount", "value": 1, "unit": MetricUnit.COUNT},
-                {"name": "TaskFailure", "value": 1, "unit": MetricUnit.COUNT}
-            ],
-            dimensions={
-                "TaskName": task_name,
-                "Status": "Failed",
-                "ErrorType": error_type
-            }
+        cw_client = boto3.client('cloudwatch', region_name=os.getenv('AWS_REGION', 'us-east-1'))
+        # Publicar SIN metadata de instancia (solo dimensiones esenciales)
+        cw_client.put_metric_data(
+            Namespace=CLOUDWATCH_NAMESPACE,
+            MetricData=[
+                {
+                    'MetricName': 'TaskCount',
+                    'Value': 1,
+                    'Unit': MetricUnit.COUNT.value,
+                    'Dimensions': [
+                        {"Name": "TaskName", "Value": task_name},
+                        {"Name": "Status", "Value": "Failed"}
+                    ]
+                },
+                {
+                    'MetricName': 'TaskFailure',
+                    'Value': 1,
+                    'Unit': MetricUnit.COUNT.value,
+                    'Dimensions': [
+                        {"Name": "TaskName", "Value": task_name},
+                        {"Name": "ErrorType", "Value": error_type}
+                    ]
+                }
+            ]
         )
     except ImportError as e:
         logger.warning(f"Could not import CloudWatch metrics: {e}")
@@ -187,14 +224,23 @@ def task_retry_handler(sender=None, reason=None, **kwargs):
 
     # Incrementar contador de métricas en CloudWatch
     try:
-        from metrics import cw_metrics
         from cloudwatch.cloudwatch_metrics import MetricUnit
+        import boto3
+        import os
 
-        cw_metrics.put_metric(
-            metric_name="TaskCount",
-            value=1,
-            unit=MetricUnit.COUNT,
-            dimensions={"TaskName": task_name, "Status": "Retry"}
+        cw_client = boto3.client('cloudwatch', region_name=os.getenv('AWS_REGION', 'us-east-1'))
+        # Publicar SIN metadata de instancia (solo dimensiones esenciales)
+        cw_client.put_metric_data(
+            Namespace=CLOUDWATCH_NAMESPACE,
+            MetricData=[{
+                'MetricName': 'TaskCount',
+                'Value': 1,
+                'Unit': MetricUnit.COUNT.value,
+                'Dimensions': [
+                    {"Name": "TaskName", "Value": task_name},
+                    {"Name": "Status", "Value": "Retry"}
+                ]
+            }]
         )
     except ImportError as e:
         logger.warning(f"Could not import CloudWatch metrics: {e}")
