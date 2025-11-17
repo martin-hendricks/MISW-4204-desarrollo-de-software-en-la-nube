@@ -1,7 +1,5 @@
 # Pruebas de Carga - Entrega 4
 
-## Descripción General
-Este documento contiene las evidencias de las pruebas de carga realizadas para evaluar la capacidad del sistema de procesamiento de videos.
 
 ## 1. Pruebas Sostenidas (Medir Throughput Estable)
 
