@@ -1,10 +1,78 @@
 # Pruebas de Carga - Entrega 4
 
-## Configuración del Sistema de Auto Escalado
+## 4.1 Escenario 1: Capacidad de la Capa Web (Usuarios Concurrentes)
 
-### Política de Escalado: worker-cpu-scale-up
+### 4.1.1 Escenarios de Prueba
 
-**Configuración de la Política:**
+#### 4.1.2.1 **Prueba de Sanidad (Smoke Test)**
+- **Usuarios**: 5 usuarios concurrentes
+- **Duración**: 1 minuto
+- **Objetivo**: Validar que el sistema responde correctamente y la telemetría está activa
+- **Comando**: en la instancia de AWS `docker exec jmeter /bin/bash -c "jmeter -n -t /scripts/smoke_test.jmx -l /scripts/smoke_results.jtl"`
+- **Evidencias**: 
+  - **Smoke Test**
+    
+<img width="1080" height="264" alt="image (28)" src="https://github.com/user-attachments/assets/70103f02-3131-42b3-ad08-a04281768027" />
+
+  - **ClaudWatch**
+    
+   
+ ## **Concluciones - Prueba de Sanidad (Smoke Test)**
+ 
+- En términos generales, la prueba de **smoke test** no presentó cambios significativos con respecto a la terecera entrega. Esto se debe a que, para este escenario, la instancia disponible logra resolver satisfactoriamente las solicitudes entrantes sin requerir escalamiento de la arquitectura.
+
+--------------------------------------------------------------------------------------------------------------------------------------------------
+#### 4.1.2.2 **Prueba de Escalamiento (Ramp-up)**
+- **Estrategia**: Iniciar en 0 usuarios y aumentar gradualmente hasta X usuarios en 3 minutos, mantener 5 minutos
+- **Comando**: en la instancia de AWS `docker exec jmeter /bin/bash -c "jmeter -n -t /scripts/ramp_up_test.jmx -l /scripts/ramp_up_X_users_results.jtl -Jusers=X"`
+- **Evidencias**: 
+  - **100 Usuarios**
+    
+<img width="1267" height="703" alt="image (29)" src="https://github.com/user-attachments/assets/6ecc9d13-b55c-46cf-b72c-0062f5d75467" />
+
+  - **CloudWatch**
+
+
+  - **200 Usuarios**
+<img width="1197" height="657" alt="image (30)" src="https://github.com/user-attachments/assets/d5d9b4c9-194d-498a-913f-2ca04d82b0ff" />
+
+  - **CloudWatch**
+
+    
+  - **300 Usuarios**
+<img width="1265" height="480" alt="image (31)" src="https://github.com/user-attachments/assets/80e07081-891b-4b99-a7f7-5f98346dbe3d" />
+
+  - **CloudWatch**
+<img width="1232" height="582" alt="Captura de pantalla 2025-11-16 220137" src="https://github.com/user-attachments/assets/648bd57e-5d37-40ad-8c9f-b37d4e8fb720" />
+<img width="1248" height="591" alt="Captura de pantalla 2025-11-16 220720" src="https://github.com/user-attachments/assets/1d8741bc-cc31-4e6e-bb37-9de21ed64ecc" />
+
+    
+## **Concluciones - Prueba de Escalamiento (Ramp-up)**
+
+Las pruebas realizadas mediante **ramp-up** con 100 y 200 usuarios concurrentes permitieron observar el comportamiento del Auto Scaling Group no presento errores debido al correcto autoescalamiento de las instancias, llegando a consumir un pico maximo de cpu de 65% y un desenso de forma repentina. 
+
+En la prueba de **ramp-up** de 0 a 300 usuario evidenciamos degradación de servicio debido a que tuvo llego a un pico maximo de 75% en la instnacia principal y cuando se encontraba escalando evidenciamos que mientras escalaba la siguiente instancia el balanceador verificaba que estaba lista y le enviaba las peticiones pero los servicios interrnos como el docker y el aplicativo aun se encintraban creando por lo cual la instancia ec2 comenzo a devolver 404, para proximas entrergas vamos a revisar a fondo si esta hipotesis es la acertada
+
+------------------------------------------------------------------------------------------------------------------------------------------
+#### 4.1.2.3 **Prueba Sostenida**
+
+- **Usuarios**: Volvemos a evidenciar que de la prueba ramp-uop al llegar a los 300 usduarios tenemos degradacion del servicio por lo que al calcular el 80% de la capacidad con 300 usuarios tenemos un valor de 240 usuarios para realizar la prueba sostenida
+- **Duración**: 5 minutos
+- **Objetivo**: Confirmar estabilidad del sistema bajo carga sostenida
+
+- **Evidencias**:
+  - **Prueba sostenida**
+  - **CloudWatch**
+
+
+## **Concluciones - Prueba Sostenida**
+
+
+
+
+### 4.2 Escenario 2: Rendimiento de la Capa Worker 
+
+**Configuración de la Política: worker-cpu-scale-up**
 - **Nombre**: worker-cpu-scale-up
 - **Tipo de política**: Escalado de seguimiento de destino
 - **Estado**: Habilitado
@@ -25,7 +93,7 @@
 - Tiempo de 120s es suficiente para inicialización de contenedores Docker y workers de Celery
 
 
-## 1. Pruebas Sostenidas (Medir Throughput Estable)
+## 4.2.1. Pruebas Sostenidas (Medir Throughput Estable)
 
 ### Objetivo
 Medir cuántos videos por minuto procesa el sistema bajo una carga constante y estable, sin que la cola de tareas crezca indefinidamente.
@@ -57,7 +125,7 @@ docker exec producer python producer.py --num-videos 20 --video-file ./assets/du
 ## Conclucion:
 El sistema procesó satisfactoriamente 2.5 videos/min (150 videos/hora) bajo carga constante sin que la cola creciera indefinidamente. El worker mantuvo estabilidad operativa con recursos moderados (CPU/memoria) y procesamiento lineal, cumpliendo el objetivo de la prueba: capacidad nominal sostenible de ~2.5 videos/min sin degradación.
 
-### 1.2 Prueba con Video Grande - 10 Videos (100MB)
+### 4.2.2 Prueba con Video Grande - 10 Videos (100MB)
 ```bash
 docker exec producer python producer.py --num-videos 10 --video-file ./assets/dummy_file_100mb.mp4 --no-wait
 ```
@@ -85,7 +153,7 @@ docker exec producer python producer.py --num-videos 10 --video-file ./assets/du
 ## Conclucion:
 El sistema procesó 1.25 videos/min (125 MB/min) bajo carga de archivos de 100MB, manteniendo estabilidad operativa sin que la cola creciera indefinidamente. Se observó reducción del 50% en throughput de videos vs archivos de 50MB, pero el throughput de datos se mantuvo constante en 125 MB/min, confirmando que el bottleneck es I/O (disco/red). La duración p95 fue de 34.6 segundos, sin fallos registrados. Capacidad nominal sostenible: 1.25 videos/min de 100MB
 
-## 2. Pruebas de Saturación (Encontrar el Límite)
+## 4.2.3. Pruebas de Saturación (Encontrar el Límite)
 
 ### Objetivo
 Encontrar el punto de quiebre del sistema aumentando progresivamente el número de videos en la cola hasta observar inestabilidad.
@@ -118,7 +186,7 @@ docker exec producer python producer.py --num-videos 50 --video-file ./assets/du
 ## Conclución:
 El sistema procesó 8.3 videos/min (415 MB/min) bajo carga de 50 videos de 50MB, manteniendo estabilidad operativa con cola procesada completamente sin retrasos. El worker mantuvo recursos moderados (CPU 30-40%, memoria estable) con tiempo de respuesta promedio de 7.2 segundos por video, demostrando eficiencia superior (3.3× más throughput que prueba de 2.5 videos/min).
 
-### 2.2 Carga Aumentada - 100 Videos (50MB)
+### 4.2.4 Carga Aumentada - 100 Videos (50MB)
 ```bash
 docker exec producer python producer.py --num-videos 100 --video-file ./assets/dummy_file_50mb.mp4 --no-wait
 ```
@@ -144,7 +212,7 @@ docker exec producer python producer.py --num-videos 100 --video-file ./assets/d
 ##Conclucón: 
 El sistema procesó 6.7 videos/min (335 MB/min) bajo carga de 100 videos de 50MB, manteniendo estabilidad operativa con procesamiento secuencial exitoso. El worker mantuvo recursos manejables (CPU 50-60%, memoria en niveles aceptables) con tiempo de respuesta promedio de 9 segundos por video, observándose degradación del 20% en throughput vs prueba de 50 videos (de 8.3 a 6.7 videos/min). 
 
-### 2.3 Carga de Saturación - 200 Videos (50MB)
+### 4.2.5 Carga de Saturación - 200 Videos (50MB)
 ```bash
 docker exec producer python producer.py --num-videos 200 --video-file ./assets/dummy_file_50mb.mp4 --no-wait
 ```
@@ -180,7 +248,7 @@ docker exec producer python producer.py --num-videos 200 --video-file ./assets/d
 ##Conclucón: 
 El sistema procesó 7.1 videos/min (355 MB/min) bajo carga de 200 videos de 50MB, alcanzando capacidad máxima efectiva con recursos cerca de los límites (CPU >70%, memoria en niveles críticos). Se observó cola extendida con procesamiento más lento e incremento en latencia de respuesta, identificando el punto de saturación en ~150-180 videos concurrentes, aunque mantuvo throughput similar a prueba anterior (7.1 vs 6.7 videos/min)
 
-## 3. Análisis de Resultados
+## 3. Análisis de Resultados worker
 
 ### Resumen de Métricas
 
