@@ -19,7 +19,7 @@
 ![Cloud watch smoke test 2](https://github.com/user-attachments/assets/53625796-1756-4122-966e-71f300409c2c)
 
 
- ## **Concluciones - Prueba de Sanidad (Smoke Test)**
+ ## **Conclusiónes - Prueba de Sanidad (Smoke Test)**
  
 - En términos generales, la prueba de **smoke test** no presentó cambios significativos con respecto a la terecera entrega. Esto se debe a que, para este escenario, la instancia disponible logra resolver satisfactoriamente las solicitudes entrantes sin requerir escalamiento de la arquitectura.
 
@@ -53,7 +53,7 @@
 <img width="1248" height="591" alt="Captura de pantalla 2025-11-16 220720" src="https://github.com/user-attachments/assets/1d8741bc-cc31-4e6e-bb37-9de21ed64ecc" />
 
     
-## **Concluciones - Prueba de Escalamiento (Ramp-up)**
+## **Conclusiónes - Prueba de Escalamiento (Ramp-up)**
 
 Las pruebas realizadas mediante **ramp-up** con 100 y 200 usuarios concurrentes permitieron observar el comportamiento del Auto Scaling Group no presento errores debido al correcto autoescalamiento de las instancias, llegando a consumir un pico maximo de cpu de 65% y un desenso de forma repentina. 
 
@@ -76,7 +76,7 @@ En la prueba de **ramp-up** de 0 a 300 usuario evidenciamos degradación de serv
 
 
 
-## **Concluciones - Prueba Sostenida**
+## **Conclusiónes - Prueba Sostenida**
 
 Durante la prueba siostenida de 240 usuarios se evidencio un consumo de cpu de 57%, aunque la instancia principal opera cerca de su límite de CPU.
 
@@ -133,7 +133,7 @@ docker exec producer python producer.py --num-videos 20 --video-file ./assets/du
 **Logs del sistema**: Procesamiento exitoso de 20 videos de 50MB sin errores
 **Métricas de throughput**: 2.5 videos/minuto - 125 MB/minuto procesados
 
-## Conclucion:
+## Conclusión:
 El sistema procesó satisfactoriamente 2.5 videos/min (150 videos/hora) bajo carga constante sin que la cola creciera indefinidamente. El worker mantuvo estabilidad operativa con recursos moderados (CPU/memoria) y procesamiento lineal, cumpliendo el objetivo de la prueba: capacidad nominal sostenible de ~2.5 videos/min sin degradación.
 
 ### 4.2.2 Prueba con Video Grande - 10 Videos (100MB)
@@ -161,7 +161,7 @@ docker exec producer python producer.py --num-videos 10 --video-file ./assets/du
 
 **Logs del sistema**: Procesamiento exitoso de 10 videos de 100MB
 **Métricas de throughput**: 1.25 videos/minuto - 125 MB/minuto procesados
-## Conclucion:
+## Conclusión:
 El sistema procesó 1.25 videos/min (125 MB/min) bajo carga de archivos de 100MB, manteniendo estabilidad operativa sin que la cola creciera indefinidamente. Se observó reducción del 50% en throughput de videos vs archivos de 50MB, pero el throughput de datos se mantuvo constante en 125 MB/min, confirmando que el bottleneck es I/O (disco/red). La duración p95 fue de 34.6 segundos, sin fallos registrados. Capacidad nominal sostenible: 1.25 videos/min de 100MB
 
 ## 4.2.3. Pruebas de Saturación (Encontrar el Límite)
