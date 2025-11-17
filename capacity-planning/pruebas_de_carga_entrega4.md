@@ -162,9 +162,13 @@ docker exec producer python producer.py --num-videos 200 --video-file ./assets/d
 - **Identificación del límite**: Sistema alcanza capacidad máxima efectiva
 
 **Capturas del sistema durante la prueba**: Sistema bajo máxima carga sostenida
+
 **Estado de la cola de tareas**: Cola extendida con procesamiento más lento
+
 **Métricas de CPU y memoria**: CPU >70%, Memoria en niveles críticos
+
 **Errores detectados**: Incremento en latencia de respuesta
+
 **Punto de saturación identificado**: ~150-180 videos concurrentes
 
 
