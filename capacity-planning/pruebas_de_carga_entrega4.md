@@ -16,7 +16,8 @@
 
   - **ClaudWatch**
     
-   
+
+
  ## **Concluciones - Prueba de Sanidad (Smoke Test)**
  
 - En términos generales, la prueba de **smoke test** no presentó cambios significativos con respecto a la terecera entrega. Esto se debe a que, para este escenario, la instancia disponible logra resolver satisfactoriamente las solicitudes entrantes sin requerir escalamiento de la arquitectura.
@@ -30,15 +31,19 @@
     
 <img width="1267" height="703" alt="image (29)" src="https://github.com/user-attachments/assets/6ecc9d13-b55c-46cf-b72c-0062f5d75467" />
 
-  - **CloudWatch**
-
+   ![Rump up - Cloudwatch -100 ](https://github.com/user-attachments/assets/36b13e6d-4013-4286-93e6-f2853a155f9d)
+![Rump up - Cloudwatch 2 -100 ](https://github.com/user-attachments/assets/06020d90-2c58-439f-b010-86f12654514f)
+![Rump up - Cloudwatch 3 -100 ](https://github.com/user-attachments/assets/f01df2e7-ca43-45f5-a8fb-3de7d482251e)
+![Rump up - Cloudwatch 4 -100 ](https://github.com/user-attachments/assets/d8d6ff5e-cc9b-43a9-ad84-d9af8fdeffdc)
 
   - **200 Usuarios**
 <img width="1197" height="657" alt="image (30)" src="https://github.com/user-attachments/assets/d5d9b4c9-194d-498a-913f-2ca04d82b0ff" />
 
   - **CloudWatch**
+![Rump up - Cloudwatch 3 -200 ](https://github.com/user-attachments/assets/09322db7-17c1-44ab-b604-8856450b291a)
 
-    
+    ![Rump up - Cloudwatch 2 -200 ](https://github.com/user-attachments/assets/f5ec7e2f-3f42-4beb-99a4-29d1eb87eff8)
+
   - **300 Usuarios**
 <img width="1265" height="480" alt="image (31)" src="https://github.com/user-attachments/assets/80e07081-891b-4b99-a7f7-5f98346dbe3d" />
 
@@ -62,12 +67,17 @@ En la prueba de **ramp-up** de 0 a 300 usuario evidenciamos degradación de serv
 
 - **Evidencias**:
   - **Prueba sostenida**
+    <img width="1265" height="475" alt="image (32)" src="https://github.com/user-attachments/assets/7e638a43-f16c-4725-8716-120e8f87b6ea" />
+
   - **CloudWatch**
+    <img width="1244" height="603" alt="Captura de pantalla 2025-11-16 222216" src="https://github.com/user-attachments/assets/c3d63367-0521-44d5-b590-eb95d653eac7" />
+<img width="1239" height="609" alt="Captura de pantalla 2025-11-16 222427" src="https://github.com/user-attachments/assets/66bace07-3a07-4485-bca8-c4bffd87b2dc" />
+
 
 
 ## **Concluciones - Prueba Sostenida**
 
-
+Durante la prueba siostenida de 240 usuarios se evidencio un consumo de cpu de 57%, aunque la instancia principal opera cerca de su límite de CPU.
 
 
 ### 4.2 Escenario 2: Rendimiento de la Capa Worker 
