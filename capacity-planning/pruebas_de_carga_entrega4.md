@@ -16,6 +16,7 @@
 
   - **ClaudWatch**
     
+![Cloud watch smoke test 2](https://github.com/user-attachments/assets/53625796-1756-4122-966e-71f300409c2c)
 
 
  ## **Concluciones - Prueba de Sanidad (Smoke Test)**
