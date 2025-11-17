@@ -1,3 +1,4 @@
+
 # Pruebas de Carga - Entrega 4
 
 ## 4.1 Escenario 1: Capacidad de la Capa Web (Usuarios Concurrentes)
@@ -395,6 +396,4 @@ El sistema procesó 7.1 videos/min (355 MB/min) bajo carga de 200 videos de 50MB
 
 **Mediano Plazo (Memoria y Concurrencia):**
 - **Incremento de RAM**: Upgrade a 8 GB para soportar 20-30 workers concurrentes por instancia
-
-
 
