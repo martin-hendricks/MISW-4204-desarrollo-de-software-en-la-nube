@@ -78,6 +78,7 @@ docker exec producer python producer.py --num-videos 200 --video-file ./assets/d
 **Evidencias:**
 -  Capturas del sistema durante la prueba
 <img width="1223" height="934" alt="screencapture-us-east-1-console-aws-amazon-ec2-instance-connect-ssh-home-2025-11-16-19_31_27" src="https://github.com/user-attachments/assets/eb6e250a-0d13-490c-8f3d-e0f56f6dd14e" />
+
 <img width="1223" height="1169" alt="screencapture-us-east-1-console-aws-amazon-ec2-home-2025-11-16-19_31_49" src="https://github.com/user-attachments/assets/bd324a69-9a5c-4ca4-8e0e-4c7a4385563b" />
 
 <img width="1223" height="1540" alt="screencapture-us-east-1-console-aws-amazon-cloudwatch-home-2025-11-16-19_59_59" src="https://github.com/user-attachments/assets/32e4732b-80ec-4d01-a120-ea8ab46855f6" />
