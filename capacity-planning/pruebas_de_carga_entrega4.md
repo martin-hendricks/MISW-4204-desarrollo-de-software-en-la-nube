@@ -54,7 +54,8 @@ docker exec producer python producer.py --num-videos 20 --video-file ./assets/du
 **Logs del sistema**: Procesamiento exitoso de 20 videos de 50MB sin errores
 **Métricas de throughput**: 2.5 videos/minuto - 125 MB/minuto procesados
 
-
+## Conclucion:
+El sistema procesó satisfactoriamente 2.5 videos/min (150 videos/hora) bajo carga constante sin que la cola creciera indefinidamente. El worker mantuvo estabilidad operativa con recursos moderados (CPU/memoria) y procesamiento lineal, cumpliendo el objetivo de la prueba: capacidad nominal sostenible de ~2.5 videos/min sin degradación.
 
 ### 1.2 Prueba con Video Grande - 10 Videos (100MB)
 ```bash
@@ -81,6 +82,8 @@ docker exec producer python producer.py --num-videos 10 --video-file ./assets/du
 
 **Logs del sistema**: Procesamiento exitoso de 10 videos de 100MB
 **Métricas de throughput**: 1.25 videos/minuto - 125 MB/minuto procesados
+## Conclucion:
+El sistema procesó 1.25 videos/min (125 MB/min) bajo carga de archivos de 100MB, manteniendo estabilidad operativa sin que la cola creciera indefinidamente. Se observó reducción del 50% en throughput de videos vs archivos de 50MB, pero el throughput de datos se mantuvo constante en 125 MB/min, confirmando que el bottleneck es I/O (disco/red). La duración p95 fue de 34.6 segundos, sin fallos registrados. Capacidad nominal sostenible: 1.25 videos/min de 100MB
 
 ## 2. Pruebas de Saturación (Encontrar el Límite)
 
@@ -112,6 +115,8 @@ docker exec producer python producer.py --num-videos 50 --video-file ./assets/du
 **Métricas de CPU y memoria**: CPU ~30-40%, Memoria estable
 **Tiempo de respuesta promedio**: ~7.2 segundos por video
 
+## Conclución:
+El sistema procesó 8.3 videos/min (415 MB/min) bajo carga de 50 videos de 50MB, manteniendo estabilidad operativa con cola procesada completamente sin retrasos. El worker mantuvo recursos moderados (CPU 30-40%, memoria estable) con tiempo de respuesta promedio de 7.2 segundos por video, demostrando eficiencia superior (3.3× más throughput que prueba de 2.5 videos/min).
 
 ### 2.2 Carga Aumentada - 100 Videos (50MB)
 ```bash
@@ -136,7 +141,8 @@ docker exec producer python producer.py --num-videos 100 --video-file ./assets/d
 **Métricas de CPU y memoria**: CPU ~50-60%, Memoria en niveles aceptables
 **Tiempo de respuesta promedio**: ~9 segundos por video
 
-
+##Conclucón: 
+El sistema procesó 6.7 videos/min (335 MB/min) bajo carga de 100 videos de 50MB, manteniendo estabilidad operativa con procesamiento secuencial exitoso. El worker mantuvo recursos manejables (CPU 50-60%, memoria en niveles aceptables) con tiempo de respuesta promedio de 9 segundos por video, observándose degradación del 20% en throughput vs prueba de 50 videos (de 8.3 a 6.7 videos/min). 
 
 ### 2.3 Carga de Saturación - 200 Videos (50MB)
 ```bash
@@ -171,6 +177,8 @@ docker exec producer python producer.py --num-videos 200 --video-file ./assets/d
 
 **Punto de saturación identificado**: ~150-180 videos concurrentes
 
+##Conclucón: 
+El sistema procesó 7.1 videos/min (355 MB/min) bajo carga de 200 videos de 50MB, alcanzando capacidad máxima efectiva con recursos cerca de los límites (CPU >70%, memoria en niveles críticos). Se observó cola extendida con procesamiento más lento e incremento en latencia de respuesta, identificando el punto de saturación en ~150-180 videos concurrentes, aunque mantuvo throughput similar a prueba anterior (7.1 vs 6.7 videos/min)
 
 ## 3. Análisis de Resultados
 
@@ -272,7 +280,7 @@ docker exec producer python producer.py --num-videos 200 --video-file ./assets/d
 - Optimizar gestión de memoria en workers de Celery
 
 
-### Conclusiones
+## Conclusiones Generales
 
 **Capacidad máxima del sistema:**
 - El sistema puede procesar de manera eficiente hasta 150 videos concurrentes
