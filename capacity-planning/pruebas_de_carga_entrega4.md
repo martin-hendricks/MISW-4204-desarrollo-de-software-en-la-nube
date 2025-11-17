@@ -194,7 +194,7 @@ docker exec producer python producer.py --num-videos 50 --video-file ./assets/du
 **Métricas de CPU y memoria**: CPU ~30-40%, Memoria estable
 **Tiempo de respuesta promedio**: ~7.2 segundos por video
 
-## Conclución:
+## Conclusión:
 El sistema procesó 8.3 videos/min (415 MB/min) bajo carga de 50 videos de 50MB, manteniendo estabilidad operativa con cola procesada completamente sin retrasos. El worker mantuvo recursos moderados (CPU 30-40%, memoria estable) con tiempo de respuesta promedio de 7.2 segundos por video, demostrando eficiencia superior (3.3× más throughput que prueba de 2.5 videos/min).
 
 ### 4.2.4 Carga Aumentada - 100 Videos (50MB)
