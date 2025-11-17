@@ -220,7 +220,7 @@ docker exec producer python producer.py --num-videos 100 --video-file ./assets/d
 **Métricas de CPU y memoria**: CPU ~50-60%, Memoria en niveles aceptables
 **Tiempo de respuesta promedio**: ~9 segundos por video
 
-##Conclucón: 
+##Conclucion: 
 El sistema procesó 6.7 videos/min (335 MB/min) bajo carga de 100 videos de 50MB, manteniendo estabilidad operativa con procesamiento secuencial exitoso. El worker mantuvo recursos manejables (CPU 50-60%, memoria en niveles aceptables) con tiempo de respuesta promedio de 9 segundos por video, observándose degradación del 20% en throughput vs prueba de 50 videos (de 8.3 a 6.7 videos/min). 
 
 ### 4.2.5 Carga de Saturación - 200 Videos (50MB)
@@ -256,7 +256,7 @@ docker exec producer python producer.py --num-videos 200 --video-file ./assets/d
 
 **Punto de saturación identificado**: ~150-180 videos concurrentes
 
-##Conclucón: 
+##Conclucion: 
 El sistema procesó 7.1 videos/min (355 MB/min) bajo carga de 200 videos de 50MB, alcanzando capacidad máxima efectiva con recursos cerca de los límites (CPU >70%, memoria en niveles críticos). Se observó cola extendida con procesamiento más lento e incremento en latencia de respuesta, identificando el punto de saturación en ~150-180 videos concurrentes, aunque mantuvo throughput similar a prueba anterior (7.1 vs 6.7 videos/min)
 
 ## 3. Análisis de Resultados worker
