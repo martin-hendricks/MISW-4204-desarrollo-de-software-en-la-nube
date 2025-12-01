@@ -88,7 +88,7 @@ Durante la prueba siostenida de 240 usuarios se evidencio un consumo de cpu de 5
 - **Nombre**: worker-cpu-scale-up
 - **Tipo de política**: Escalado de seguimiento de destino
 - **Estado**: Habilitado
-- **Métrica objetivo**: Utilización promedio de la CPU en 60%
+- **Métrica objetivo**: Utilización promedio de la CPU
 - **Acción de escalado**: Agregar o eliminar unidades de capacidad según sea necesario
 - **Tiempo de preparación**: 60 segundos para que las instancias se incluyan en la métrica
 - **Escalado descendente**: Habilitado
