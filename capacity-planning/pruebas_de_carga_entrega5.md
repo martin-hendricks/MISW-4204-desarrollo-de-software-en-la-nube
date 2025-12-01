@@ -1,85 +1,106 @@
 
 # Pruebas de Carga - Entrega 5
 
-## 4.1 Escenario 1: Capacidad de la Capa Web (Usuarios Concurrentes)
+## 1 Escenario 1: Capacidad de la Capa Web (Usuarios Concurrentes)
 
-### 4.1.1 Escenarios de Prueba
+### 1.1 Escenarios de Prueba
 
-#### 4.1.2.1 **Prueba de Sanidad (Smoke Test)**
+#### 1.2.1 **Prueba de Sanidad (Smoke Test)**
 - **Usuarios**: 5 usuarios concurrentes
 - **Duración**: 1 minuto
 - **Objetivo**: Validar que el sistema responde correctamente y la telemetría está activa
 - **Comando**: en la instancia de AWS `docker exec jmeter /bin/bash -c "jmeter -n -t /scripts/smoke_test.jmx -l /scripts/smoke_results.jtl"`
 - **Evidencias**: 
-  - **Smoke Test**
-    
-<img width="1080" height="264" alt="image (28)" src="https://github.com/user-attachments/assets/70103f02-3131-42b3-ad08-a04281768027" />
 
-  - **ClaudWatch**
-    
-![Cloud watch smoke test 2](https://github.com/user-attachments/assets/53625796-1756-4122-966e-71f300409c2c)
+<img width="1237" height="648" alt="image (34)" src="https://github.com/user-attachments/assets/edbeaa66-7000-4cdc-93c3-627a3d790233" />
+<img width="1241" height="605" alt="image (35)" src="https://github.com/user-attachments/assets/aab90f33-ba3c-4f05-9d7a-7b94b589d0f8" />
+<img width="1252" height="605" alt="image (36)" src="https://github.com/user-attachments/assets/87ceef95-075f-4625-85d3-06c983459608" />
+<img width="1237" height="653" alt="image (37)" src="https://github.com/user-attachments/assets/d60f8876-4e0c-4794-89ca-c8e918e30ed7" />
+<img width="1243" height="647" alt="image (38)" src="https://github.com/user-attachments/assets/e2b4fa0d-2b2b-483c-af4d-81589eb3759a" />
+<img width="1255" height="657" alt="image (39)" src="https://github.com/user-attachments/assets/1f371dca-ca2d-454a-b70b-1123eb5b39b9" />
 
+Métricas Observadas
+- **Duración total de la prueba**: Aproximadamente 15 minutos (16:15 - 16:30)
+- **Requests totales procesados**: 423 requests
+- **Throughput observado**:
+- **Pico máximo**: 417 requests/minuto (16:40 UTC)
+- **Promedio durante carga activa**: ~300-400 requests/minuto
+- **Latencia p95**: 575.2 milisegundos (575ms) al final de la prueba
+- **Patrón de latencia**: Crecimiento lineal desde ~0ms hasta 575ms durante los 15 minutos
+- **Tasa de éxito**:
+  - **Status 201 (Created)**: 419 requests (99.05%)
+  - **Status 200 (OK)**: 4 requests (0.95%)
+- **CPU**: Pico máximo 22.3%, promedio ~22.4% (muy baja)
+- **Memoria**: Estable en 47.6% promedio, mínimo 47.65%
+- **Comportamiento de carga**:
+- **Rampa gradual** de 0 a 417 requests/minuto en ~13 minutos
 
  ## **Conclusiónes - Prueba de Sanidad (Smoke Test)**
  
-- En términos generales, la prueba de **smoke test** no presentó cambios significativos con respecto a la terecera entrega. Esto se debe a que, para este escenario, la instancia disponible logra resolver satisfactoriamente las solicitudes entrantes sin requerir escalamiento de la arquitectura.
+ El sistema backend demostró capacidad para manejar 423 requests con una tasa de éxito del 99.05% (419 requests exitosos con status 201). El patrón de carga gradual permitió observar el comportamiento del sistema bajo presión incremental, alcanzando un pico sostenido de 417 requests/minuto. 
+ 
+ La latencia p95 de 575ms al final de la prueba, con un patrón de crecimiento lineal desde 0ms, indica que el sistema experimenta degradación progresiva del tiempo de respuesta a medida que aumenta la carga acumulada. Este comportamiento sugiere posible acumulación de tareas en cola o procesamiento secuencial que impacta los tiempos de respuesta bajo carga sostenida.
 
+La utilización de CPU extremadamente baja (22.3% máximo) contrasta significativamente con las pruebas de procesamiento de video (99.96%), indicando que el backend API no está limitado por CPU. La memoria estable en 47.6% sugiere un consumo constante sin fugas evidentes. Esta sub-utilización de recursos computacionales con latencias crecientes apunta a que el cuello de botella probablemente reside en operaciones de I/O (base de datos, almacenamiento, red) o en la arquitectura de procesamiento de requests.
 --------------------------------------------------------------------------------------------------------------------------------------------------
-#### 4.1.2.2 **Prueba de Escalamiento (Ramp-up)**
+#### 1.2.2 **Prueba de Escalamiento (Ramp-up)**
 - **Estrategia**: Iniciar en 0 usuarios y aumentar gradualmente hasta X usuarios en 3 minutos, mantener 5 minutos
 - **Comando**: en la instancia de AWS `docker exec jmeter /bin/bash -c "jmeter -n -t /scripts/ramp_up_test.jmx -l /scripts/ramp_up_X_users_results.jtl -Jusers=X"`
 - **Evidencias**: 
   - **100 Usuarios**
     
-<img width="1267" height="703" alt="image (29)" src="https://github.com/user-attachments/assets/6ecc9d13-b55c-46cf-b72c-0062f5d75467" />
-
-   ![Rump up - Cloudwatch -100 ](https://github.com/user-attachments/assets/36b13e6d-4013-4286-93e6-f2853a155f9d)
-![Rump up - Cloudwatch 2 -100 ](https://github.com/user-attachments/assets/06020d90-2c58-439f-b010-86f12654514f)
-![Rump up - Cloudwatch 3 -100 ](https://github.com/user-attachments/assets/f01df2e7-ca43-45f5-a8fb-3de7d482251e)
-![Rump up - Cloudwatch 4 -100 ](https://github.com/user-attachments/assets/d8d6ff5e-cc9b-43a9-ad84-d9af8fdeffdc)
+<img width="1245" height="655" alt="image (34)" src="https://github.com/user-attachments/assets/4b9c83f3-743b-49a4-81a5-cbeb13bab3d1" />
+<img width="1244" height="641" alt="image (35)" src="https://github.com/user-attachments/assets/c874fb54-2b21-48ad-b3d4-03e9ce30bdc7" />
+<img width="1251" height="649" alt="image (36)" src="https://github.com/user-attachments/assets/cd59d90c-ef45-49c0-8187-244625676b28" />
+<img width="1254" height="608" alt="image (37)" src="https://github.com/user-attachments/assets/abd3ca28-8ecc-4096-9c11-c704ed93473d" />
+<img width="1244" height="648" alt="image (38)" src="https://github.com/user-attachments/assets/b278d3cc-f27d-4d4f-8297-ce4de971bc88" />
+<img width="1255" height="656" alt="image (39)" src="https://github.com/user-attachments/assets/543fd46f-0876-462a-854a-968e9ccbc53b" />
+<img width="1251" height="649" alt="image (40)" src="https://github.com/user-attachments/assets/4e059948-5f8b-4db6-8dfb-6572397b8ac7" />
 
   - **200 Usuarios**
-<img width="1197" height="657" alt="image (30)" src="https://github.com/user-attachments/assets/d5d9b4c9-194d-498a-913f-2ca04d82b0ff" />
-
-  - **CloudWatch**
-![Rump up - Cloudwatch 3 -200 ](https://github.com/user-attachments/assets/09322db7-17c1-44ab-b604-8856450b291a)
-
-    ![Rump up - Cloudwatch 2 -200 ](https://github.com/user-attachments/assets/f5ec7e2f-3f42-4beb-99a4-29d1eb87eff8)
-
-  - **300 Usuarios**
-<img width="1265" height="480" alt="image (31)" src="https://github.com/user-attachments/assets/80e07081-891b-4b99-a7f7-5f98346dbe3d" />
-
-  - **CloudWatch**
-<img width="1232" height="582" alt="Captura de pantalla 2025-11-16 220137" src="https://github.com/user-attachments/assets/648bd57e-5d37-40ad-8c9f-b37d4e8fb720" />
-<img width="1248" height="591" alt="Captura de pantalla 2025-11-16 220720" src="https://github.com/user-attachments/assets/1d8741bc-cc31-4e6e-bb37-9de21ed64ecc" />
-
     
+<img width="1252" height="652" alt="image (34)" src="https://github.com/user-attachments/assets/97635e80-1886-48ad-bbbd-4690da7fc103" />
+<img width="1250" height="655" alt="image (35)" src="https://github.com/user-attachments/assets/c16b62f9-58ff-4737-91c8-d12a8d25cef3" />
+<img width="1245" height="653" alt="image (36)" src="https://github.com/user-attachments/assets/bfa4ba77-1f90-496d-9f85-0f9e88e1d7de" />
+<img width="1251" height="660" alt="image (37)" src="https://github.com/user-attachments/assets/54ac3d75-1a00-4918-9fa5-6e29f4738657" />
+<img width="1251" height="652" alt="image (38)" src="https://github.com/user-attachments/assets/512d9ab5-0f04-4aed-9926-6dbdbadeb296" />
+
+  - **400 Usuarios**
+
+<img width="2036" height="580" alt="image (34)" src="https://github.com/user-attachments/assets/f9bbae9b-359f-4bfb-8657-20c1d8897e3e" />
+<img width="2040" height="584" alt="image (35)" src="https://github.com/user-attachments/assets/7be3361e-5974-4b0a-9941-1136a4d9720f" />
+<img width="2046" height="742" alt="image (36)" src="https://github.com/user-attachments/assets/e69ebecc-e519-4cf6-91cf-92022c9ed9ed" />
+<img width="2042" height="750" alt="image (37)" src="https://github.com/user-attachments/assets/cb2f9fee-6e3f-4ff5-9189-c93fc0145eeb" />
+<img width="1692" height="666" alt="image (38)" src="https://github.com/user-attachments/assets/56d84666-9c26-42ef-a8a2-f6baaa6f9d18" />
+<img width="1686" height="660" alt="image (39)" src="https://github.com/user-attachments/assets/29c06d8e-8bd8-4370-b019-d6d4d14d6600" />
+
+ - **1500 Usuarios**
+ - 
+<img width="1517" height="667" alt="image (34)" src="https://github.com/user-attachments/assets/0d3b4f67-bed2-4d6b-bade-34ce11eceaeb" />
+<img width="2040" height="580" alt="image (35)" src="https://github.com/user-attachments/assets/d2861914-f496-485d-b49c-7dbad2fcd2a4" />
+<img width="2052" height="680" alt="image (36)" src="https://github.com/user-attachments/assets/2ee6d577-ecfa-4db1-a238-4fb8c6cc2d92" />
+<img width="2056" height="764" alt="image (37)" src="https://github.com/user-attachments/assets/2e055a3f-f872-4687-8cf7-855572b1d604" />
+<img width="2048" height="614" alt="image (38)" src="https://github.com/user-attachments/assets/71f49113-71e7-4211-a6e7-455ca403e988" />
+<img width="1688" height="658" alt="image (39)" src="https://github.com/user-attachments/assets/b0052538-57f8-448f-a83c-d08dddfefab5" />
+<img width="1692" height="656" alt="image (40)" src="https://github.com/user-attachments/assets/4c5a3e0e-54d2-4789-b777-8e53fa302efa" />
+
+
 ## **Conclusiónes - Prueba de Escalamiento (Ramp-up)**
 
-Las pruebas realizadas mediante **ramp-up** con 100 y 200 usuarios concurrentes permitieron observar el comportamiento del Auto Scaling Group no presento errores debido al correcto autoescalamiento de las instancias, llegando a consumir un pico maximo de cpu de 65% y un desenso de forma repentina. 
-
-En la prueba de **ramp-up** de 0 a 300 usuario evidenciamos degradación del servicio debido a que tuvo llego a un pico máximo de 75% en la instancia principal y cuando se encontraba escalando evidenciamos que la siguiente instancia el balanceador verificaba que estaba lista y le enviaba las peticiones pero los servicios internos como el docker y el aplicativo aún se encontraban levantando por lo cual la instancia ec2 comenzo a devolver 404, para próximas entrergas vamos a revisar a fondo si esta hipótesis es la acertada.
 
 ------------------------------------------------------------------------------------------------------------------------------------------
-#### 4.1.2.3 **Prueba Sostenida**
+#### 1.2.3 **Prueba Sostenida**
 
-- **Usuarios**: Volvemos a evidenciar que de la prueba ramp-uop al llegar a los 300 usduarios tenemos degradacion del servicio por lo que al calcular el 80% de la capacidad con 300 usuarios tenemos un valor de 240 usuarios para realizar la prueba sostenida
+- **Usuarios**: Se calcula que de 1500 usuarios de la prueba ramp-up el 80% de la capacidad son 1200 usuarios por lo cual procedemos a realizar la prueba sostenida con esta cantidad de usuarios
 - **Duración**: 5 minutos
 - **Objetivo**: Confirmar estabilidad del sistema bajo carga sostenida
 
 - **Evidencias**:
-  - **Prueba sostenida**
-    <img width="1265" height="475" alt="image (32)" src="https://github.com/user-attachments/assets/7e638a43-f16c-4725-8716-120e8f87b6ea" />
-
-  - **CloudWatch**
-    <img width="1244" height="603" alt="Captura de pantalla 2025-11-16 222216" src="https://github.com/user-attachments/assets/c3d63367-0521-44d5-b590-eb95d653eac7" />
-<img width="1239" height="609" alt="Captura de pantalla 2025-11-16 222427" src="https://github.com/user-attachments/assets/66bace07-3a07-4485-bca8-c4bffd87b2dc" />
 
 
 
 ## **Conclusiónes - Prueba Sostenida**
 
-Durante la prueba siostenida de 240 usuarios se evidencio un consumo de cpu de 57%, aunque la instancia principal opera cerca de su límite de CPU.
 
 
 # Escenario 2: Rendimiento de la Capa Worker 
