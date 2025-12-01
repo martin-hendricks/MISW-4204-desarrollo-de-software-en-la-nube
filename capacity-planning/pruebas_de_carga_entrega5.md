@@ -260,23 +260,24 @@ docker exec producer python producer.py --num-videos 100 --video-file ./assets/d
 - **Comportamiento de CloudWatch**: Métricas estables sin picos críticos
 - **Utilización de recursos**: Incremento notable pero manejable
 - **Estado de la cola de tareas**: Procesamiento secuencial exitoso
--**Métricas de CPU y memoria**: CPU ~50-60%, Memoria en niveles aceptables
--**Tiempo de respuesta promedio**: ~9 segundos por video
+- **Métricas de CPU y memoria**: CPU ~50-60%, Memoria en niveles aceptables
+- **Tiempo de respuesta promedio**: ~9 segundos por video
 
 **Resultados Entrega Actual (5):**
--**Tiempo de ejecución**: Aproximadamente 25 minutos (03:05 - 03:30)
--**Throughput observado**: 4.0 videos por minuto 
--**Impacto del tamaño**: Archivos de ~555MB promedio (según VideoFileSize)
--**CPU**: Máximo 99.96%, promedio ~94.4%, sostenido en ~100% durante procesamiento activo
--**Memoria**: Máximo 24%, promedio ~23%, mínimo ~21.7%
--**Red RX**: Pico de 25.1M bytes/segundo, promedio 14.2M bytes/segundo
--**Comportamiento del sistema**:Procesamiento continuo sostenido entre 03:10-03:25
--**Duración de procesamiento p95**: ~34.4 segundos por tarea
--**Escalabilidad**: Sistema procesó carga 10× mayor con archivos 1.66× más grandes que ejecución anterior
-  -Métricas de throughput**:
-  -4.0 videos/minuto
-  -~555MB/minuto procesados
--**Tareas del servicio**: 6 tareas corriendo simultáneamente (RunningTaskCount)
+
+- **Tiempo de ejecución**: Aproximadamente 25 minutos (03:05 - 03:30)
+- **Throughput observado**: 4.0 videos por minuto 
+- **Impacto del tamaño**: Archivos de ~555MB promedio (según VideoFileSize)
+- **CPU**: Máximo 99.96%, promedio ~94.4%, sostenido en ~100% durante procesamiento activo
+- **Memoria**: Máximo 24%, promedio ~23%, mínimo ~21.7%
+- **Red RX**: Pico de 25.1M bytes/segundo, promedio 14.2M bytes/segundo
+- **Comportamiento del sistema**:Procesamiento continuo sostenido entre 03:10-03:25
+- **Duración de procesamiento p95**: ~34.4 segundos por tarea
+- **Escalabilidad**: Sistema procesó carga 10× mayor con archivos 1.66× más grandes que ejecución anterior
+  - Métricas de throughput**:
+  - 4.0 videos/minuto
+  - ~555MB/minuto procesados
+- **Tareas del servicio**: 6 tareas corriendo simultáneamente (RunningTaskCount)
 
 ##Conclusión: 
 
@@ -286,7 +287,7 @@ docker exec producer python producer.py --num-videos 100 --video-file ./assets/d
 - Archivos resultaron en:
   *Throughput de videos 68.8% menor (1.25 → 4.0 no compensa el volumen)
   *Pero throughput de datos 17.76× mayor (125 → 2,220 MB/min)
--La duración p95 de 34.4s indica que archivos grandes dominan el tiempo de procesamiento
+- La duración p95 de 34.4s indica que archivos grandes dominan el tiempo de procesamiento
 
 El sistema demuestra excelente escalabilidad horizontal (200 videos procesados exitosamente) pero enfrenta limitaciones de CPU que degradan el throughput 40% vs la referencia con archivos más pequeños. La arquitectura es sólida, pero requiere ajustes de capacidad para manejar cargas de archivos grandes de manera eficiente. El costo/beneficio de escalar verticalmente (instancias más potentes) vs horizontalmente (más instancias) debe evaluarse según el patrón de carga esperado.
 
