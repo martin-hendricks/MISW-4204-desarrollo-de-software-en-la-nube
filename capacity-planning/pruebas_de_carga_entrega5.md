@@ -79,7 +79,6 @@ Métricas Observadas
 
  - **1500 Usuarios**
  - 
-<img width="1517" height="667" alt="image (34)" src="https://github.com/user-attachments/assets/0d3b4f67-bed2-4d6b-bade-34ce11eceaeb" />
 <img width="2040" height="580" alt="image (35)" src="https://github.com/user-attachments/assets/d2861914-f496-485d-b49c-7dbad2fcd2a4" />
 <img width="2052" height="680" alt="image (36)" src="https://github.com/user-attachments/assets/2ee6d577-ecfa-4db1-a238-4fb8c6cc2d92" />
 <img width="2056" height="764" alt="image (37)" src="https://github.com/user-attachments/assets/2e055a3f-f872-4687-8cf7-855572b1d604" />
