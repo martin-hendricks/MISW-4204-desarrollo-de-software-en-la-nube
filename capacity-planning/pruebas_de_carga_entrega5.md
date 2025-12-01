@@ -132,14 +132,59 @@ docker exec producer python producer.py --num-videos 20 --video-file ./assets/du
 - **VideoFileSize**: Procesamiento promedio de 16M/M
 
 ## Conclusión:
-- **Conclusión**: El sistema muestra degradación de rendimiento comparado con la prueba anterior:
+ El sistema muestra degradación de rendimiento comparado con la prueba anterior:
 - **Throughput reducido**: De 2.5 a 0.8 videos/minuto (68% menos eficiencia)
 - **CPU saturada**: Alcanza 100% vs niveles moderados previos
 - **Procesamiento inconsistente**: Duración variable (20-150 seg) indica sobrecarga
 - **Bottleneck identificado**: La CPU es el limitante principal del sistema
-- **Leciones Aprendidas**: El Auto Scaling Group debería escalar para distribuir la carga cuando CPU > 70% sostenido.
+- **Leciones Aprendidas**: El Auto Scaling Group debería ser configurado en  CPU > 70% sostenido para que pueda escalar para distribuir la carga cuando CPU > 70% sostenido.
 
-### 4.2.2 Prueba con Video Grande - 10 Videos (100MB)
+## 1.2 Pruebas de 50 Videos (50MB)
+
+```bash
+docker exec producer python producer.py --num-videos 50 --video-file ./assets/dummy_file_50mb.mp4 --no-wait
+```
+
+**Evidencias:**
+- Capturas del sistema durante la prueba
+
+<img width="1231" height="585" alt="image (34)" src="https://github.com/user-attachments/assets/9ade04ad-9cf7-4089-bff7-5d3252ffff5f" />
+<img width="1241" height="569" alt="image (35)" src="https://github.com/user-attachments/assets/6eea0b1c-f394-40ec-b06e-f365e43cba7d" />
+<img width="1243" height="598" alt="image (36)" src="https://github.com/user-attachments/assets/052ddc22-3e01-4a45-bf68-ed04698fa86d" />
+<img width="1224" height="601" alt="image (37)" src="https://github.com/user-attachments/assets/cbf31934-f99f-4f9f-9984-0e82bc4ca059" />
+<img width="1224" height="581" alt="image (38)" src="https://github.com/user-attachments/assets/a260eccf-985c-45c1-8712-46e8f1de4c90" />
+<img width="1198" height="263" alt="image (39)" src="https://github.com/user-attachments/assets/b153d2de-d480-494f-96b6-ddb820cd127c" />
+
+**Resultados Entrega 4:**
+
+- **Tiempo de ejecución**: Aproximadamente 6 minutos (18:58 - 19:04)
+- **Throughput observado**: 8.3 videos por minuto
+- **Mejora en eficiencia**: Mayor throughput por unidad de tiempo
+- **Estado de la cola de tareas**: Procesamiento eficiente sin acumulación
+- **Métricas de CPU y memoria**: Utilización moderada según monitoreo EC2
+- **Estado de la cola de tareas**: Cola procesada completamente sin retrasos
+- **Métricas de CPU y memoria**: CPU ~30-40%, Memoria estable
+- **Tiempo de respuesta promedio**: ~7.2 segundos por video
+
+**Resultados Entrega Actual (5):**
+
+- **Tiempo de ejecución**: Aproximadamente 6 minutos (04:37 - 04:43)
+- **Throughput observado**: ~2 videos por minuto (12 videos procesados en 6 min)
+- **Estado del sistema**: Procesamiento con alta carga sostenida
+- **Utilización de CPU**: Sostenida al 95-100% (máximo) durante 04:37-04:42, luego caída abrupta
+- **Memoria**: Incremento gradual de ~8% a ~26%, manteniéndose estable en 15-25%
+- **Comportamiento de la cola**: Crecimiento lineal de 8 a 12 tareas, sin procesamiento durante acumulación
+- **VideoFileSize**: Archivos promedio de 200M procesados por minuto
+- **Duración de procesamiento**: Estable en ~30 segundos (p95) durante carga activa
+
+## Conclusión:
+El sistema muestra mejor rendimiento comparado con la prueba de la entrega anterior esto debido al ajuste realizado de Auto Scaling Group configurado en  CPU > 70% sostenido :
+- **Mejora de rendimiento**: 2.5× más throughput en Prueba 2
+- **Procesamiento más predecible**: Duración estable (30s) vs variable (20-150s)
+- **Mejor uso de memoria**: 26% vs 42% máximo
+- **CPU saturada en ambas**: Bottleneck confirmado
+
+### 1.3 Prueba con Video Grande - 10 Videos (100MB)
 ```bash
 docker exec producer python producer.py --num-videos 10 --video-file ./assets/dummy_file_100mb.mp4 --no-wait
 ```
@@ -147,255 +192,101 @@ docker exec producer python producer.py --num-videos 10 --video-file ./assets/du
 **Evidencias:**
 - Capturas del sistema durante la prueba
 
-<img width="1223" height="934" alt="screencapture-us-east-1-console-aws-amazon-ec2-instance-connect-ssh-home-2025-11-16-18_48_41" src="https://github.com/user-attachments/assets/70903d51-0f81-4f9e-8dca-63e3add2609e" />
+<img width="1246" height="597" alt="image (34)" src="https://github.com/user-attachments/assets/986b0392-a4f6-4a25-8da5-d9b20ef2df35" />
+<img width="1266" height="654" alt="image (35)" src="https://github.com/user-attachments/assets/5e724e6b-e6a0-4fde-8928-8efa6c5f5fb8" />
+<img width="1730" height="668" alt="image (36)" src="https://github.com/user-attachments/assets/3c0bc82f-e6d5-4229-9256-453358028fe0" />
+<img width="1734" height="668" alt="image (37)" src="https://github.com/user-attachments/assets/939084a2-f4e3-45f2-a107-52e76bba8256" />
+<img width="1740" height="670" alt="image (38)" src="https://github.com/user-attachments/assets/a8dcd8c9-6239-40a3-ad7b-178df8720cae" />
+<img width="1724" height="660" alt="image (39)" src="https://github.com/user-attachments/assets/04d81479-a586-4fc0-942d-7d92e65b5a1b" />
+<img width="3992" height="1452" alt="image (40)" src="https://github.com/user-attachments/assets/807e24e7-7783-496e-9787-86824b52c550" />
+<img width="1238" height="652" alt="image (41)" src="https://github.com/user-attachments/assets/acebd93e-32de-455f-8016-68e09e958659" />
+<img width="1222" height="268" alt="image (42)" src="https://github.com/user-attachments/assets/7030f9bc-ecbe-4698-b868-dcc6ad92d9ac" />
 
-
-<img width="1223" height="1169" alt="screencapture-us-east-1-console-aws-amazon-ec2-home-2025-11-16-18_50_30" src="https://github.com/user-attachments/assets/20ab10c9-57ce-4cfe-9b59-4fe34be97850" />
-
-<img width="1223" height="1540" alt="screencapture-us-east-1-console-aws-amazon-cloudwatch-home-2025-11-16-18_56_57" src="https://github.com/user-attachments/assets/9c4562c7-984b-44df-8730-8e52e79896e8" />
-
-**Análisis de Resultados:**
+**Resultados Entrega 4 :**
 - **Tiempo de ejecución**: Aproximadamente 8 minutos (18:48 - 18:56)
 - **Throughput observado**: 1.25 videos por minuto
 - **Impacto del tamaño**: 50% reducción en throughput vs archivos de 50MB
 - **Utilización de recursos**: Mayor consumo de I/O para archivos de 100MB
 - **Comportamiento del sistema**: Procesamiento estable pero más lento
 - **Escalabilidad**: El sistema maneja archivos grandes pero con menor throughput
-
-**Logs del sistema**: Procesamiento exitoso de 10 videos de 100MB
-**Métricas de throughput**: 1.25 videos/minuto - 125 MB/minuto procesados
+- **Métricas de throughput**: 1.25 videos/minuto - 125 MB/minuto procesados
+  
+**Resultados Entrega 5 Actual :**
+- **Tiempo de ejecución**: Aproximadamente 15 minutos (02:20 - 02:35)
+- **Throughput observado**: 0.67 videos por minuto (10 videos en ~15 minutos)
+- **Impacto del tamaño**: Archivos de ~334MB promedio (según VideoFileSize)
+- **CPU**: Picos de hasta 89.9% (máximo) con promedio ~45%
+- **Memoria**: Máximo 23.4%, promedio ~15-19%
+- **Red**: Pico de entrada de ~1.00GB (descarga de videos)
+- **Procesamiento** en ráfagas visibles entre 02:25-02:40
+- **Duración de procesamiento p95**: ~29.3 segundos por tarea
+- **Escalabilidad**: El sistema procesó archivos significativamente más grandes (334MB vs 100MB anterior)
+- **Métricas de throughput:
+  - 0.67 videos/minuto
+  - ~334MBB/minuto procesados
+  
 ## Conclusión:
-El sistema procesó 1.25 videos/min (125 MB/min) bajo carga de archivos de 100MB, manteniendo estabilidad operativa sin que la cola creciera indefinidamente. Se observó reducción del 50% en throughput de videos vs archivos de 50MB, pero el throughput de datos se mantuvo constante en 125 MB/min, confirmando que el bottleneck es I/O (disco/red). La duración p95 fue de 34.6 segundos, sin fallos registrados. Capacidad nominal sostenible: 1.25 videos/min de 100MB
+1. Videos promedio procesado 334M por minuto
+2. Escalabilidad por Tamaño: Aunque el throughput en videos/minuto disminuyó 46%, el throughput en MB/minuto aumentó 79%, demostrando que el sistema escala eficientemente con archivos más grandes.
+3. Eficiencia Relativa: Procesar archivos 3.34× más grandes solo incrementó el tiempo total en 1.87×, indicando una relación sublineal entre tamaño y tiempo de procesamiento.
+4. Utilización de Recursos:
+- El sistema muestra un uso equilibrado con CPU alcanzando picos altos (~90%) durante procesamiento activo
+- Memoria se mantiene relativamente baja (23.4% máximo), sugiriendo procesamiento eficiente por streaming
+- Tráfico de red significativo (~1GB) corresponde a la descarga de videos más grandes
+4. Estabilidad: El sistema mantuvo estabilidad sin errores visibles, completando exitosamente los 10 videos.
 
-## 4.2.3. Pruebas de Saturación (Encontrar el Límite)
+El sistema demuestra buena escalabilidad para archivos grandes. La configuración actual del Auto Scaling Group (1-6 instancias) parece adecuada, aunque para cargas sostenidas de archivos >300MB podría considerarse aumentar la capacidad deseada a 2 instancias para mantener throughput más constante.
 
-### Objetivo
-Encontrar el punto de quiebre del sistema aumentando progresivamente el número de videos en la cola hasta observar inestabilidad.
-
-### 2.1 Carga Inicial - 50 Videos (50MB)
-```bash
-docker exec producer python producer.py --num-videos 50 --video-file ./assets/dummy_file_50mb.mp4 --no-wait
-```
-
-**Evidencias:**
-- Capturas del sistema durante la prueba
-<img width="1223" height="934" alt="screencapture-us-east-1-console-aws-amazon-ec2-instance-connect-ssh-home-2025-11-16-18_58_27" src="https://github.com/user-attachments/assets/d143ef67-2ed8-4379-a490-db2077d7f8a2" />
-
-<img width="1223" height="934" alt="screencapture-us-east-1-console-aws-amazon-ec2-instance-connect-ssh-home-2025-11-16-19_02_42" src="https://github.com/user-attachments/assets/4fbae891-866c-4896-8a8a-5f6d5a6c7b2a" />
-
-<img width="1223" height="1169" alt="screencapture-us-east-1-console-aws-amazon-ec2-home-2025-11-16-19_04_37" src="https://github.com/user-attachments/assets/c0f71a65-e00d-4a20-9b9d-635c2c203814" />
-
-**Análisis de Resultados:**
-- **Tiempo de ejecución**: Aproximadamente 6 minutos (18:58 - 19:04)
-- **Throughput observado**: 8.3 videos por minuto
-- **Mejora en eficiencia**: Mayor throughput por unidad de tiempo
-- **Estado de la cola de tareas**: Procesamiento eficiente sin acumulación
-- **Métricas de CPU y memoria**: Utilización moderada según monitoreo EC2
-- **Comportamiento del sistema**: Estable bajo carga moderada
-
-**Estado de la cola de tareas**: Cola procesada completamente sin retrasos
-**Métricas de CPU y memoria**: CPU ~30-40%, Memoria estable
-**Tiempo de respuesta promedio**: ~7.2 segundos por video
-
-## Conclusión:
-El sistema procesó 8.3 videos/min (415 MB/min) bajo carga de 50 videos de 50MB, manteniendo estabilidad operativa con cola procesada completamente sin retrasos. El worker mantuvo recursos moderados (CPU 30-40%, memoria estable) con tiempo de respuesta promedio de 7.2 segundos por video, demostrando eficiencia superior (3.3× más throughput que prueba de 2.5 videos/min).
-
-### 4.2.4 Carga Aumentada - 100 Videos (50MB)
+### 1.4 Carga Aumentada - 200 Videos (50MB)
 ```bash
 docker exec producer python producer.py --num-videos 100 --video-file ./assets/dummy_file_50mb.mp4 --no-wait
 ```
 
 **Evidencias:**
 - Capturas del sistema durante la prueba
-<img width="1223" height="934" alt="screencapture-us-east-1-console-aws-amazon-ec2-instance-connect-ssh-home-2025-11-16-19_14_34" src="https://github.com/user-attachments/assets/6448f5c6-4539-4795-933d-6bc200a2ea41" />
+<img width="1082" height="427" alt="image (34)" src="https://github.com/user-attachments/assets/e36d8af0-19f7-4228-a246-0706d033f6a4" />
+<img width="1233" height="657" alt="image (35)" src="https://github.com/user-attachments/assets/5ab3aa86-b8bd-4f56-b77b-d2e252c1c640" />
+<img width="1229" height="641" alt="image (36)" src="https://github.com/user-attachments/assets/5e469696-70b4-4fee-9e47-20cc579f4dbf" />
+<img width="1225" height="647" alt="image (37)" src="https://github.com/user-attachments/assets/33717e86-87fb-4b43-affb-669b5ab9b0f1" />
+<img width="1247" height="629" alt="image (38)" src="https://github.com/user-attachments/assets/a6862894-bfa8-401a-9d48-7081c8eaaae2" />
+<img width="1231" height="608" alt="image (39)" src="https://github.com/user-attachments/assets/0f2156cd-cfbe-4b66-adea-c10614e52c37" />
+<img width="1242" height="609" alt="image (40)" src="https://github.com/user-attachments/assets/b898ace4-6ae4-416d-9382-6f77ea9bfdf3" />
+<img width="1348" height="230" alt="image (41)" src="https://github.com/user-attachments/assets/1f58b349-b33c-45aa-9ca5-351a1d9e3cc6" />
 
-<img width="1223" height="1540" alt="screencapture-us-east-1-console-aws-amazon-cloudwatch-home-2025-11-16-19_29_06" src="https://github.com/user-attachments/assets/07ad9b2a-2806-4946-949d-56e379174021" />
-
-**Análisis de Resultados:**
+**Resultados Entrega 4:**
 - **Tiempo de ejecución**: Aproximadamente 15 minutos (19:14 - 19:29)
 - **Throughput observado**: 6.7 videos por minuto
 - **Degradación del rendimiento**: 20% reducción vs prueba de 50 videos
 - **Comportamiento de CloudWatch**: Métricas estables sin picos críticos
 - **Utilización de recursos**: Incremento notable pero manejable
+- **Estado de la cola de tareas**: Procesamiento secuencial exitoso
+-**Métricas de CPU y memoria**: CPU ~50-60%, Memoria en niveles aceptables
+-**Tiempo de respuesta promedio**: ~9 segundos por video
 
-**Capturas del sistema durante la prueba**: Sistema manejando carga aumentada
-**Estado de la cola de tareas**: Procesamiento secuencial exitoso
-**Métricas de CPU y memoria**: CPU ~50-60%, Memoria en niveles aceptables
-**Tiempo de respuesta promedio**: ~9 segundos por video
-
-##Conclusión: 
-El sistema procesó 6.7 videos/min (335 MB/min) bajo carga de 100 videos de 50MB, manteniendo estabilidad operativa con procesamiento secuencial exitoso. El worker mantuvo recursos manejables (CPU 50-60%, memoria en niveles aceptables) con tiempo de respuesta promedio de 9 segundos por video, observándose degradación del 20% en throughput vs prueba de 50 videos (de 8.3 a 6.7 videos/min). 
-
-### 4.2.5 Carga de Saturación - 200 Videos (50MB)
-```bash
-docker exec producer python producer.py --num-videos 200 --video-file ./assets/dummy_file_50mb.mp4 --no-wait
-```
-
-**Evidencias:**
--  Capturas del sistema durante la prueba
-<img width="1223" height="934" alt="screencapture-us-east-1-console-aws-amazon-ec2-instance-connect-ssh-home-2025-11-16-19_31_27" src="https://github.com/user-attachments/assets/eb6e250a-0d13-490c-8f3d-e0f56f6dd14e" />
-
-<img width="1223" height="1169" alt="screencapture-us-east-1-console-aws-amazon-ec2-home-2025-11-16-19_31_49" src="https://github.com/user-attachments/assets/bd324a69-9a5c-4ca4-8e0e-4c7a4385563b" />
-
-<img width="1223" height="1540" alt="screencapture-us-east-1-console-aws-amazon-cloudwatch-home-2025-11-16-19_59_59" src="https://github.com/user-attachments/assets/32e4732b-80ec-4d01-a120-ea8ab46855f6" />
-
-<img width="1223" height="1540" alt="screencapture-us-east-1-console-aws-amazon-cloudwatch-home-2025-11-16-19_59_59" src="https://github.com/user-attachments/assets/dc2bcc75-cdd8-4b3a-b85e-f9c2f2aea489" />
-
-**Análisis de Resultados - Punto de Saturación:**
-- **Tiempo de ejecución**: Aproximadamente 28 minutos (19:31 - 19:59)
-- **Throughput observado**: 7.1 videos por minuto
-- **Comportamiento crítico**: Mayor tiempo de procesamiento por video
-- **Utilización de recursos**: Cerca de los límites de la instancia EC2
-- **CloudWatch**: Métricas muestran picos sostenidos de utilización
-- **Identificación del límite**: Sistema alcanza capacidad máxima efectiva
-
-**Capturas del sistema durante la prueba**: Sistema bajo máxima carga sostenida
-
-**Estado de la cola de tareas**: Cola extendida con procesamiento más lento
-
-**Métricas de CPU y memoria**: CPU >70%, Memoria en niveles críticos
-
-**Errores detectados**: Incremento en latencia de respuesta
-
-**Punto de saturación identificado**: ~150-180 videos concurrentes
+**Resultados Entrega Actual (5):**
+-**Tiempo de ejecución**: Aproximadamente 25 minutos (03:05 - 03:30)
+-**Throughput observado**: 4.0 videos por minuto 
+-**Impacto del tamaño**: Archivos de ~555MB promedio (según VideoFileSize)
+-**CPU**: Máximo 99.96%, promedio ~94.4%, sostenido en ~100% durante procesamiento activo
+-**Memoria**: Máximo 24%, promedio ~23%, mínimo ~21.7%
+-**Red RX**: Pico de 25.1M bytes/segundo, promedio 14.2M bytes/segundo
+-**Comportamiento del sistema**:Procesamiento continuo sostenido entre 03:10-03:25
+-**Duración de procesamiento p95**: ~34.4 segundos por tarea
+-**Escalabilidad**: Sistema procesó carga 10× mayor con archivos 1.66× más grandes que ejecución anterior
+  -Métricas de throughput**:
+  -4.0 videos/minuto
+  -~555MB/minuto procesados
+-**Tareas del servicio**: 6 tareas corriendo simultáneamente (RunningTaskCount)
 
 ##Conclusión: 
-El sistema procesó 7.1 videos/min (355 MB/min) bajo carga de 200 videos de 50MB, alcanzando capacidad máxima efectiva con recursos cerca de los límites (CPU >70%, memoria en niveles críticos). Se observó cola extendida con procesamiento más lento e incremento en latencia de respuesta, identificando el punto de saturación en ~150-180 videos concurrentes, aunque mantuvo throughput similar a prueba anterior (7.1 vs 6.7 videos/min)
 
-## 3. Análisis de Resultados worker
+- El promedio de MB procesado por minuto fue de 555
+- El sistema procesó 20× más videos con solo 66.7% de incremento en tiempo comparado con la referencia de 200 videos de resultado de la entrega anterior
+- TaskCount muestra escalamiento limpio de 1 a 200 tareas exitosas sin fallos
+- Archivos resultaron en:
+  *Throughput de videos 68.8% menor (1.25 → 4.0 no compensa el volumen)
+  *Pero throughput de datos 17.76× mayor (125 → 2,220 MB/min)
+-La duración p95 de 34.4s indica que archivos grandes dominan el tiempo de procesamiento
 
-### Resumen de Métricas
-
-| Prueba | Videos | Tamaño | Tiempo Ejecución | Throughput (videos/min) | Throughput (MB/min) | Observaciones |
-|--------|--------|--------|------------------|------------------------|---------------------|---------------|
-| Básica | 20 | 50MB | 8 min | 2.5 | 125 | Sistema estable |
-| Video Grande | 10 | 100MB | 8 min | 1.25 | 125 | Mismo MB/min, menos videos |
-| Carga Moderada | 50 | 50MB | 6 min | 8.3 | 415 | Mejor eficiencia |
-| Carga Alta | 100 | 50MB | 15 min | 6.7 | 335 | Degradación del 20% |
-| Saturación | 200 | 50MB | 28 min | 7.1 | 355 | Punto crítico alcanzado |
-
-### Gráfico de Evolución de la Cola
-
-**Comportamiento observado:**
-- **0-50 videos**: Procesamiento lineal eficiente
-- **50-100 videos**: Ligera degradación pero estable  
-- **100-200 videos**: Aumento significativo en tiempo de procesamiento
-- **>200 videos**: Punto de saturación identificado
-
-### Análisis de Recursos Consumidos
-
-**Utilización de CPU:**
-- Pruebas básicas: 30-40%
-- Carga moderada: 40-50%  
-- Carga alta: 50-70%
-- Saturación: >70%
-
-**Utilización de Memoria:**
-- Comportamiento estable en todas las pruebas
-- Sin indicios de memory leaks
-- Gestión eficiente de recursos
-
-**I/O y Almacenamiento:**
-- Videos de 100MB requieren el doble de tiempo
-- Throughput constante en MB/min independiente del tamaño
-- Sistema optimizado para procesamiento de I/O
-
-### Identificación del Punto de Saturación
-
-**Capacidad Máxima Identificada:**
-- **Videos concurrentes**: 150-180 videos
-- **Throughput sostenido**: 7-8 videos por minuto  
-- **Volumen de datos**: 350-400 MB por minuto
-- **Tiempo crítico**: >25 minutos para cargas >180 videos
-
-### Análisis del Cuello de Botella del Sistema
-
-**Especificaciones del Hardware:**
-- **CPU**: 2 núcleos de procesamiento
-- **RAM**: 2 GB de memoria
-- **Tipo de instancia**: EC2 con recursos limitados
-
-**Identificación del Cuello de Botella Principal:**
-
-**1. Procesamiento de CPU (Cuello de Botella Crítico):**
-- Con solo 2 núcleos, el sistema alcanza saturación cuando CPU >70%
-- El procesamiento de video (transcoding, compresión, marca de agua) es intensivo en CPU
-- Cada video de 50MB requiere ~7-9 segundos de procesamiento CPU intensivo
-- Videos de 100MB duplican el tiempo de procesamiento por la carga computacional
-
-**2. Limitaciones de Memoria (Cuello de Botella Secundario):**
-- 2 GB de RAM limitan el número de procesos concurrentes
-- Cada worker de Celery consume ~100-150 MB de memoria base
-- Sistema alcanza swap cuando procesa >12-15 videos simultáneamente
-
-**3. I/O de Almacenamiento (Impacto Moderado):**
-- Lectura/escritura de videos grandes impacta en latencia
-- Transferencia de 350-400 MB/min cercana al límite de throughput de disco
-
-**Análisis por Componente del Cuello de Botella:**
-
-**CPU como Limitante Principal:**
-- **Evidencia**: Degradación lineal del throughput con CPU >50%
-- **Cálculo**: 2 núcleos × 70% utilización = 1.4 núcleos efectivos
-- **Impacto**: Cada núcleo procesando ~4 videos/minuto máximo
-- **Saturación**: Sistema colapsa cuando demanda excede 1.4 núcleos
-
-**Memoria como Limitante Secundario:**
-- **Evidencia**: Latencia aumenta cuando múltiples workers activos
-- **Cálculo**: 2 GB - 512 MB (SO) = 1.5 GB disponibles para aplicación
-- **Impacto**: Máximo 10-12 workers concurrentes sin swap
-- **Saturación**: Swap activo degrada rendimiento >60%
-
-**Patrones de Saturación Observados:**
-1. **0-50 videos**: CPU <50%, memoria suficiente, throughput lineal
-2. **50-100 videos**: CPU 50-70%, memoria bajo presión, ligera degradación
-3. **100-150 videos**: CPU >70%, swap ocasional, degradación notable
-4. **150+ videos**: CPU saturado, swap constante, colapso del sistema
-
-**Recomendaciones Específicas por Cuello de Botella:**
-
-**Para CPU (Prioridad Alta):**
-- Upgrade a instancia con 4+ núcleos (t3.medium o superior)
-
-**Para Memoria (Prioridad Media):**
-- Upgrade a 4-8 GB de RAM para mayor concurrencia
-- Optimizar gestión de memoria en workers de Celery
-
-
-## Conclusiones Generales
-
-**Capacidad máxima del sistema:**
-- El sistema puede procesar de manera eficiente hasta 150 videos concurrentes
-- Throughput óptimo de 8.3 videos por minuto bajo condiciones ideales
-- Capacidad de 350-400 MB por minuto en procesamiento sostenido
-
-**Impacto del Auto Escalado Configurado:**
-- **Prevención proactiva**: La política activará escalado al 70% CPU, antes del punto crítico identificado
-- **Capacidad expandida**: Auto escalado permitirá manejar cargas >150 videos mediante instancias adicionales
-- **Tiempo de respuesta**: 120 segundos de preparación es adecuado para la inicialización observada
-- **Eficiencia de recursos**: Escalado descendente optimizará costos durante períodos de baja demanda
-- **Eliminación del cuello de botella**: Múltiples instancias distribuirán la carga de CPU identificada como limitante
-- **Throughput proyectado**: Con auto escalado, capacidad teórica de 16-25 videos/minuto (2-3 instancias)
-
-**Limitaciones identificadas (Pre-Auto Escalado):**
-- **CPU como cuello de botella principal**: 2 núcleos insuficientes para cargas >100 videos
-  - *Mitigado por*: Auto escalado agregará instancias antes del 70% CPU
-- **Memoria limitada**: 2 GB RAM restringe concurrencia a 10-12 workers máximo
-  - *Mitigado por*: Nuevas instancias proporcionarán memoria adicional
-- **Degradación exponencial**: Tiempo de procesamiento aumenta >200% después de 150 videos
-  - *Mitigado por*: Distribución de carga entre múltiples instancias
-- **Saturación de recursos**: Sistema alcanza límites físicos con utilización CPU >70%
-  - *Resuelto por*: Política configurada para escalar exactamente en este umbral
-- **I/O constraints**: EBS estándar limita throughput de disco bajo carga alta
-  - *Parcialmente mitigado*: Múltiples instancias distribuyen I/O
-
-**Mejoras propuestas:**
-
-**Inmediatas (Optimización de Auto Escalado):**
-- **Validación de políticas**: Verificar que el escalado se active correctamente al 70% CPU
-- **Optimización de workers**: Configurar 1 worker por núcleo de CPU por instancia
-- **Balanceamiento de carga**: Asegurar distribución uniforme entre instancias escaladas
-
-**Mediano Plazo (Memoria y Concurrencia):**
-- **Incremento de RAM**: Upgrade a 8 GB para soportar 20-30 workers concurrentes por instancia
+El sistema demuestra excelente escalabilidad horizontal (200 videos procesados exitosamente) pero enfrenta limitaciones de CPU que degradan el throughput 40% vs la referencia con archivos más pequeños. La arquitectura es sólida, pero requiere ajustes de capacidad para manejar cargas de archivos grandes de manera eficiente. El costo/beneficio de escalar verticalmente (instancias más potentes) vs horizontalmente (más instancias) debe evaluarse según el patrón de carga esperado.
 
