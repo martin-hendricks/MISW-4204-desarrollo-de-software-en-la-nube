@@ -1,6 +1,6 @@
 # Documentacion - Entrega 5
 
-Este directorio contiene todos los archivos entregables de la Cuarta entrega del proyecto ANB Rising Stars Showcase, incluyendo diagramas de arquitectura AWS, documentacion tecnica de servicios cloud y reportes de las pruebas de rendimiento realizadas en la nube.
+Este directorio contiene todos los archivos entregables de la Quinta entrega del proyecto ANB Rising Stars Showcase, incluyendo diagramas de arquitectura AWS, documentacion tecnica de servicios cloud y reportes de las pruebas de rendimiento realizadas en la nube.
 
 ## Resumen
 
