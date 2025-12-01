@@ -279,7 +279,7 @@ docker exec producer python producer.py --num-videos 100 --video-file ./assets/d
   - ~555MB/minuto procesados
 - **Tareas del servicio**: 6 tareas corriendo simultáneamente (RunningTaskCount)
 
-##Conclusión: 
+## Conclusión: 
 
 - El promedio de MB procesado por minuto fue de 555
 - El sistema procesó 20× más videos con solo 66.7% de incremento en tiempo comparado con la referencia de 200 videos de resultado de la entrega anterior
