@@ -52,12 +52,12 @@ Contiene todos los archivos entregables de la tercera entrega del proyecto, incl
 
 **[Ver documentación de la Entrega 3 →](docs/Entrega_3/)**
 
-### 📁 [docs/Entrega_3/](docs/Entrega_4/)
+### 📁 [docs/Entrega_4/](docs/Entrega_4/)
 Contiene todos los archivos entregables de la tercera entrega del proyecto, incluyendo diagramas de arquitectura, documentación técnica, y reportes de las pruebas realizadas de la tercera entrega.
 
 **[Ver documentación de la Entrega 4 →](docs/Entrega_4/)**
 
-### 📁 [docs/Entrega_3/](docs/Entrega_5/)
+### 📁 [docs/Entrega_5/](docs/Entrega_5/)
 Contiene todos los archivos entregables de la tercera entrega del proyecto, incluyendo diagramas de arquitectura, documentación técnica, y reportes de las pruebas realizadas de la tercera entrega.
 
 **[Ver documentación de la Entrega 5 →](docs/Entrega_5/)**
