@@ -105,7 +105,7 @@ El backend fue capaz de manejar un pico de ~5.45k requests/minuto de manera sost
 ------------------------------------------------------------------------------------------------------------------------------------------
 #### 1.2.3 **Prueba Sostenida**
 
-- **Usuarios**: Se calcula que de 1500 usuarios de la prueba ramp-up el 80% de la capacidad son 1200 usuarios por lo cual procedemos a realizar la prueba sostenida con esta cantidad de usuarios
+- **Usuarios**: Se calcula que de 1185 usuarios de la prueba ramp-up el 80% de la capacidad son 948 usuarios por lo cual procedemos a realizar la prueba sostenida con esta cantidad de usuarios
 - **Duración**: 5 minutos
 - **Objetivo**: Confirmar estabilidad del sistema bajo carga sostenida
 
