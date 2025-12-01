@@ -39,9 +39,14 @@ Métricas Observadas
  
  El sistema backend demostró capacidad para manejar 423 requests con una tasa de éxito del 99.05% (419 requests exitosos con status 201). El patrón de carga gradual permitió observar el comportamiento del sistema bajo presión incremental, alcanzando un pico sostenido de 417 requests/minuto. 
  
- La latencia p95 de 575ms al final de la prueba, con un patrón de crecimiento lineal desde 0ms, indica que el sistema experimenta degradación progresiva del tiempo de respuesta a medida que aumenta la carga acumulada. Este comportamiento sugiere posible acumulación de tareas en cola o procesamiento secuencial que impacta los tiempos de respuesta bajo carga sostenida. La utilización de CPU extremadamente baja (22.3% máximo) contrasta significativamente con las pruebas de procesamiento de video (99.96%), indicando que el backend API no está limitado por CPU. La memoria estable en 47.6% sugiere un consumo constante sin fugas evidentes. Esta sub-utilización de recursos computacionales con latencias crecientes apunta a que el cuello de botella probablemente reside en operaciones de I/O (base de datos, almacenamiento, red) o en la arquitectura de procesamiento de requests.
+ La latencia p95 de 575ms al final de la prueba, con un patrón de crecimiento lineal desde 0ms, indica que el sistema experimenta degradación progresiva del tiempo de respuesta a medida que aumenta la carga acumulada. Este comportamiento sugiere posible acumulación de tareas en cola o procesamiento secuencial que impacta los tiempos de respuesta bajo carga sostenida. 
+ 
+ La utilización de CPU extremadamente baja (22.3% máximo) contrasta significativamente con las pruebas de procesamiento de video (99.96%), indicando que el backend API no está limitado por CPU. La memoria estable en 47.6% sugiere un consumo constante sin fugas evidentes. Esta sub-utilización de recursos computacionales con latencias crecientes apunta a que el cuello de botella probablemente reside en operaciones de I/O (base de datos, almacenamiento, red) o en la arquitectura de procesamiento de requests.
+ 
 --------------------------------------------------------------------------------------------------------------------------------------------------
+
 #### 1.2.2 **Prueba de Escalamiento (Ramp-up)**
+
 - **Estrategia**: Iniciar en 0 usuarios y aumentar gradualmente hasta X usuarios en 3 minutos, mantener 5 minutos
 - **Comando**: en la instancia de AWS `docker exec jmeter /bin/bash -c "jmeter -n -t /scripts/ramp_up_test.jmx -l /scripts/ramp_up_X_users_results.jtl -Jusers=X"`
 - **Evidencias**: 
@@ -82,8 +87,19 @@ Métricas Observadas
 <img width="1688" height="658" alt="image (39)" src="https://github.com/user-attachments/assets/b0052538-57f8-448f-a83c-d08dddfefab5" />
 <img width="1692" height="656" alt="image (40)" src="https://github.com/user-attachments/assets/4c5a3e0e-54d2-4789-b777-8e53fa302efa" />
 
+Métricas Observadas
+- **Duración total de la prueba**: Aproximadamente 15 minutos (Desde ~02:15 hasta ~02:30 UTC).
+- **Requests totales procesados**: Pico máximo: ~5.45k Requests/minuto a las 02:20 UTC. Patrón de curva de campana o Gaussiana.
+- **Tasa de Éxito**:Status 201 (Created): Pico de 5,388 requests a las 02:20 UTC. Descenso a 4,780 requests a las 02:25 UTC.
+- **Latencia p95**: Pico: 104,416 milisegundos ($\approx$ 104.4 segundos) a las 02:15 UTC. Patrón de crecimiento rápido antes del pico de carga.
+- **Utilización de CPU**: Pico máximo: ~85.2% a las 02:20 UTC. Patrón de curva de campana, correlacionado con el RPS.
+- **Utilización de Memoria**: Pico máximo: ~58.1% (sostenido) entre 02:20 y 02:25 UTC. Patrón de rampa de crecimiento y meseta, correlacionado con la carga activa.
 
 ## **Conclusiónes - Prueba de Escalamiento (Ramp-up)**
+
+El sistema mostró una respuesta clara y predecible a la carga. El aumento de las peticiones por segundo (RPS) se correlaciona directamente con el aumento de la utilización de CPU y Memoria, siguiendo un patrón de curva de campana (crecimiento, pico, descenso).
+
+El backend fue capaz de manejar un pico de ~5.45k requests/minuto de manera sostenida (alrededor de 5 minutos) con una alta tasa de éxito (predominantemente Status 201). La caída rápida de la carga (RPS) después de las 02:25 UTC se refleja inmediatamente en la caída del uso de CPU y Memoria, indicando que los recursos están siendo liberados eficientemente.
 
 
 ------------------------------------------------------------------------------------------------------------------------------------------
