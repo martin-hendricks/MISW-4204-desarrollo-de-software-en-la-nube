@@ -9,7 +9,7 @@ Esta entrega representa la **migración de instancias desplegadas en EC2 a insta
 ### Servicios AWS Implementados
 
 **Componentes Usados:**
-- ✅ **Instancias EC2 → AWS ECS EC"**: Uso de Elastick Container Services 
+- ✅ **Instancias EC2 → AWS ECS EC2**: Uso de Elastick Container Services 
 - ✅ **Grupos de Auto Scaling**: Compute escalable para ECS
 
 **Componentes Configurados en AWS:**
