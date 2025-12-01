@@ -110,10 +110,24 @@ El backend fue capaz de manejar un pico de ~5.45k requests/minuto de manera sost
 
 - **Evidencias**:
 
+<img width="1688" height="660" alt="image (42)" src="https://github.com/user-attachments/assets/702a2a68-55c3-4a83-ab5b-220b50512239" />
+<img width="1692" height="666" alt="image (43)" src="https://github.com/user-attachments/assets/82d526ea-647e-4859-b50d-fb9129e080fd" />
+<img width="2046" height="580" alt="image (44)" src="https://github.com/user-attachments/assets/dea716a3-dda6-4941-aae8-67c1b8824324" />
+<img width="2054" height="690" alt="image (45)" src="https://github.com/user-attachments/assets/08ec918d-aa77-463d-a890-98f86b029185" />
+<img width="2050" height="660" alt="image (46)" src="https://github.com/user-attachments/assets/5e9ccf7f-6380-4440-be3c-c4016fcc158f" />
 
+Métricas Observadas
+- **Peticiones por Segundo (RPS)** Pico máximo: ~5.45k Requests/minuto a las 02:20 UTC. Patrón de curva de campana o Gaussiana.
+-  **Tasa de Éxito (Status Code)** Status 201 (Created): Pico de 5,388 requests a las 02:20 UTC. Descenso a 4,780 requests a las 02:25 UTC.
+-  **Latencia p95 (Request Duration)** Pico: 104,416 milisegundos ($\approx$ 104.4 segundos) a las 02:15 UTC. Patrón de crecimiento rápido antes del pico de carga.
+-  **Utilización de CPU (Promedio)** Pico máximo: ~85.2% a las 02:20 UTC. Patrón de curva de campana, correlacionado con el RPS.
+-  **Utilización de Memoria (Promedio)** Pico máximo: ~58.1% (sostenido) entre 02:20 y 02:25 UTC. Patrón de rampa de crecimiento y meseta, correlacionado con la carga activa.
 
 ## **Conclusiónes - Prueba Sostenida**
 
+El sistema mostró una respuesta clara y predecible a la carga. El aumento de las peticiones por segundo (RPS) se correlaciona directamente con el aumento de la utilización de CPU y Memoria, siguiendo un patrón de curva de campana (crecimiento, pico, descenso).
+
+El backend fue capaz de manejar un pico de ~5.45k requests/minuto de manera sostenida (alrededor de 5 minutos) con una alta tasa de éxito (predominantemente Status 201). La caída rápida de la carga (RPS) después de las 02:25 UTC se refleja inmediatamente en la caída del uso de CPU y Memoria, indicando que los recursos están siendo liberados eficientemente
 
 
 # Escenario 2: Rendimiento de la Capa Worker 
