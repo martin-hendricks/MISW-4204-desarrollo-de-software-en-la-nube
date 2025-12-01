@@ -105,7 +105,7 @@ Contiene el análisis detallado de capacidad de la aplicación en arquitectura A
 **[Ver plan de pruebas de capacidad →](../../capacity-planning/plan_de_pruebas.md)**
 
 ### 📦 Resultados de Pruebas de Capacidad en AWS
-**Ubicacion:** `capacity-planning/pruebas_de_carga_entrega4.md`
+**Ubicacion:** `capacity-planning/pruebas_de_carga_entrega5.md`
 
 Contiene el análisis detallado de capacidad de la aplicación ejecutado sobre la infraestructura AWS.
 
