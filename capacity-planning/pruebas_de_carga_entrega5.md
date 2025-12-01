@@ -40,8 +40,8 @@ Métricas Observadas
  El sistema backend demostró capacidad para manejar 423 requests con una tasa de éxito del 99.05% (419 requests exitosos con status 201). El patrón de carga gradual permitió observar el comportamiento del sistema bajo presión incremental, alcanzando un pico sostenido de 417 requests/minuto. 
  
  La latencia p95 de 575ms al final de la prueba, con un patrón de crecimiento lineal desde 0ms, indica que el sistema experimenta degradación progresiva del tiempo de respuesta a medida que aumenta la carga acumulada. Este comportamiento sugiere posible acumulación de tareas en cola o procesamiento secuencial que impacta los tiempos de respuesta bajo carga sostenida.
-
-La utilización de CPU extremadamente baja (22.3% máximo) contrasta significativamente con las pruebas de procesamiento de video (99.96%), indicando que el backend API no está limitado por CPU. La memoria estable en 47.6% sugiere un consumo constante sin fugas evidentes. Esta sub-utilización de recursos computacionales con latencias crecientes apunta a que el cuello de botella probablemente reside en operaciones de I/O (base de datos, almacenamiento, red) o en la arquitectura de procesamiento de requests.
+ 
+ La utilización de CPU extremadamente baja (22.3% máximo) contrasta significativamente con las pruebas de procesamiento de video (99.96%), indicando que el backend API no está limitado por CPU. La memoria estable en 47.6% sugiere un consumo constante sin fugas evidentes. Esta sub-utilización de recursos computacionales con latencias crecientes apunta a que el cuello de botella probablemente reside en operaciones de I/O (base de datos, almacenamiento, red) o en la arquitectura de procesamiento de requests.
 --------------------------------------------------------------------------------------------------------------------------------------------------
 #### 1.2.2 **Prueba de Escalamiento (Ramp-up)**
 - **Estrategia**: Iniciar en 0 usuarios y aumentar gradualmente hasta X usuarios en 3 minutos, mantener 5 minutos
